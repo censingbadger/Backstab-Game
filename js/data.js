@@ -11,7 +11,10 @@
    - Enemy "swords" = attack power. Enemy "money" = reward for beating it.
    ============================================================ */
 
-const HP_PER_HEART = 10; // 1 heart = 10 HP, half-heart = 5 HP
+// 1 heart = this many HP (half-heart = half of it). Larger = longer fights.
+// Enemy cards keep their small heart values; internally each heart is a big
+// health pool so real-time battles last closer to a minute.
+const HP_PER_HEART = 200;
 
 /* ---------- Rarities ---------- */
 const RARITY = {
@@ -66,12 +69,14 @@ const BOSSES = {
    durability  = swings before it needs repair
    repairCost  = money to fully repair
 */
+// durability = swings before it needs repair. Sized so a weapon lasts about
+// one full (minute-long) fight before you visit the shop to repair it.
 const WEAPONS = {
-  old_knife:      { id:'old_knife',      name:'Old Knife',      damage:5,  durability:30, rarity:'C', price:0,   repairCost:8,  art:'knife'  },
-  aluminum_sword: { id:'aluminum_sword', name:'Aluminum Sword', damage:8,  durability:45, rarity:'C', price:50,  repairCost:15, art:'sword'  },
-  wood_spear:     { id:'wood_spear',     name:'Spear',          damage:12, durability:25, rarity:'U', price:90,  repairCost:20, art:'spear'  },
-  reinforced_bow: { id:'reinforced_bow', name:'Reinforced Bow', damage:14, durability:35, rarity:'R', price:180, repairCost:35, art:'bow'    },
-  steel_katana:   { id:'steel_katana',   name:'Steel Katana',   damage:18, durability:50, rarity:'R', price:230, repairCost:45, art:'katana' },
+  old_knife:      { id:'old_knife',      name:'Old Knife',      damage:5,  durability:160, rarity:'C', price:0,   repairCost:18, art:'knife'  },
+  aluminum_sword: { id:'aluminum_sword', name:'Aluminum Sword', damage:8,  durability:150, rarity:'C', price:50,  repairCost:28, art:'sword'  },
+  wood_spear:     { id:'wood_spear',     name:'Spear',          damage:12, durability:90,  rarity:'U', price:90,  repairCost:30, art:'spear'  },
+  reinforced_bow: { id:'reinforced_bow', name:'Reinforced Bow', damage:14, durability:120, rarity:'R', price:180, repairCost:50, art:'bow'    },
+  steel_katana:   { id:'steel_katana',   name:'Steel Katana',   damage:18, durability:200, rarity:'R', price:230, repairCost:70, art:'katana' },
 };
 
 /* ---------- Items (used in battle) ----------

@@ -118,7 +118,7 @@ function onAction(act) {
 
   if (act === 'attack') {
     if (now < b.attackReadyAt) return;
-    b.attackReadyAt = now + 520;
+    b.attackReadyAt = now + 600;
     doPlayerAttack(1);
     animate('hero', 'lunge');
   } else if (act === 'block') {
@@ -225,7 +225,7 @@ function enemyStrike() {
     popDamage('hero', 0, true);
     return;
   }
-  let dmg = b.fighter.attack * 3;
+  let dmg = b.fighter.attack * 7 + 3;
   if (b.crowd < 30) dmg *= 1.15; // hostile crowd hurts you
   if (b.blocking) {
     const shield = SHIELDS[STATE.equippedShield] || { block: 0 };
@@ -391,7 +391,7 @@ function updateWeaponWarn() {
   const wId = STATE.equippedWeapon;
   const dur = STATE.weapons[wId] || 0;
   const btn = document.querySelector('.cbtn.attack');
-  if (btn) btn.classList.toggle('warn', dur <= 5);
+  if (btn) btn.classList.toggle('warn', dur <= 12);
 }
 function animate(id, cls) {
   const el = document.getElementById(id);
