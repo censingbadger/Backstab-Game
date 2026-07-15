@@ -42,34 +42,50 @@ function startDungeon(regionId) {
   Audio2.resume();
   Audio2.playMusic('battle');
 
-  const W = 46, H = 46;                    // map size in tiles
-  // Build the cliff-top plateau: ground inside, chasm (void) around the rim.
+  const W = 62, H = 62;                    // map size in tiles
+  const HALF = 3.1;                        // half-width of the walkable trail
+
+  // A winding cliff trail: carve a corridor along a polyline; everything
+  // else is chasm (void), so you follow a path with drops on both sides.
+  const WP = [
+    [8, 12], [8, 28], [22, 32], [22, 16], [38, 14],
+    [40, 32], [28, 42], [42, 50], [54, 54],
+  ];
+  const path = buildPath(WP);              // { samples:[{x,y,cum}], length, step }
+
   const tiles = [];
   for (let y = 0; y < H; y++) {
     const row = [];
     for (let x = 0; x < W; x++) {
-      const edge = x < 3 || y < 3 || x > W - 4 || y > H - 4;
-      // a few internal chasm bites for shape
-      const bite = (x > 30 && y < 10) || (x < 12 && y > 34);
-      row.push(edge || bite ? 'void' : 'ground');
+      const dp = distToPath(x + 0.5, y + 0.5, path);
+      // wider clearings at the start and the boss arena (last waypoint)
+      const nearStart = dist(x + 0.5, y + 0.5, WP[0][0], WP[0][1]) < 4.5;
+      const nearBoss = dist(x + 0.5, y + 0.5, WP[WP.length - 1][0], WP[WP.length - 1][1]) < 6.5;
+      row.push(dp <= HALF || nearStart || nearBoss ? 'ground' : 'void');
     }
     tiles.push(row);
   }
-  // scatter Dead-Cliffs props on ground tiles
+
+  // props scattered on the trail + along its rim
   const props = [];
-  const kinds = ['tomb', 'tomb', 'bone', 'rock', 'rock', 'tree', 'skull', 'torch'];
-  for (let i = 0; i < 90; i++) {
-    const x = 3 + Math.floor(rand(i * 7.1) * (W - 6));
-    const y = 3 + Math.floor(rand(i * 3.7 + 2) * (H - 6));
+  const kinds = ['tomb', 'bone', 'rock', 'rock', 'tree', 'skull', 'torch'];
+  for (let i = 0; i < 150; i++) {
+    const x = 2 + Math.floor(rand(i * 7.1) * (W - 4));
+    const y = 2 + Math.floor(rand(i * 3.7 + 2) * (H - 4));
     if (tiles[y][x] !== 'ground') continue;
-    // keep the start & boss areas clearer
-    if ((x < 9 && y < 9) || (x > W - 10 && y > H - 10)) continue;
+    if (dist(x + 0.5, y + 0.5, WP[0][0], WP[0][1]) < 3) continue;
     props.push({ x: x + 0.5, y: y + 0.5, kind: kinds[i % kinds.length], seed: i });
   }
 
+  // checkpoints spaced along the path
+  const checkpoints = [0.24, 0.46, 0.68, 0.88].map((f, idx) => {
+    const s = sampleAtCum(path, f * path.length);
+    return { x: s.x, y: s.y, reached: false, idx: idx + 1 };
+  });
+
   const hero = {
-    fx: 6, fy: 6, r: 0.42,
-    facing: 1, faceAngle: 0,               // faceAngle in world radians
+    fx: WP[0][0], fy: WP[0][1], r: 0.42,
+    facing: 1, faceAngle: Math.PI / 2,      // faceAngle in world radians
     // A dungeon gauntlet needs a big health bar (Minecraft-Dungeons style),
     // so the hero gets a much larger pool than a 1-on-1 arena fight.
     hp: STATE.maxHearts + 5, maxhp: STATE.maxHearts + 5, hurtInvulnUntil: 0,
@@ -78,7 +94,7 @@ function startDungeon(regionId) {
   };
 
   DUNGEON = {
-    regionId, W, H, tiles, props,
+    regionId, W, H, tiles, props, path, checkpoints,
     hero,
     enemies: [], drops: [], fx: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET,
@@ -86,6 +102,7 @@ function startDungeon(regionId) {
     over: false, outcome: null,
     cam: { x: 0, y: 0 },
     keys: {}, mouse: { x: 0, y: 0, down: false }, joy: { active: false, dx: 0, dy: 0 },
+    attackHeld: false,
     lastT: performance.now(), raf: null,
     spawnTimer: 0,
   };
@@ -97,6 +114,36 @@ function startDungeon(regionId) {
 
 // deterministic pseudo-random (no Date/Math.random reliance for layout)
 function rand(seed) { const s = Math.sin(seed * 127.1 + 11.7) * 43758.5453; return s - Math.floor(s); }
+
+/* Sample a polyline of waypoints into dense points with cumulative distance. */
+function buildPath(WP) {
+  const step = 0.4; const samples = [{ x: WP[0][0], y: WP[0][1], cum: 0 }]; let cum = 0;
+  for (let i = 0; i < WP.length - 1; i++) {
+    const x0 = WP[i][0], y0 = WP[i][1], x1 = WP[i + 1][0], y1 = WP[i + 1][1];
+    const segLen = Math.hypot(x1 - x0, y1 - y0);
+    const n = Math.max(1, Math.round(segLen / step));
+    for (let k = 1; k <= n; k++) {
+      const tt = k / n;
+      cum += segLen / n;
+      samples.push({ x: x0 + (x1 - x0) * tt, y: y0 + (y1 - y0) * tt, cum });
+    }
+  }
+  return { samples, length: cum, step };
+}
+function distToPath(px, py, path) {
+  let m = 1e9; const s = path.samples;
+  for (let i = 0; i < s.length; i++) { const dx = s[i].x - px, dy = s[i].y - py; const d2 = dx * dx + dy * dy; if (d2 < m) m = d2; }
+  return Math.sqrt(m);
+}
+function sampleAtCum(path, c) {
+  const s = path.samples; c = clamp(c, 0, path.length);
+  return s[clamp(Math.round(c / path.step), 0, s.length - 1)];
+}
+function nearestSampleIndex(fx, fy) {
+  const s = DUNGEON.path.samples; let bi = 0, m = 1e9;
+  for (let i = 0; i < s.length; i++) { const dx = s[i].x - fx, dy = s[i].y - fy; const d2 = dx * dx + dy * dy; if (d2 < m) { m = d2; bi = i; } }
+  return bi;
+}
 
 function stopDungeon() {
   if (!DUNGEON) return;
@@ -186,7 +233,13 @@ function bindDungeonInput() {
   window.addEventListener('resize', d._rs);
 
   document.getElementById('dun-quit').addEventListener('click', () => { Audio2.sfx.click(); exitDungeon(); });
-  document.getElementById('t-attack').addEventListener('click', heroAttack);
+  const atk = document.getElementById('t-attack');
+  const holdOn = e => { e.preventDefault(); d.attackHeld = true; heroAttack(); };
+  const holdOff = e => { d.attackHeld = false; };
+  atk.addEventListener('touchstart', holdOn, { passive: false });
+  atk.addEventListener('touchend', holdOff);
+  atk.addEventListener('mousedown', holdOn);
+  atk.addEventListener('mouseup', holdOff);
   document.getElementById('t-dodge').addEventListener('click', heroDodge);
   document.getElementById('t-heal').addEventListener('click', heroHeal);
   bindJoystick();
@@ -346,13 +399,11 @@ function summonBoss() {
   setTimeout(() => {
     if (!DUNGEON) return;
     const bd = BOSSES.brute;
-    // Spawn a few tiles from the hero (on walkable ground) so it looms in fast.
+    // Spawn on the trail a little ahead of the hero so it looms in on-path.
     const h = d.hero;
-    let bx = h.fx, by = h.fy;
-    const dirs = [[6, 0], [0, 6], [-6, 0], [0, -6], [5, 5], [-5, 5]];
-    for (const [dx, dy] of dirs) {
-      if (isWalkable(h.fx + dx, h.fy + dy)) { bx = h.fx + dx; by = h.fy + dy; break; }
-    }
+    const pi = nearestSampleIndex(h.fx, h.fy);
+    const bs = d.path.samples[Math.min(d.path.samples.length - 1, pi + 10)];
+    const bx = bs.x, by = bs.y;
     d.boss = {
       boss: true, fighter: bd, art: 'zombie', palette: bd.palette,
       fx: bx, fy: by, r: 0.9, scale: 2.1,
@@ -369,12 +420,15 @@ function summonBoss() {
    ============================================================ */
 function spawnEnemy() {
   const d = DUNGEON;
-  // spawn just off the visible area around the hero, on a ground tile
-  for (let tries = 0; tries < 20; tries++) {
+  // spawn AHEAD of the hero along the trail, so you fight your way forward
+  const pi = nearestSampleIndex(d.hero.fx, d.hero.fy);
+  for (let tries = 0; tries < 24; tries++) {
+    const ahead = Math.min(d.path.samples.length - 1, pi + 12 + Math.floor(rand(d.spawned * 1.3 + tries) * 16));
+    const s = d.path.samples[ahead];
     const ang = rand(d.spawned * 2.3 + tries * 1.7) * Math.PI * 2;
-    const rad = 9 + rand(d.spawned + tries) * 3;
-    const fx = clamp(d.hero.fx + Math.cos(ang) * rad, 3.5, d.W - 3.5);
-    const fy = clamp(d.hero.fy + Math.sin(ang) * rad, 3.5, d.H - 3.5);
+    const rad = rand(d.spawned + tries) * 2.2;
+    const fx = clamp(s.x + Math.cos(ang) * rad, 3.5, d.W - 3.5);
+    const fy = clamp(s.y + Math.sin(ang) * rad, 3.5, d.H - 3.5);
     if (d.tiles[Math.floor(fy)][Math.floor(fx)] !== 'ground') continue;
     const isSkel = rand(d.spawned * 9.1) < 0.5;
     const base = isSkel ? ENEMIES.skeleton : ENEMIES.zombie;
@@ -433,6 +487,20 @@ function updateDungeon(dt, t) {
       h.facing = Math.cos(h.faceAngle) >= 0 ? 1 : -1;
     }
   }
+
+  /* --- attack while moving: holding attack keeps swinging (cooldown-gated) --- */
+  if (d.attackHeld || d.mouse.down || d.keys[' ']) heroAttack();
+
+  /* --- checkpoints along the trail --- */
+  d.checkpoints.forEach(cp => {
+    if (!cp.reached && dist(cp.x, cp.y, h.fx, h.fy) < 2.6) {
+      cp.reached = true;
+      banner('CHECKPOINT ' + cp.idx + ' / ' + d.checkpoints.length, 1300);
+      Audio2.sfx.win();
+      h.hp = Math.min(h.maxhp, h.hp + 1);   // small reward heal
+      updateDungeonHUD();
+    }
+  });
 
   /* --- keep the swarm populated (until boss), ramping up with kills --- */
   const swarmCap = Math.min(DUN.MAX_ENEMIES, 3 + Math.floor(d.kills / 7));
@@ -574,8 +642,12 @@ function renderDungeon() {
     }
   }
 
-  // ---- collect depth-sorted sprites (props + entities + drops) ----
+  // ---- animated trail flowing forward along the path ----
+  drawTrail(ctx, ox, oy);
+
+  // ---- collect depth-sorted sprites (props + entities + drops + checkpoints) ----
   const draws = [];
+  d.checkpoints.forEach(cp => draws.push({ z: cp.x + cp.y, kind: 'checkpoint', cp }));
   d.props.forEach(p => { if (Math.abs(p.x - d.hero.fx) < RANGE && Math.abs(p.y - d.hero.fy) < RANGE) draws.push({ z: p.x + p.y, kind: 'prop', p }); });
   d.drops.forEach(dr => draws.push({ z: dr.fx + dr.fy - 0.01, kind: 'drop', dr }));
   d.enemies.forEach(e => { if (!e.dead) draws.push({ z: e.fx + e.fy, kind: 'enemy', e }); });
@@ -585,6 +657,7 @@ function renderDungeon() {
 
   draws.forEach(item => {
     if (item.kind === 'prop') drawProp(ctx, item.p, ox, oy);
+    else if (item.kind === 'checkpoint') drawCheckpoint(ctx, item.cp, ox, oy);
     else if (item.kind === 'drop') drawDrop(ctx, item.dr, ox, oy);
     else if (item.kind === 'enemy') drawCombatant(ctx, item.e, ox, oy);
     else if (item.kind === 'hero') drawHero(ctx, item.h, ox, oy);
@@ -602,6 +675,52 @@ function renderDungeon() {
 function isEdgeTile(gx, gy) {
   const d = DUNGEON;
   return d.tiles[gy + 1] && (d.tiles[gy + 1][gx] === 'void' || d.tiles[gy][gx + 1] === 'void');
+}
+
+/* Animated golden trail flowing forward along the path from the hero. */
+function drawTrail(ctx, ox, oy) {
+  const d = DUNGEON, t = performance.now() / 1000;
+  const spacing = 1.5, flow = (t * 3) % spacing;
+  const pi = nearestSampleIndex(d.hero.fx, d.hero.fy);
+  const startCum = Math.max(0, d.path.samples[pi].cum - 1.5);
+  for (let c = startCum + flow; c < d.path.length; c += spacing) {
+    const s = sampleAtCum(d.path, c);
+    if (Math.abs(s.x - d.hero.fx) > 17 || Math.abs(s.y - d.hero.fy) > 17) continue;
+    const sc = isoToScreen(s.x, s.y), x = sc.x + ox, y = sc.y + oy;
+    const along = c - startCum;
+    const fade = clamp(1 - along / 34, 0.18, 1);
+    const pulse = 0.4 + 0.35 * Math.sin(t * 5 - c * 0.6);
+    const a = fade * (0.55 + pulse * 0.45);
+    // soft glow
+    ctx.fillStyle = `rgba(255,180,40,${a * 0.35})`;
+    ctx.beginPath(); ctx.ellipse(x, y, 13, 6.5, 0, 0, 7); ctx.fill();
+    // bright core dot
+    ctx.fillStyle = `rgba(255,224,120,${a})`;
+    ctx.beginPath(); ctx.ellipse(x, y, 6.5, 3.2, 0, 0, 7); ctx.fill();
+  }
+}
+
+/* A checkpoint gate along the trail (torches + banner). */
+function drawCheckpoint(ctx, cp, ox, oy) {
+  const s = isoToScreen(cp.x, cp.y), x = s.x + ox, y = s.y + oy, t = performance.now() / 1000;
+  const done = cp.reached;
+  // glowing ground ring
+  const pr = 0.4 + 0.3 * Math.sin(t * 3 + cp.idx);
+  ctx.fillStyle = done ? `rgba(87,204,102,${0.12 * pr})` : `rgba(255,207,63,${0.16 * pr})`;
+  ctx.beginPath(); ctx.ellipse(x, y, 26, 13, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = done ? 'rgba(87,204,102,0.8)' : 'rgba(255,207,63,0.75)';
+  ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, 26, 13, 0, 0, 7); ctx.stroke();
+  // torch poles
+  [-18, 18].forEach(dx => {
+    ctx.strokeStyle = '#5a4028'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x + dx, y); ctx.lineTo(x + dx, y - 42); ctx.stroke();
+    const fl = 4 + Math.sin(t * 6 + dx) * 2;
+    ctx.fillStyle = done ? '#8ff0a0' : '#ffb347'; ctx.beginPath(); ctx.ellipse(x + dx, y - 46, 5, 8 + fl, 0, 0, 7); ctx.fill();
+  });
+  // banner
+  ctx.fillStyle = done ? '#57cc66' : '#c0392b';
+  ctx.beginPath(); ctx.moveTo(x - 18, y - 40); ctx.lineTo(x + 18, y - 40); ctx.lineTo(x + 18, y - 27); ctx.lineTo(x, y - 31); ctx.lineTo(x - 18, y - 27); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '900 12px Trebuchet MS, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(done ? '✓' : String(cp.idx), x, y - 31); ctx.textAlign = 'left';
 }
 
 function drawFloorTile(ctx, gx, gy, ox, oy) {
@@ -708,22 +827,60 @@ function drawHero(ctx, h, ox, oy) {
   const bob = h.moving ? Math.sin(h.animT) * 3 : 0;
   const dodging = performance.now() < h.dodgeUntil;
   const hurt = performance.now() < h.hurtUntil;
+  const aimScreen = isoDirToScreenAngle(h.faceAngle);
+  // weapon drawn BEHIND the body when aiming away (up), in front otherwise
+  const behind = Math.sin(aimScreen) < -0.2;
+  if (behind) drawHeroWeapon(ctx, h, x, y - 34, aimScreen);
   ctx.save();
   if (dodging) ctx.globalAlpha = 0.5;
+  if (hurt) ctx.globalAlpha = 0.6;
   if (img.complete && img.naturalWidth) ctx.drawImage(img, x - 33, y - 70 - bob, 66, 80);
   ctx.restore();
-  // swing arc
-  if (performance.now() < h.swingUntil) {
-    const a = h.faceAngle;
-    ctx.save(); ctx.translate(x, y - 34);
-    // project swing along facing (screen space)
-    const sx = (Math.cos(a) - Math.sin(a)) * (ISO.TW / 2) * 0.05;
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-    const dir = isoDirToScreenAngle(a);
-    ctx.beginPath(); ctx.arc(0, 0, 34, dir - 0.7, dir + 0.7); ctx.stroke();
-    ctx.restore();
+  if (!behind) drawHeroWeapon(ctx, h, x, y - 34 - bob, aimScreen);
+}
+
+/* Draw (and animate) the equipped weapon swinging from the hero's hand. */
+const SWING_DUR = 200;
+function drawHeroWeapon(ctx, h, hx, hy, aimScreen) {
+  const now = performance.now();
+  const swinging = now < h.swingUntil;
+  let ang;
+  if (swinging) {
+    const p = 1 - (h.swingUntil - now) / SWING_DUR;   // 0..1 through the swing
+    ang = aimScreen - 1.15 + p * 2.3;                  // sweep across the aim
+    // motion-blur arc
+    ctx.strokeStyle = `rgba(255,255,255,${0.55 * (1 - p)})`;
+    ctx.lineWidth = 8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(hx, hy, 32, aimScreen - 1.15, ang); ctx.stroke();
+  } else {
+    ang = aimScreen + 0.55;                            // resting pose, held ready
   }
-  if (hurt) { /* red flash handled by vignette-ish tint */ }
+  const art = (WEAPONS[STATE.equippedWeapon] || {}).art || 'knife';
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(ang);
+  drawBladeShape(ctx, art);
+  ctx.restore();
+}
+function drawBladeShape(ctx, art) {
+  ctx.lineCap = 'round';
+  if (art === 'bow') {
+    ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(14, 0, 12, -1.5, 1.5); ctx.stroke();
+    ctx.strokeStyle = '#eee'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(14, -12); ctx.lineTo(14, 12); ctx.stroke();
+    return;
+  }
+  // handle
+  ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10, 0); ctx.stroke();
+  // cross-guard
+  ctx.strokeStyle = '#b98a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(10, -5); ctx.lineTo(10, 5); ctx.stroke();
+  // blade
+  const len = art === 'spear' ? 36 : art === 'katana' ? 32 : art === 'sword' ? 27 : 20;
+  ctx.strokeStyle = '#e6eef6'; ctx.lineWidth = art === 'spear' ? 4 : 6;
+  ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(10 + len, 0); ctx.stroke();
+  // tip
+  ctx.fillStyle = '#eef4fb'; ctx.beginPath();
+  ctx.moveTo(10 + len, -4); ctx.lineTo(10 + len + 8, 0); ctx.lineTo(10 + len, 4); ctx.closePath(); ctx.fill();
 }
 
 function isoDirToScreenAngle(worldAngle) {
