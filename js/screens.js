@@ -134,7 +134,9 @@ function renderMap() {
     node.addEventListener('click', () => {
       Audio2.sfx.click();
       Game.currentRegion = node.dataset.region;
-      renderArena();
+      // Dead Cliffs is the Minecraft-Dungeons-style crawl; other regions use the arena.
+      if (node.dataset.region === 'dead_cliffs') startDungeon('dead_cliffs');
+      else renderArena();
     });
   });
 }
