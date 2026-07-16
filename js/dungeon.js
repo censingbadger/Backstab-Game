@@ -8,18 +8,30 @@
 const ISO = { TW: 64, TH: 32 };          // tile width / height (screen px)
 const JUMP_DUR = 520;                     // hop duration (ms)
 
-/* Permanent reward modifiers — a random one is offered at the end of a level. */
+/* Permanent reward boons — three are offered at the end of a level (Hades-style
+   pick-one-of-three). Each has a rarity; rarer boons are stronger and rarer to
+   see in the roll. */
 const MODIFIERS = [
-  { id: 'vitality', name: 'Vitality', icon: '❤️', desc: '+1 max heart', apply: () => { STATE.maxHearts += 1; } },
-  { id: 'power', name: 'Power', icon: '💪', desc: '+3 weapon damage', apply: () => { STATE.dmgBonus = (STATE.dmgBonus || 0) + 3; } },
-  { id: 'ironskin', name: 'Iron Skin', icon: '🛡️', desc: 'take 12% less damage', apply: () => { STATE.armorBonus = Math.min(0.5, (STATE.armorBonus || 0) + 0.12); } },
-  { id: 'riches', name: 'Riches', icon: '💰', desc: '+75 coins', apply: () => { earn(75); } },
-  { id: 'swift', name: 'Swiftness', icon: '🏃', desc: 'move faster', apply: () => { STATE.speedBonus = (STATE.speedBonus || 0) + 0.7; } },
-  { id: 'vigor', name: 'Vigor', icon: '✨', desc: '+½ max heart', apply: () => { STATE.maxHearts += 0.5; } },
+  { id: 'riches',    name: 'Riches',      icon: '💰', rarity: 'C', desc: '+75 coins',            apply: () => { earn(75); } },
+  { id: 'vigor',     name: 'Vigor',       icon: '✨', rarity: 'C', desc: '+½ max heart',         apply: () => { STATE.maxHearts += 0.5; } },
+  { id: 'vitality',  name: 'Vitality',    icon: '❤️', rarity: 'U', desc: '+1 max heart',         apply: () => { STATE.maxHearts += 1; } },
+  { id: 'power',     name: 'Power',       icon: '💪', rarity: 'U', desc: '+3 weapon damage',     apply: () => { STATE.dmgBonus = (STATE.dmgBonus || 0) + 3; } },
+  { id: 'swift',     name: 'Swiftness',   icon: '🏃', rarity: 'U', desc: 'move faster',          apply: () => { STATE.speedBonus = (STATE.speedBonus || 0) + 0.7; } },
+  { id: 'fortune',   name: 'Fortune',     icon: '🍀', rarity: 'U', desc: '+140 coins',           apply: () => { earn(140); } },
+  { id: 'ironskin',  name: 'Iron Skin',   icon: '🛡️', rarity: 'R', desc: 'take 12% less damage',  apply: () => { STATE.armorBonus = Math.min(0.5, (STATE.armorBonus || 0) + 0.12); } },
+  { id: 'berserk',   name: 'Berserker',   icon: '🔥', rarity: 'R', desc: '+5 weapon damage',     apply: () => { STATE.dmgBonus = (STATE.dmgBonus || 0) + 5; } },
+  { id: 'bulwark',   name: 'Bulwark',     icon: '🧱', rarity: 'E', desc: 'take 18% less damage',  apply: () => { STATE.armorBonus = Math.min(0.55, (STATE.armorBonus || 0) + 0.18); } },
+  { id: 'giantheart',name: 'Giant Heart', icon: '💖', rarity: 'L', desc: '+2 max hearts',        apply: () => { STATE.maxHearts += 2; } },
 ];
 function rollModifiers(n) {
+  const weight = { C: 6, U: 4, R: 2.2, E: 1, L: 0.45 };
   const pool = MODIFIERS.slice(), out = [];
-  while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  while (out.length < n && pool.length) {
+    let total = pool.reduce((s, m) => s + (weight[m.rarity] || 1), 0);
+    let r = Math.random() * total, idx = pool.length - 1;
+    for (let i = 0; i < pool.length; i++) { r -= (weight[pool[i].rarity] || 1); if (r <= 0) { idx = i; break; } }
+    out.push(pool.splice(idx, 1)[0]);
+  }
   return out;
 }
 const DUN = {
@@ -389,10 +401,13 @@ function heroAttack() {
   const wid = STATE.equippedWeapon;
   let durab = STATE.weapons[wid] || 0;
   const bare = durab <= 0;
-  h.attackReadyAt = now + 480;
-  h.swingUntil = now + 200;
+  const sp = weaponSpeed(WEAPONS[wid] || {});     // per-weapon feel: light=fast, heavy=slow
+  h.attackReadyAt = now + sp.cool;
+  h.swingUntil = now + sp.swing;
   if (!bare) { STATE.weapons[wid] = durab - 1; }
   const power = bare ? null : weaponPower(wid);
+  // BACK STAB: striking an enemy from behind its facing deals double damage.
+  const behind = e => e.facing !== 0 && Math.sign(h.fx - e.fx) !== 0 && Math.sign(h.fx - e.fx) !== e.facing;
   const dmg = bare ? 2 : (weaponDamage(wid) + (STATE.dmgBonus || 0));   // upgrades + Power modifier
   const hits = power === 'double' ? 2 : 1;
   let reach = 2.4, arc = Math.PI * 1.15;
@@ -410,11 +425,19 @@ function heroAttack() {
   };
   d.enemies.forEach(e => {
     if (e.dead) return;
-    if (inArc(e)) { for (let k = 0; k < hits && !e.dead; k++) { damageEnemy(e, dmg); dealt += dmg; } applyPowerTo(e); }
+    if (inArc(e)) {
+      const back = behind(e), hitDmg = back ? dmg * 2 : dmg;
+      for (let k = 0; k < hits && !e.dead; k++) { damageEnemy(e, hitDmg, back); dealt += hitDmg; }
+      applyPowerTo(e);
+    }
   });
   if (d.boss && !d.boss.dead) {
     const b = d.boss;
-    if (dist(h.fx, h.fy, b.fx, b.fy) <= reach + b.r) { for (let k = 0; k < hits && !b.dead; k++) { damageEnemy(b, dmg); dealt += dmg; } applyPowerTo(b); }
+    if (dist(h.fx, h.fy, b.fx, b.fy) <= reach + b.r) {
+      const back = behind(b), hitDmg = back ? dmg * 2 : dmg;
+      for (let k = 0; k < hits && !b.dead; k++) { damageEnemy(b, hitDmg, back); dealt += hitDmg; }
+      applyPowerTo(b);
+    }
   }
   if (d.grabbers) d.grabbers.forEach(g => {
     if (g.dead) return;
@@ -506,10 +529,11 @@ function screenDirToWorld(sx, sy) {
 /* ============================================================
    DAMAGE / DROPS
    ============================================================ */
-function damageEnemy(e, dmg) {
+function damageEnemy(e, dmg, back) {
   e.hp -= dmg;
   e.hurtUntil = performance.now() + 160;
-  spawnFloatText(e.fx, e.fy - 0.2, '-' + dmg, e.boss ? '#ffcf3f' : '#ff5c7a');
+  if (back) { e.backstabUntil = performance.now() + 260; spawnFloatText(e.fx, e.fy - 0.45, 'BACK STAB!', '#ffd23f'); Audio2.sfx.bighit(); }
+  spawnFloatText(e.fx, e.fy - 0.2, '-' + dmg, back ? '#ffd23f' : (e.boss ? '#ffcf3f' : '#ff5c7a'));
   if (e.hp <= 0 && !e.dead) killEnemy(e);
 }
 
@@ -520,9 +544,15 @@ function killEnemy(e) {
   if (e.boss) return winDungeon();
   d.kills++;
   earn(e.reward || 1);
-  gainXp(2);
-  // drops: coins always (already earned), sometimes a heart
-  if (rand(d.kills * 5.3) < 0.24) d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
+  gainXp(e.elite ? 5 : 2);
+  // drops: coins always (already earned), sometimes a heart; elites always drop one
+  if (e.elite) {
+    d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
+    spawnFloatText(e.fx, e.fy - 0.55, 'ELITE! +' + (e.reward || 1), '#ffd23f');
+    Audio2.sfx.win();
+  } else if (rand(d.kills * 5.3) < 0.24) {
+    d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
+  }
   spawnPuff(e.fx, e.fy);
   updateDungeonHUD();
   // boss is triggered by reaching the end of the path (see updateDungeon), not kills
@@ -546,7 +576,7 @@ function summonBoss() {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
       fx: bs.x, fy: bs.y, r: 0.9, scale: 2.1,
       hp, maxhp: hp, attack: bd.attack, reward: bd.reward,
-      speed: 1.5, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, name: bd.name,
+      speed: 1.5, facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, name: bd.name,
     };
     const bar = document.getElementById('boss-bar');
     bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
@@ -587,15 +617,20 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   const f = ENEMIES[id] || ENEMIES.zombie;
   // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
   const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
-  const hp = Math.max(4, Math.round(f.hearts * 6 * ramp));
-  const speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
+  let hp = Math.max(4, Math.round(f.hearts * 6 * ramp));
+  let speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
+  let attack = f.attack, reward = f.reward || 1, r = 0.4;
+  let contact = (f.attack >= 3 ? 0.75 : 0.5) * (d.hard ? 1.4 : 1);   // heavier hitters do more
+  // Elite (Minecraft-Dungeons "enchanted") — an occasional tougher, glowing
+  // variant worth a lot more loot. Never on the opening spawns.
+  const elite = (d.spawned > 2) && rand(seed * 3.7 + 11) < (d.hard ? 0.15 : 0.09);
+  if (elite) { hp = Math.round(hp * 1.9); attack += 1; contact *= 1.25; reward = reward * 4 + 6; r = 0.5; speed *= 1.05; }
   return {
     fighter: f, art: f.art, palette: f.palette,
-    fx, fy, r: 0.4,
-    hp, maxhp: hp, speed,
-    attack: f.attack, reward: f.reward || 1,
-    contact: (f.attack >= 3 ? 0.75 : 0.5) * (d.hard ? 1.4 : 1),   // heavier hitters do more
-    facing: -1, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: rand(seed),
+    fx, fy, r,
+    hp, maxhp: hp, speed, elite,
+    attack, reward, contact,
+    facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: rand(seed),
   };
 }
 
@@ -717,7 +752,10 @@ function updateDungeon(dt, t) {
     e.animT = (e.animT || 0) + dt * 8;
     if (e.stunUntil && t < e.stunUntil) return;         // stunned: can't move or attack
     const dd = dist(e.fx, e.fy, h.fx, h.fy);
-    e.facing = h.fx >= e.fx ? 1 : -1;
+    // Turn to face the hero, but not instantly — this brief lag is the window
+    // to slip behind and BACK STAB (the game's namesake).
+    const wantFace = h.fx >= e.fx ? 1 : -1;
+    if (wantFace !== e.facing && t >= (e.faceFlipReadyAt || 0)) { e.facing = wantFace; e.faceFlipReadyAt = t + 320; }
     if (t < e.windUntil) { /* winding up to strike, hold still */ }
     else if (dd > 0.9) {
       const ux = (h.fx - e.fx) / dd, uy = (h.fy - e.fy) / dd;
@@ -734,7 +772,9 @@ function updateDungeon(dt, t) {
     const b = d.boss;
     tickPoison(b, t);
     const dd = dist(b.fx, b.fy, h.fx, h.fy);
-    b.facing = h.fx >= b.fx ? 1 : -1;
+    // bosses turn slowly — circle behind them for a big BACK STAB
+    const wantBFace = h.fx >= b.fx ? 1 : -1;
+    if (wantBFace !== b.facing && t >= (b.faceFlipReadyAt || 0)) { b.facing = wantBFace; b.faceFlipReadyAt = t + 520; }
     if (b.stunUntil && t < b.stunUntil) { /* stunned */ }
     else if (t < b.windUntil) {}
     else if (dd > 1.5) { const ux = (h.fx - b.fx) / dd, uy = (h.fy - b.fy) / dd; moveEntity(b, ux * b.speed * dt, uy * b.speed * dt); }
@@ -1117,16 +1157,34 @@ function drawCombatant(ctx, e, ox, oy) {
   const s = isoToScreen(e.fx, e.fy);
   const x = s.x + ox, y = s.y + oy;
   const scale = e.scale || 1;
+  const now = performance.now();
   shadowOval(ctx, x, y, 20 * scale, 8 * scale);
   const img = getSprite(e.fighter.id, e.fighter, e.facing || -1);
-  const hurt = performance.now() < (e.hurtUntil || 0);
+  const hurt = now < (e.hurtUntil || 0);
   const bob = Math.sin((e.animT || 0)) * 2 * scale;
   const w = 66 * scale, h = 80 * scale;
+  // Elite aura — a pulsing enchanted glow so tougher mobs stand out
+  if (e.elite) {
+    const pulse = 0.5 + 0.35 * Math.sin(now / 240 + e.fx);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 * pulse;
+    const gr = ctx.createRadialGradient(x, y - h * 0.45, 4, x, y - h * 0.45, 34 * scale);
+    gr.addColorStop(0, '#b061ff'); gr.addColorStop(1, 'rgba(176,97,255,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y - h * 0.45, 30 * scale, 40 * scale, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
   if (img.complete && img.naturalWidth) {
     ctx.globalAlpha = hurt ? 0.6 : 1;
     ctx.drawImage(img, x - w / 2, y - h + 10 - bob, w, h);
     ctx.globalAlpha = 1;
+    // additive gold flash on a BACK STAB
+    if (now < (e.backstabUntil || 0)) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = (e.backstabUntil - now) / 260 * 0.9;
+      ctx.drawImage(img, x - w / 2, y - h + 10 - bob, w, h); ctx.restore();
+    }
   }
+  // elite crown marker
+  if (e.elite && !e.boss) { ctx.fillStyle = '#ffd23f'; ctx.font = `${Math.round(14 * scale)}px serif`; ctx.textAlign = 'center'; ctx.fillText('✦', x, y - h - 2 - bob); }
   // mini health bar for boss / hurt enemies
   if (e.boss) return drawBossFloatingBar(ctx, e, x, y - h - 4 * scale);
 }
@@ -1514,7 +1572,7 @@ function showDungeonResult(won, bonus, mods) {
         <p class="unlock">🗺️ Region cleared!</p>
         ${(mods && mods.length) ? `<div class="mod-pick">
           <div class="mod-title">✨ Choose a reward:</div>
-          <div class="mod-row">${mods.map(m => `<button class="mod-btn" data-mod="${m.id}"><span class="mod-ico">${m.icon}</span><b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div>
+          <div class="mod-row">${mods.map(m => `<button class="mod-btn" data-mod="${m.id}" style="--rc:${RARITY[m.rarity].color}"><span class="mod-ico">${m.icon}</span><b>${m.name}</b><small>${m.desc}</small><em class="mod-rar">${RARITY[m.rarity].name}</em></button>`).join('')}</div>
         </div>` : `<p class="tip">You've already claimed this region's reward.</p>`}
       ` : `
         <p>You didn't reach the end this time.</p>

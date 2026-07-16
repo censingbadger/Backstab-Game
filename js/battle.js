@@ -197,9 +197,10 @@ function heroAttackB() {
   const now = performance.now(), h = b.hero, e = b.enemy;
   if (now < h.attackReadyAt) return;
   if (now < b.hitstopUntil) return;                     // frozen on impact
-  h.attackReadyAt = now + 430;
-  h.swingUntil = now + 190;
   const wid = STATE.equippedWeapon;
+  const sp = weaponSpeed(WEAPONS[wid] || {});           // per-weapon feel: light=fast, heavy=slow
+  h.attackReadyAt = now + sp.cool;
+  h.swingUntil = now + Math.max(150, sp.swing);
   const dur = STATE.weapons[wid] || 0; const bare = dur <= 0;
   const power = bare ? null : weaponPower(wid);
   const reachX = power === 'reach' ? 0.16 : power === 'sweep' ? 0.12 : 0;
@@ -217,8 +218,11 @@ function heroAttackB() {
     if (h.z > 20) { dmg *= 1.4; crit = true; }          // jump-in attack bonus
     // counter-hit: striking the enemy during its wind-up
     if (now < e.windUntil) { dmg *= 1.5; crit = true; flashB('COUNTER!'); }
-    // enemy block?
-    if (now < e.blockUntil) { dmg *= 0.35; flashB('Enemy blocked!'); }
+    // BACK STAB: hit the enemy from behind (e.g. after a jump-in cross-up)
+    const back = Math.sign(h.x - e.x) !== 0 && Math.sign(h.x - e.x) !== e.facing;
+    if (back) { dmg *= 2; crit = true; flashB('BACK STAB!'); }
+    // enemy block? (can't block a backstab)
+    if (!back && now < e.blockUntil) { dmg *= 0.35; flashB('Enemy blocked!'); }
     dmg = Math.round(dmg);
     damageEnemyB(dmg, power, now, h.combo, crit);
     knockback(e, h, power === 'stun' ? 2.4 : 1.5 + h.combo * 0.15);
@@ -398,7 +402,10 @@ function updateEnemyAI(dt, t) {
   applyKnock(e, dt);
   if (e.stunUntil && t < e.stunUntil) { e.blockUntil = 0; return; }   // stunned (mace)
   if (t < e.hitstunUntil) { e.blockUntil = 0; return; }               // staggered -> combo window
-  e.facing = h.x >= e.x ? 1 : -1;
+  // turn to face the hero, but not instantly — a jump-in cross-up briefly
+  // leaves the enemy's back open for a BACK STAB
+  const wantFace = h.x >= e.x ? 1 : -1;
+  if (wantFace !== e.facing && t >= (e.faceFlipReadyAt || 0)) { e.facing = wantFace; e.faceFlipReadyAt = t + 300; }
   const dx = h.x - e.x, distX = Math.abs(dx);
   const heroSpd = 0.9 + (STATE.speedBonus || 0) * 0.1;
   let espd = (0.55 + b.fighter.attack * 0.05) * (b.isBoss ? 1.12 : 1);
