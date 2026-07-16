@@ -127,6 +127,18 @@ function weaponGlowColor(w) {
   return null;
 }
 
+// Per-family attack cadence (ms). Light blades are fast; heavy maces are slow.
+// Returns { cool: swing cooldown, swing: swing-animation length }.
+function weaponSpeed(w) {
+  const fam = weaponFamily(w);
+  const cool = {
+    knife: 300, dagger: 300, twindagger: 300,
+    katana: 400, masterblade: 430, sword: 470,
+    spear: 520, spikespear: 540, bow: 520, scythe: 580, mace: 660,
+  }[fam] || 470;
+  return { cool, swing: Math.min(240, Math.round(cool * 0.5)) };
+}
+
 /* ---------- Weapon art (menu / shop / inventory icons) ----------
    Accepts a weapon OBJECT (preferred) or a bare art string. Each family gets a
    distinct silhouette; the blade is tinted by rarity. */

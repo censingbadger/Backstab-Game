@@ -371,12 +371,13 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .mod-title{ font-weight:800; color:var(--gold); margin-bottom:8px; }
 .mod-row{ display:flex; gap:8px; justify-content:center; }
 .mod-btn{ flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px; border-radius:14px;
-  background:linear-gradient(180deg,var(--panel-2),var(--panel)); border:2px solid var(--panel-line); transition:transform .1s, border-color .1s; }
-.mod-btn:hover{ transform:translateY(-3px); border-color:var(--gold); }
+  background:linear-gradient(180deg,var(--panel-2),var(--panel)); border:2px solid var(--rc,var(--panel-line)); box-shadow:0 0 12px -4px var(--rc,transparent); transition:transform .1s, border-color .1s, box-shadow .1s; }
+.mod-btn:hover{ transform:translateY(-3px); box-shadow:0 0 16px -2px var(--rc,var(--gold)); }
 .mod-btn:active{ transform:scale(.96); }
 .mod-ico{ font-size:26px; }
 .mod-btn b{ font-size:13px; }
 .mod-btn small{ font-size:11px; color:var(--muted); line-height:1.2; }
+.mod-rar{ font-size:9px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:var(--rc,var(--muted)); font-style:normal; }
 .mod-gained{ margin-top:6px; font-weight:800; color:var(--green); }
 
 /* mid-level gear menu */
