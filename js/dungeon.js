@@ -104,6 +104,18 @@ const DUNGEON_THEMES = {
     boss: 'crab_king',
     chambers: true, hard: true,                     // temple-style chamber gauntlet through the sand caves
   },
+  knife_mountain: {
+    name: 'Knife Mountain',
+    sky: ['#1a2740', '#101a2e', '#070d18'],         // cold, dark frozen-peak interior
+    ground: ['#cfe0ee', '#b7cde1'],                 // pale-blue glacier ice floor
+    speckle: 'rgba(255,255,255,0.5)',
+    edge: ['#7f97b0', '#586c84'],                   // frosted rock walls
+    props: ['icespike', 'snowpile', 'frozenrock', 'pine', 'icespike', 'snowpile'],
+    trail: '180,230,255',
+    enemies: ['polar_bear', 'baby_werewolf', 'yeti', 'bear', 'polar_bear', 'yeti'],
+    boss: 'frost_titan',
+    chambers: true, hard: true, hazard: 'ice',      // temple-style chambers on a slippery ice floor
+  },
   barren_grasslands: {
     name: 'Barren Grasslands',
     sky: ['#4a4826', '#33341c', '#181a0e'],   // dusky field
@@ -165,8 +177,27 @@ const SANDCASTLE_CAVES = {
     { from: 4, to: 5, ax: 36, ay: 48, bx: 42, by: 48, gate: { x: 39, y: 48, hw: 1.4, hh: 2.2 }, stair: 'up' },
   ],
 };
+/* Knife Mountain: a glacier cave crawl — six frozen rooms on a slippery ice
+   floor, ending in the Frost Titan's icy heart. */
+const KNIFE_MOUNTAIN_CAVES = {
+  chambers: [
+    { cx: 50, cy: 14, hw: 6, hh: 5 },               // mouth of the cave
+    { cx: 32, cy: 14, hw: 6, hh: 5 },
+    { cx: 32, cy: 32, hw: 7, hh: 5 },
+    { cx: 14, cy: 32, hw: 6, hh: 5 },
+    { cx: 14, cy: 50, hw: 6, hh: 5 },
+    { cx: 34, cy: 50, hw: 8, hh: 6, boss: true },   // the Frost Titan's heart
+  ],
+  corridors: [
+    { from: 0, to: 1, ax: 38, ay: 14, bx: 44, by: 14, gate: { x: 41, y: 14, hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 1, to: 2, ax: 32, ay: 19, bx: 32, by: 27, gate: { x: 32, y: 23, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 2, to: 3, ax: 20, ay: 32, bx: 25, by: 32, gate: { x: 22, y: 32, hw: 1.4, hh: 2.2 }, stair: 'up' },
+    { from: 3, to: 4, ax: 14, ay: 37, bx: 14, by: 45, gate: { x: 14, y: 41, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 4, to: 5, ax: 20, ay: 50, bx: 26, by: 50, gate: { x: 23, y: 50, hw: 1.4, hh: 2.2 }, stair: 'up' },
+  ],
+};
 // Which hand-built chamber layout each chamber-mode region uses.
-const CHAMBER_LAYOUTS = { toxic_temple: TEMPLE, sandcastle: SANDCASTLE_CAVES };
+const CHAMBER_LAYOUTS = { toxic_temple: TEMPLE, sandcastle: SANDCASTLE_CAVES, knife_mountain: KNIFE_MOUNTAIN_CAVES };
 
 let DUNGEON = null;
 
@@ -369,7 +400,8 @@ function startDungeon(regionId) {
    ============================================================ */
 function startTempleDungeon(regionId, theme) {
   const LAYOUT = CHAMBER_LAYOUTS[regionId] || TEMPLE;   // per-region hand-built layout
-  const hazardKind = theme.poison ? 'poison_pool' : 'quicksand';   // sand caves suck you down instead of poisoning
+  // hazard flavour per level: poison pools (Temple), sucking quicksand (sand caves), slippery ice (mountain)
+  const hazardKind = theme.hazard || (theme.poison ? 'poison_pool' : 'quicksand');
   const W = 62, H = 62;
   const tiles = [];
   for (let y = 0; y < H; y++) { const row = []; for (let x = 0; x < W; x++) row.push('void'); tiles.push(row); }
@@ -1043,13 +1075,14 @@ function updateDungeon(dt, t) {
   const submerged = d.beach && isSubmerged(h.fx, h.fy) && h.jumpZ < 18;
   h.submerged = submerged;
 
-  // floor hazards: quicksand, poison pools + spikes (Temple), trap doors, waves (beach)
-  let inQuick = false, inPoison = false, quickPull = null;
+  // floor hazards: quicksand, poison pools, slippery ice, spikes, trap doors, waves
+  let inQuick = false, inPoison = false, inIce = false, quickPull = null;
   if (d.traps && !jumping) {
     for (const tr of d.traps) {
       const dd = dist(tr.x, tr.y, h.fx, h.fy);
       if (tr.kind === 'quicksand' && dd < (tr.strong ? 1.4 : 1.15)) { inQuick = true; if (tr.strong) quickPull = tr; }
       if (tr.kind === 'poison_pool' && dd < 1.2) inPoison = true;
+      if (tr.kind === 'ice' && dd < 1.3) inIce = true;
       if (tr.kind === 'spikes') {
         const extended = ((t / 1000 + tr.phase) % 1.8) < 0.7;     // spikes pop up ~0.7s each cycle
         if (extended && dd < 0.85 && t > (h.spikeHurtAt || 0)) {
@@ -1131,9 +1164,19 @@ function updateDungeon(dt, t) {
   if (inQuick) spd *= (quickPull ? Math.max(0.12, 0.32 - h.sinkLevel * 0.2) : 0.3);
   if (submerged) spd *= 0.62;                                    // swimming is slower
   h.moving = !!(mvx || mvy) && !rooted;
+  const tvx = h.moving ? mvx * spd : 0, tvy = h.moving ? mvy * spd : 0;
+  if (inIce && !rooted && !jumping) {
+    // slippery ice: low grip, so you keep sliding and can't stop or turn on a dime
+    const grip = Math.min(1, 2.6 * dt);
+    h.iceVX = (h.iceVX || 0) + (tvx - (h.iceVX || 0)) * grip;
+    h.iceVY = (h.iceVY || 0) + (tvy - (h.iceVY || 0)) * grip;
+    if (Math.abs(h.iceVX) > 0.02 || Math.abs(h.iceVY) > 0.02) { moveEntity(h, h.iceVX * dt, h.iceVY * dt); h.onIce = true; }
+  } else {
+    h.iceVX = tvx; h.iceVY = tvy; h.onIce = false;      // solid ground: fully responsive
+    if (h.moving) moveEntity(h, tvx * dt, tvy * dt);
+  }
   if (h.moving) {
     h.animT += dt * 10;
-    moveEntity(h, mvx * spd * dt, mvy * spd * dt);
     // face travel direction when using keyboard/joystick and not aiming with mouse
     if (d.joy.active || d.keys['w'] || d.keys['a'] || d.keys['s'] || d.keys['d'] ||
         d.keys['arrowup'] || d.keys['arrowleft'] || d.keys['arrowdown'] || d.keys['arrowright']) {
@@ -1468,6 +1511,15 @@ function drawTrap(ctx, tr, ox, oy) {
       ctx.fillStyle = 'rgba(10,16,8,0.8)';
       for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.arc(x + i * 8, y + j * 4, 1.6, 0, 7); ctx.fill(); }
     }
+    return;
+  }
+  if (tr.kind === 'ice') {
+    // a slick, glassy patch of ice — glossy sheen + cracks so you can read it and jump it
+    ctx.fillStyle = 'rgba(178,222,252,0.55)'; ctx.beginPath(); ctx.ellipse(x, y, 28, 15, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(232,248,255,0.55)'; ctx.beginPath(); ctx.ellipse(x - 6, y - 3, 14, 7, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,170,210,0.7)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(x - 14, y - 4); ctx.lineTo(x - 2, y + 1); ctx.lineTo(x + 7, y - 5); ctx.moveTo(x - 2, y + 1); ctx.lineTo(x + 2, y + 8); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, 27, 14, 0, 0, 7); ctx.stroke();
     return;
   }
   if (tr.kind === 'quicksand') {
@@ -1926,6 +1978,29 @@ function drawProp(ctx, p, ox, oy) {
       ctx.fillStyle = '#7a4a2a'; ctx.beginPath(); ctx.arc(x + sway - 3, y - 41, 2.2, 0, 7); ctx.arc(x + sway + 3, y - 40, 2.2, 0, 7); ctx.fill();   // coconuts
       ctx.fillStyle = '#b5623a'; ctx.beginPath(); ctx.moveTo(x - 11, y - 14); ctx.lineTo(x + 11, y - 14); ctx.lineTo(x + 8, y); ctx.lineTo(x - 8, y); ctx.closePath(); ctx.fill();   // clay pot
       ctx.fillStyle = '#c9744a'; ctx.fillRect(x - 12, y - 16, 24, 3);   // pot rim
+      break;
+    }
+
+    /* ---- Frozen-mountain props ---- */
+    case 'icespike': {
+      [[-10, 0, 26], [0, -3, 40], [9, 1, 30]].forEach(([dx, dy, hh]) => {
+        const bx = x + dx, by = y + dy;
+        ctx.fillStyle = 'rgba(202,235,255,0.9)'; ctx.strokeStyle = 'rgba(140,190,225,0.85)'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(bx - 5, by); ctx.lineTo(bx, by - hh); ctx.lineTo(bx + 5, by); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx - 1.5, by - 3); ctx.lineTo(bx - 0.5, by - hh + 5); ctx.stroke();
+      });
+      break;
+    }
+    case 'snowpile': {
+      ctx.fillStyle = '#eaf3ff'; ctx.beginPath(); ctx.moveTo(x - 22, y); ctx.quadraticCurveTo(x - 6, y - 16, x + 6, y - 12); ctx.quadraticCurveTo(x + 18, y - 8, x + 24, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(x - 22, y); ctx.quadraticCurveTo(x - 6, y - 16, x + 6, y - 12); ctx.quadraticCurveTo(x - 4, y - 7, x - 22, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(200,225,255,0.85)'; ctx.beginPath(); ctx.arc(x + 8, y - 4, 1.4, 0, 7); ctx.arc(x - 10, y - 2, 1.2, 0, 7); ctx.fill();
+      break;
+    }
+    case 'frozenrock': {
+      ctx.fillStyle = '#5f7284'; ctx.beginPath(); ctx.ellipse(x, y - 8, 15, 11, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(190,225,250,0.5)'; ctx.beginPath(); ctx.ellipse(x, y - 9, 17, 13, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x - 5, y - 13, 6, 4, 0, 0, 7); ctx.fill();
       break;
     }
   }
