@@ -324,6 +324,7 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .cbtn.attack{ border-color:var(--gold); }
 .cbtn.attack.warn{ border-color:var(--red); animation:warnPulse 1s infinite; }
 @keyframes warnPulse{ 50%{ background:rgba(255,59,92,.2); } }
+.cbtn.attack.inrange{ box-shadow:0 0 16px rgba(120,255,170,.75); border-color:#7cffaa; }
 .cbtn.block{ border-color:var(--blue); }
 .cbtn.dodge{ border-color:var(--green); }
 .cbtn.special{ border-color:var(--purple); }

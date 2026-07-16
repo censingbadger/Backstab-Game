@@ -1,12 +1,16 @@
 /* ============================================================
-   BACK STAB — Arena Battle (2.5D fighter, Mortal-Kombat style)
-   Both fighters move on the arena floor in 3 axes (left/right,
-   toward/away for depth, and jump for up), with a drawn weapon,
-   combos, and a living crowd that swings to whoever is winning.
+   BACK STAB — Arena Battle (side-view 1v1 fighter, MK-style)
+   Both fighters share ONE fighting line (fixed depth): move left/right,
+   jump for vertical, and always face each other. Weapons are drawn big
+   in-hand, hits land with hitstop + shake + sparks, and a living crowd
+   swings toward whoever is winning. Footsies, not free-roam.
    ============================================================ */
 
 let BATTLE = null;
 const JUMPB_DUR = 620;                 // arena jump duration (ms)
+const FLOOR_DEPTH = 0.6;               // the single shared fighting line
+const BODY_GAP = 0.2;                  // minimum x separation (bodies never overlap)
+const WALLB = 0.92;                    // arena wall (hard x limit / corner)
 
 function clampB(v, a, b) { return v < a ? a : v > b ? b : v; }
 function distB(ax, ad, bx, bd) { return Math.hypot((ax - bx), (ad - bd) * 1.3); }
@@ -21,23 +25,24 @@ function startBattle(fighterId, regionId, isBoss) {
   BATTLE = {
     fighter: f, regionId, isBoss: !!isBoss,
     hero: {
-      x: -0.42, depth: 0.5, z: 0, facing: 1,
+      x: -0.42, depth: FLOOR_DEPTH, z: 0, facing: 1, knockVX: 0,
       hp: pmax, maxhp: pmax,
       attackReadyAt: 0, swingUntil: 0, jumpUntil: 0, jumpReadyAt: 0,
-      hurtUntil: 0, hurtInvuln: 0, blocking: false, blockUntil: 0,
+      hurtUntil: 0, hurtInvuln: 0, hurtAt: 0, blocking: false, blockUntil: 0,
       combo: 0, comboUntil: 0, special: 0, strengthUntil: 0, animT: 0, moving: false,
     },
     enemy: {
-      x: 0.42, depth: 0.5, z: 0, facing: -1,
+      x: 0.42, depth: FLOOR_DEPTH, z: 0, facing: -1, knockVX: 0,
       hp: emax, maxhp: emax,
       attackReadyAt: 0, windUntil: 0, swingUntil: 0, state: 'idle',
-      hurtUntil: 0, blockUntil: 0, animT: 0, nextDecision: 0,
+      hurtUntil: 0, hurtAt: 0, hitstunUntil: 0, stunUntil: 0, blockUntil: 0, backoffUntil: 0, animT: 0, nextDecision: 0,
     },
     favor: clampB(Game.crowd || 60, 20, 80),   // 0..100 = crowd favouring the player
     intensity: 0,                               // recent action -> crowd excitement
     over: false, outcome: null,
     keys: {}, mouse: { x: 0, y: 0, down: false, movedAt: 0 }, joy: { active: false, dx: 0, dy: 0 },
     attackHeld: false, blockHeld: false,
+    hitstopUntil: 0, shakeUntil: 0, shakeMag: 0, shakeDur: 1, zoomUntil: 0, zoomDur: 1, flashUntil: 0, flashColor: '#fff',
     fx: [], spectators: buildSpectators(f.name),
     lastT: performance.now(), raf: null,
   };
@@ -120,10 +125,14 @@ function bindBattleInput() {
   b._ku = e => { b.keys[e.key.toLowerCase()] = false; };
   const c = document.getElementById('bat-canvas');
   b._mm = e => { const r = c.getBoundingClientRect(); b.mouse.x = e.clientX - r.left; b.mouse.y = e.clientY - r.top; b.mouse.movedAt = performance.now(); };
+  b._md = e => { b.mouse.down = true; heroAttackB(); };
+  b._mu = () => { b.mouse.down = false; };
   b._rs = () => resizeBatCanvas();
   window.addEventListener('keydown', b._kd);
   window.addEventListener('keyup', b._ku);
   c.addEventListener('mousemove', b._mm);
+  c.addEventListener('mousedown', b._md);
+  window.addEventListener('mouseup', b._mu);
   window.addEventListener('resize', b._rs);
 
   document.getElementById('bat-quit').addEventListener('click', () => { Audio2.sfx.click(); exitBattle(); });
@@ -150,47 +159,53 @@ function bindBattleInput() {
   bindBatJoystick();
 }
 function bindBatJoystick() {
-  const b = BATTLE, joy = document.getElementById('bjoy'), knob = document.getElementById('bjoy-knob'), R = 44;
+  const b = BATTLE, joy = document.getElementById('bjoy'), knob = document.getElementById('bjoy-knob'), R = 44, DEAD = 7;
   function set(t) {
     const r = joy.getBoundingClientRect();
     let dx = t.clientX - (r.left + r.width / 2), dy = t.clientY - (r.top + r.height / 2);
-    const len = Math.hypot(dx, dy) || 1, cl = Math.min(len, R);
-    dx /= len; dy /= len;
-    knob.style.transform = `translate(${dx * cl}px,${dy * cl}px)`;
-    b.joy.active = true; b.joy.dx = dx; b.joy.dy = dy;
+    const len = Math.hypot(dx, dy);
+    if (len < DEAD) { b.joy.active = true; b.joy.dx = b.joy.dy = 0; knob.style.transform = 'translate(0,0)'; return; }
+    const cl = Math.min(len, R), mag = cl / R;              // analog magnitude (proportional speed)
+    const ux = dx / len, uy = dy / len;
+    knob.style.transform = `translate(${ux * cl}px,${uy * cl}px)`;
+    b.joy.active = true; b.joy.dx = ux * mag; b.joy.dy = uy * mag;
+    if (uy < -0.62 && mag > 0.7) heroJumpB();               // flick UP = jump (depth no longer used)
   }
   function reset() { b.joy.active = false; b.joy.dx = b.joy.dy = 0; knob.style.transform = 'translate(0,0)'; }
   b._js = e => { e.preventDefault(); set(e.touches ? e.touches[0] : e); };
   joy.addEventListener('touchstart', b._js, { passive: false });
   joy.addEventListener('touchmove', b._js, { passive: false });
   joy.addEventListener('touchend', reset);
+  joy.addEventListener('touchcancel', reset);
 }
 function unbindBattleInput() {
   const b = BATTLE; if (!b) return;
   window.removeEventListener('keydown', b._kd);
   window.removeEventListener('keyup', b._ku);
   window.removeEventListener('resize', b._rs);
+  window.removeEventListener('mouseup', b._mu);
 }
 
 /* ============================================================
    HERO ACTIONS
    ============================================================ */
 function inRange(a, b2, extra) {
-  return Math.abs(a.x - b2.x) < 0.30 + (extra || 0) && Math.abs(a.depth - b2.depth) < 0.30;
+  return Math.abs(a.x - b2.x) < 0.34 + (extra || 0);   // ONE readable horizontal gap
 }
 function heroAttackB() {
   const b = BATTLE; if (!b || b.over) return;
   const now = performance.now(), h = b.hero, e = b.enemy;
   if (now < h.attackReadyAt) return;
+  if (now < b.hitstopUntil) return;                     // frozen on impact
   h.attackReadyAt = now + 430;
   h.swingUntil = now + 190;
   const wid = STATE.equippedWeapon;
-  let dur = STATE.weapons[wid] || 0; const bare = dur <= 0;
-  if (!bare) STATE.weapons[wid] = dur - 1;
+  const dur = STATE.weapons[wid] || 0; const bare = dur <= 0;
   const power = bare ? null : weaponPower(wid);
   const reachX = power === 'reach' ? 0.16 : power === 'sweep' ? 0.12 : 0;
   Audio2.sfx.hit();
   if (e.hp > 0 && inRange(h, e, reachX)) {
+    if (!bare) STATE.weapons[wid] = dur - 1;            // durability only spent on a real hit
     // combo scaling
     h.combo = now < h.comboUntil ? h.combo + 1 : 1;
     h.comboUntil = now + 1100;
@@ -198,12 +213,15 @@ function heroAttackB() {
     if (power === 'double') dmg *= 2;
     if (now < h.strengthUntil) dmg *= 2;
     dmg *= (1 + Math.min(0.6, (h.combo - 1) * 0.12));   // combo bonus
-    if (h.z > 20) dmg *= 1.25;                            // jump attack bonus
+    let crit = false;
+    if (h.z > 20) { dmg *= 1.4; crit = true; }          // jump-in attack bonus
+    // counter-hit: striking the enemy during its wind-up
+    if (now < e.windUntil) { dmg *= 1.5; crit = true; flashB('COUNTER!'); }
     // enemy block?
     if (now < e.blockUntil) { dmg *= 0.35; flashB('Enemy blocked!'); }
     dmg = Math.round(dmg);
-    damageEnemyB(dmg, power, now);
-    knockback(e, h, 0.05);
+    damageEnemyB(dmg, power, now, h.combo, crit);
+    knockback(e, h, power === 'stun' ? 2.4 : 1.5 + h.combo * 0.15);
     h.special = Math.min(100, h.special + 12);
     bumpFavor(3 + Math.min(4, h.combo));                 // crowd loves a combo
     b.intensity = Math.min(1, b.intensity + 0.3);
@@ -218,10 +236,11 @@ function heroSpecialB() {
   if (h.special < 100) { flashB('Special not ready!'); return; }
   h.special = 0; h.swingUntil = now + 320; h.attackReadyAt = now + 500;
   Audio2.sfx.special(); burstB('⚡', h);
-  if (e.hp > 0 && inRange(h, e, 0.14)) {
+  if (e.hp > 0 && inRange(h, e, 0.16)) {
     let dmg = Math.round((weaponDamage(STATE.equippedWeapon) + (STATE.dmgBonus || 0)) * 2.6);
-    damageEnemyB(dmg, weaponPower(STATE.equippedWeapon), now);
-    knockback(e, h, 0.16); bumpFavor(6); b.intensity = 1;
+    damageEnemyB(dmg, weaponPower(STATE.equippedWeapon), now, 6, true);
+    knockback(e, h, 4.5); bumpFavor(6); b.intensity = 1;
+    shakeB(16, 260); zoomPunch(now, 0.06, 240); flashScreen(now, 'rgba(255,240,180,0.55)', 170);
     flashB('SPECIAL!');
   }
   updateBattleHUD();
@@ -233,19 +252,59 @@ function heroJumpB() {
   h.jumpUntil = now + JUMPB_DUR; h.jumpReadyAt = now + JUMPB_DUR + 60;
   Audio2.sfx.dodge();
 }
-function damageEnemyB(dmg, power, now) {
+function damageEnemyB(dmg, power, now, combo, crit) {
   const b = BATTLE, e = b.enemy;
   e.hp = Math.max(0, e.hp - dmg);
-  e.hurtUntil = now + 160;
-  popDamageB(e, dmg, false);
+  e.hurtUntil = now + 200; e.hurtAt = now;
+  e.hitstunUntil = now + Math.min(340, 170 + (combo || 0) * 14);   // real stagger so combos connect
+  popDamageB(e, dmg, false, crit ? '#fff2a0' : undefined);
+  spawnHitFx((e.x + b.hero.x) / 2, e.depth, Math.max(e.z, 34), crit ? '#ffdf6a' : '#ffffff', crit);
+  hitstopB(now, 55 + Math.min(70, (combo || 0) * 8) + (crit ? 45 : 0));
+  shakeB(crit ? 9 : 5, 150);
   if (power === 'poison') { e.poisonUntil = now + 3000; e.poisonNext = now + 400; }
   if (power === 'stun') e.stunUntil = now + 900;
   Audio2.sfx.hit();
   if (e.hp <= 0) return winBattle();
 }
-function knockback(target, from, amt) {
+// Impulse knockback: sets a decaying velocity (applied in the update loops) so
+// hits SLIDE the target with weight instead of teleporting.
+function knockback(target, from, mag) {
   const dir = target.x >= from.x ? 1 : -1;
-  target.x = clampB(target.x + dir * amt, -0.9, 0.9);
+  target.knockVX = (target.knockVX || 0) * 0.4 + dir * mag;
+}
+function applyKnock(fighter, dt) {
+  if (!fighter.knockVX) return;
+  fighter.x = clampB(fighter.x + fighter.knockVX * dt, -WALLB, WALLB);
+  fighter.knockVX *= Math.pow(0.001, dt);
+  if (Math.abs(fighter.knockVX) < 0.05) fighter.knockVX = 0;
+}
+// Keep bodies from overlapping/passing through; hand corner overflow to the other body.
+function separateBodies(h, e) {
+  const gap = e.x - h.x;
+  if (Math.abs(gap) >= BODY_GAP) return;
+  const dir = gap >= 0 ? 1 : -1;                 // +1: enemy on the right
+  const push = (BODY_GAP - Math.abs(gap)) / 2;
+  let hx = clampB(h.x - dir * push, -WALLB, WALLB);
+  let ex = clampB(e.x + dir * push, -WALLB, WALLB);
+  // if one hit a wall, transfer the remaining correction to the other
+  if (Math.abs(ex - hx) < BODY_GAP) {
+    if (hx <= -WALLB + 0.001) ex = clampB(hx + dir * BODY_GAP, -WALLB, WALLB);
+    else if (ex >= WALLB - 0.001) hx = clampB(ex - dir * BODY_GAP, -WALLB, WALLB);
+  }
+  h.x = hx; e.x = ex;
+}
+/* ---------------- juice helpers ---------------- */
+function hitstopB(now, ms) { const b = BATTLE; b.hitstopUntil = Math.max(b.hitstopUntil, now + ms); }
+function shakeB(mag, dur) { const b = BATTLE; b.shakeMag = Math.max(b.shakeMag * (performance.now() < b.shakeUntil ? 1 : 0), mag); b.shakeUntil = performance.now() + dur; b.shakeDur = dur; }
+function zoomPunch(now, amt, dur) { const b = BATTLE; b.zoomAmt = amt; b.zoomUntil = now + dur; b.zoomDur = dur; }
+function flashScreen(now, color, dur) { const b = BATTLE; b.flashColor = color; b.flashUntil = now + dur; b.flashDur = dur; }
+function spawnHitFx(x, depth, z, color, big) {
+  const b = BATTLE, n = big ? 9 : 6;
+  b.fx.push({ kind: 'ring', x, depth, z, color, born: performance.now(), life: big ? 320 : 240, r0: big ? 10 : 6, r1: big ? 56 : 38 });
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.4, sp = 60 + Math.random() * (big ? 130 : 80);
+    b.fx.push({ kind: 'spark', x, depth, z, color, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, born: performance.now(), life: big ? 420 : 300 });
+  }
 }
 
 /* ---------------- Items ---------------- */
@@ -279,38 +338,39 @@ function useItemB(id) {
 function battleLoop(t) {
   const b = BATTLE; if (!b) return;
   const dt = Math.min(0.05, (t - b.lastT) / 1000); b.lastT = t;
-  if (!b.over) updateBattle(dt, t);
+  if (!b.over && t >= b.hitstopUntil) updateBattle(dt, t);   // hitstop freezes the sim, not the render
   renderBattleCanvas();
   b.raf = requestAnimationFrame(battleLoop);
 }
 
 function updateBattle(dt, t) {
   const b = BATTLE, h = b.hero, e = b.enemy;
+  const spd = 0.9 + (STATE.speedBonus || 0) * 0.1;
 
-  /* hero movement (joystick or keys): x = left/right, depth = toward/away */
-  let mx = 0, md = 0;
-  if (b.joy.active) { mx = b.joy.dx; md = b.joy.dy; }
+  // guard (hold): down on the stick, K, or the Block button — locks the stance
+  h.blocking = b.blockHeld || !!b.keys['k'] || (b.joy.active && b.joy.dy > 0.62);
+
+  /* ONE-axis movement: left/right only. Up = jump. This is the whole footsies game. */
+  let mx = 0;
+  if (b.joy.active) { mx = Math.abs(b.joy.dx) > 0.12 ? b.joy.dx : 0; }
   else {
     if (b.keys['a'] || b.keys['arrowleft']) mx -= 1;
     if (b.keys['d'] || b.keys['arrowright']) mx += 1;
-    if (b.keys['w'] || b.keys['arrowup']) md -= 1;   // away (into screen)
-    if (b.keys['s'] || b.keys['arrowdown']) md += 1; // toward camera
   }
-  const spd = 0.9 + (STATE.speedBonus || 0) * 0.1;
-  h.moving = !!(mx || md);
-  if (h.moving) { h.x = clampB(h.x + mx * spd * dt, -0.9, 0.9); h.depth = clampB(h.depth + md * spd * dt, 0.16, 0.9); h.animT += dt * 10; }
+  if (b.keys['w'] || b.keys['arrowup']) heroJumpB();
+  const airborne = h.z > 2;
+  const moveScale = h.blocking ? 0.34 : (airborne ? 0.85 : 1);   // guard-walk / air-control
+  h.moving = Math.abs(mx) > 0.01;
+  if (h.moving) { h.x = clampB(h.x + mx * spd * moveScale * dt, -WALLB, WALLB); h.animT += dt * 10; }
+  applyKnock(h, dt);
   h.facing = e.x >= h.x ? 1 : -1;
 
-  // jump arc
+  // jump arc (z), the only vertical axis
   const jumping = t < h.jumpUntil;
-  h.z = jumping ? Math.sin((1 - (h.jumpUntil - t) / JUMPB_DUR) * Math.PI) * 72 : 0;
+  h.z = jumping ? Math.sin((1 - (h.jumpUntil - t) / JUMPB_DUR) * Math.PI) * 78 : 0;
 
-  // block (hold)
-  h.blocking = b.blockHeld || !!b.keys['k'];
   // continuous attack while held
   if (b.attackHeld || b.mouse.down || b.keys['j']) heroAttackB();
-
-  // combo timeout resets
   if (t > h.comboUntil) h.combo = 0;
 
   // hero poison tick on enemy
@@ -319,64 +379,68 @@ function updateBattle(dt, t) {
     if (e.hp <= 0) return winBattle();
   }
 
-  /* enemy AI (Mortal-Kombat style: approach, space, attack, block, retreat) */
   updateEnemyAI(dt, t);
+  separateBodies(h, e);                       // bodies never overlap or pass through
 
   // crowd favour drifts toward the current health leader; intensity decays
   const heroPct = h.hp / h.maxhp, enemyPct = e.hp / e.maxhp;
   b.favor = clampB(b.favor + (heroPct - enemyPct) * 6 * dt, 5, 95);
   b.intensity = Math.max(0, b.intensity - dt * 0.8);
   updateFavorBar();
+
+  // "can I hit now" glow on the Attack button
+  const rdy = e.hp > 0 && inRange(h, e, weaponPower(STATE.equippedWeapon) === 'reach' ? 0.16 : 0);
+  const ab = document.querySelector('.cbtn.attack'); if (ab) ab.classList.toggle('inrange', rdy);
 }
 
 function updateEnemyAI(dt, t) {
   const b = BATTLE, h = b.hero, e = b.enemy;
-  if (e.stunUntil && t < e.stunUntil) { e.blockUntil = 0; return; }
+  applyKnock(e, dt);
+  if (e.stunUntil && t < e.stunUntil) { e.blockUntil = 0; return; }   // stunned (mace)
+  if (t < e.hitstunUntil) { e.blockUntil = 0; return; }               // staggered -> combo window
   e.facing = h.x >= e.x ? 1 : -1;
-  const dx = h.x - e.x, dd = h.depth - e.depth, distX = Math.abs(dx), distD = Math.abs(dd);
-  const espd = (0.55 + b.fighter.attack * 0.05) * (b.isBoss ? 1.15 : 1);
-  if (t < e.windUntil) { /* committed to a strike, hold */ }
+  const dx = h.x - e.x, distX = Math.abs(dx);
+  const heroSpd = 0.9 + (STATE.speedBonus || 0) * 0.1;
+  let espd = (0.55 + b.fighter.attack * 0.05) * (b.isBoss ? 1.12 : 1);
+  espd = Math.min(espd, heroSpd * 0.82);                              // player can ALWAYS create distance
+  if (t < e.windUntil) { /* committed to a telegraphed strike, hold */ }
   else if (t >= e.nextDecision) {
-    // decide behaviour based on range & a little randomness
     const r = Math.random();
-    if (distX < 0.3 && distD < 0.28) {
-      if (r < 0.68) { // attack
-        e.windUntil = t + Math.max(300, 620 - b.fighter.attack * 40);
-        e.swingUntil = e.windUntil + 160;
+    if (distX < 0.34) {
+      if (r < 0.66) { // attack — long, reactable wind-up (telegraph)
+        e.windUntil = t + Math.max(420, 720 - b.fighter.attack * 34);
+        e.swingUntil = e.windUntil + 170;
         setTimeout(() => enemyStrikeB(), (e.windUntil - t));
-        e.nextDecision = t + Math.max(700, 1500 - b.fighter.attack * 90);
-      } else if (r < 0.85) { e.blockUntil = t + 600; e.nextDecision = t + 700; } // block
-      else { e.backoffUntil = t + 500; e.nextDecision = t + 700; }               // retreat
-    } else { e.nextDecision = t + 200; }
+        e.nextDecision = t + Math.max(800, 1500 - b.fighter.attack * 80);
+      } else if (r < 0.85) { e.blockUntil = t + 600; e.nextDecision = t + 700; }   // block
+      else { e.backoffUntil = t + 450; e.nextDecision = t + 750; }                 // space out
+    } else { e.nextDecision = t + 180; }
   }
-  // movement: approach if far, back off if in "retreat" window
-  if (t < (e.backoffUntil || 0)) { e.x = clampB(e.x - Math.sign(dx || 1) * espd * dt, -0.9, 0.9); }
-  else if (t >= e.windUntil && (distX > 0.26 || distD > 0.24)) {
-    if (distX > 0.24) e.x = clampB(e.x + Math.sign(dx) * espd * dt, -0.9, 0.9);
-    if (distD > 0.22) e.depth = clampB(e.depth + Math.sign(dd) * espd * 0.8 * dt, 0.16, 0.9);
-    e.animT += dt * 9;
-  }
+  if (t < (e.backoffUntil || 0)) { e.x = clampB(e.x - Math.sign(dx || 1) * espd * dt, -WALLB, WALLB); e.animT += dt * 9; }
+  else if (t >= e.windUntil && distX > 0.30) { e.x = clampB(e.x + Math.sign(dx) * espd * dt, -WALLB, WALLB); e.animT += dt * 9; }
 }
 
 function enemyStrikeB() {
   const b = BATTLE; if (!b || b.over) return;
   const now = performance.now(), h = b.hero, e = b.enemy;
-  if (e.hp <= 0) return;
-  if (!inRange(e, h, 0)) return;                 // player moved out of range
-  if (h.z > 30) { flashB('Jumped over!'); bumpFavor(3); return; }   // jumping avoids
+  if (e.hp <= 0 || now < e.hitstunUntil || (e.stunUntil && now < e.stunUntil)) return;  // interrupted mid-wind
+  if (!inRange(e, h, 0.02)) return;              // player spaced out of range
+  if (h.z > 30) { flashB('Jumped over!'); bumpFavor(3); return; }   // jump-in dodges the strike
   if (now < h.hurtInvuln) return;
-  let dmg = b.fighter.attack * 7 + 3;
+  let dmg = b.fighter.attack * 7 + 3, blocked = false;
   if (h.blocking) {
     const block = absorbWithShield();
-    dmg *= (1 - (block || 0.15));                // even a raw guard helps a bit
+    dmg *= (1 - (block || 0.15));                // even a raw guard chips the damage
     Audio2.sfx.block(); flashB(shieldDurability() <= 0 && block === 0 ? 'Guard!' : 'Blocked!');
-    updateShieldB();
+    updateShieldB(); blocked = true;
   } else { Audio2.sfx.hurt(); bumpFavor(-3); b.intensity = Math.min(1, b.intensity + 0.3); h.combo = 0; }
   dmg *= (1 - (STATE.armorBonus || 0));
   dmg = Math.round(dmg);
-  h.hp = Math.max(0, h.hp - dmg); h.hurtUntil = now + 200; h.hurtInvuln = now + 250;
+  h.hp = Math.max(0, h.hp - dmg); h.hurtUntil = now + 200; h.hurtAt = now; h.hurtInvuln = now + 260;
   popDamageB(h, dmg, false);
-  knockback(h, e, 0.04);
+  spawnHitFx((e.x + h.x) / 2, h.depth, Math.max(h.z, 34), blocked ? '#8fd0ff' : '#ff6a8a', false);
+  hitstopB(now, blocked ? 40 : 70); shakeB(blocked ? 4 : 8, 150);
+  knockback(h, e, blocked ? 1.0 : 2.0);
   updateBattleHUD();
   if (h.hp <= 0) return loseBattle();
 }
@@ -385,54 +449,65 @@ function enemyStrikeB() {
    RENDER
    ============================================================ */
 function projB(x, depth, z, cw, ch) {
-  const persp = 1 - depth * 0.34;
-  const topY = ch * 0.46, botY = ch * 0.95;
-  return { x: cw / 2 + x * (cw * 0.40) * persp, y: botY - depth * (botY - topY) - z, scale: persp };
+  // Side-view lane: constant scale, both fighters on ONE floor line (no depth shrink).
+  const S = clampB(ch / 560, 1.05, 1.7);
+  const groundY = ch * 0.80;
+  return { x: cw / 2 + x * (cw * 0.42), y: groundY - z, scale: S };
 }
 function renderBattleCanvas() {
   const b = BATTLE, c = document.getElementById('bat-canvas'); if (!c) return;
   const ctx = c.getContext('2d'), dpr = b.dpr || 1, cw = c.width / dpr, ch = c.height / dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const t = performance.now();
 
-  // arena background
+  // camera: shake + zoom-punch on impact
+  let ox = 0, oy = 0, zoom = 1;
+  if (t < b.shakeUntil) { const k = (b.shakeUntil - t) / (b.shakeDur || 1), m = b.shakeMag * k; ox = (Math.random() * 2 - 1) * m; oy = (Math.random() * 2 - 1) * m; }
+  if (t < b.zoomUntil) { zoom = 1 + (b.zoomAmt || 0) * ((b.zoomUntil - t) / (b.zoomDur || 1)); }
+  ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, (ox - (zoom - 1) * cw / 2) * dpr, (oy - (zoom - 1) * ch / 2) * dpr);
+
+  // arena background (over-filled so shake never reveals an edge)
   const sky = ctx.createLinearGradient(0, 0, 0, ch);
   sky.addColorStop(0, '#2a1a4a'); sky.addColorStop(0.5, '#1c1338'); sky.addColorStop(1, '#0f0a22');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, cw, ch);
+  ctx.fillStyle = sky; ctx.fillRect(-30, -30, cw + 60, ch + 60);
 
   drawCrowd(ctx, cw, ch, t);
   drawArenaFloor(ctx, cw, ch);
 
-  // depth-sorted fighters (further back first)
-  const parts = [
-    { e: b.enemy, hero: false, z: b.enemy.depth },
-    { e: b.hero, hero: true, z: b.hero.depth },
-  ].sort((a, z) => z.z - a.z);
-  parts.forEach(p => drawFighter(ctx, cw, ch, p.e, p.hero, t));
+  // Both fighters share the floor line — draw enemy first so the hero (and their
+  // big in-hand weapon) reads on top when the two bodies are close.
+  drawFighter(ctx, cw, ch, b.enemy, false, t);
+  drawFighter(ctx, cw, ch, b.hero, true, t);
 
   // fx
   b.fx = b.fx.filter(f => t - f.born < f.life);
   b.fx.forEach(f => drawFxB(ctx, cw, ch, f, t));
 
   // vignette
-  const vg = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.3, cw / 2, ch / 2, ch * 0.8);
+  const vg = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.3, cw / 2, ch / 2, ch * 0.85);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.5)');
-  ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+  ctx.fillStyle = vg; ctx.fillRect(-30, -30, cw + 60, ch + 60);
+
+  // full-screen impact flash (special / KO)
+  if (t < b.flashUntil) { ctx.globalAlpha = (b.flashUntil - t) / (b.flashDur || 1); ctx.fillStyle = b.flashColor; ctx.fillRect(-30, -30, cw + 60, ch + 60); ctx.globalAlpha = 1; }
 }
 
 function drawArenaFloor(ctx, cw, ch) {
-  const topY = ch * 0.46, botY = ch * 0.97;
-  const backHalf = cw * 0.40 * (1 - 0.34), frontHalf = cw * 0.40;
+  const groundY = ch * 0.80, topY = ch * 0.54, botY = ch * 0.98;
+  const backHalf = cw * 0.30, frontHalf = cw * 0.54;
   ctx.beginPath();
   ctx.moveTo(cw / 2 - backHalf, topY); ctx.lineTo(cw / 2 + backHalf, topY);
-  ctx.lineTo(cw / 2 + frontHalf * 1.15, botY); ctx.lineTo(cw / 2 - frontHalf * 1.15, botY); ctx.closePath();
+  ctx.lineTo(cw / 2 + frontHalf, botY); ctx.lineTo(cw / 2 - frontHalf, botY); ctx.closePath();
   const g = ctx.createLinearGradient(0, topY, 0, botY);
   g.addColorStop(0, '#6a5a34'); g.addColorStop(1, '#8a7038');
   ctx.fillStyle = g; ctx.fill();
-  // ring markings
-  ctx.strokeStyle = 'rgba(255,220,120,0.25)'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.ellipse(cw / 2, (topY + botY) / 2, (frontHalf + backHalf) / 2, (botY - topY) * 0.32, 0, 0, 7); ctx.stroke();
+  // the fighting-line ring at the fighters' feet
+  ctx.strokeStyle = 'rgba(255,220,120,0.28)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(cw / 2, groundY, cw * 0.44, (botY - topY) * 0.14, 0, 0, 7); ctx.stroke();
   ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 6; ctx.stroke();
+  // wall markers at the corners so the player reads the bounds
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(cw / 2 - WALLB * cw * 0.42 - 8, groundY - 40, 6, 46);
+  ctx.fillRect(cw / 2 + WALLB * cw * 0.42 + 2, groundY - 40, 6, 46);
 }
 
 function drawCrowd(ctx, cw, ch, t) {
@@ -472,47 +547,129 @@ function shade(hex, amt) {
 function drawFighter(ctx, cw, ch, e, isHero, t) {
   const p = projB(e.x, e.depth, e.z, cw, ch);
   const ground = projB(e.x, e.depth, 0, cw, ch);
-  const scale = p.scale, w = 96 * scale, hgt = 116 * scale;
-  // shadow on the floor
-  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(ground.x, ground.y, 26 * scale * (1 - e.z / 200), 9 * scale, 0, 0, 7); ctx.fill();
+  const scale = p.scale, w = 104 * scale, hgt = 132 * scale;
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(ground.x, ground.y, 26 * scale * (1 - e.z / 240), 9 * scale, 0, 0, 7); ctx.fill();
   const fighter = isHero ? { art: 'hero', palette: {}, id: 'hero' } : BATTLE.fighter;
   const img = getSprite(fighter.id, fighter, e.facing);
-  const hurt = t < e.hurtUntil, blocking = isHero ? e.blocking : (t < (e.blockUntil || 0));
-  const lunge = t < (e.swingUntil || 0) ? 10 * (isHero ? e.facing : e.facing) : 0;
+  const hurt = t < e.hurtUntil;
+  const blocking = isHero ? e.blocking : (t < (e.blockUntil || 0));
+  const winding = !isHero && t < (e.windUntil || 0);            // enemy telegraph window
+
+  // windback -> snap -> recover lunge along the facing direction
+  let lunge = 0;
+  if (t < (e.swingUntil || 0)) {
+    const dur = isHero ? 190 : 170, pr = clampB(1 - (e.swingUntil - t) / dur, 0, 1);
+    let curve;
+    if (pr < 0.3) curve = -(pr / 0.3) * 0.5;                    // pull back
+    else if (pr < 0.55) curve = -0.5 + ((pr - 0.3) / 0.25) * 1.5;  // snap forward
+    else curve = 1 - (pr - 0.55) / 0.45;                        // recover
+    lunge = curve * 15 * e.facing * scale;
+  }
+  const bx = p.x + lunge, byTop = p.y - hgt;
+
+  // enemy wind-up telegraph — pulsing red aura so every strike is reactable
+  if (winding) {
+    const g = 0.35 + 0.35 * Math.sin(t / 45);
+    ctx.save(); ctx.globalAlpha = g; ctx.strokeStyle = '#ff4d5e'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(p.x, p.y - hgt * 0.5, w * 0.5, hgt * 0.52, 0, 0, 7); ctx.stroke(); ctx.restore();
+  }
+
+  // squash-stretch recoil on the first ~90ms of a hit
+  let sx = 1, sy = 1;
+  if (hurt) { const s = 1 - clampB((t - e.hurtAt) / 90, 0, 1); sx = 1 + 0.14 * s; sy = 1 - 0.12 * s; }
   ctx.save();
-  if (hurt) ctx.globalAlpha = 0.6;
-  if (img.complete && img.naturalWidth) ctx.drawImage(img, p.x - w / 2 + lunge, p.y - hgt, w, hgt);
+  ctx.translate(bx, p.y); ctx.scale(sx, sy); ctx.translate(-bx, -p.y);
+  if (img.complete && img.naturalWidth) ctx.drawImage(img, bx - w / 2, byTop, w, hgt);
   ctx.restore();
-  // weapon on the hero
-  if (isHero) drawHeroWeaponB(ctx, e, p.x + lunge, p.y - hgt * 0.55, scale, t);
-  // block shield
+
+  // additive hit-flash (bright pop instead of a fade)
+  if (hurt && img.complete && img.naturalWidth) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = clampB((e.hurtUntil - t) / 200, 0, 1) * 0.8;
+    ctx.drawImage(img, bx - w / 2, byTop, w, hgt); ctx.restore();
+  }
+
+  // weapon — the hero's real blade (big, in-hand) and the enemy's red slash
+  drawWeaponB(ctx, e, isHero, bx, p.y, hgt, scale, t);
+
+  // guard bubble
   if (blocking) {
-    ctx.fillStyle = 'rgba(120,180,255,0.35)';
-    ctx.beginPath(); ctx.ellipse(p.x + e.facing * 16 * scale, p.y - hgt * 0.5, 16 * scale, 30 * scale, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(120,180,255,0.32)';
+    ctx.beginPath(); ctx.ellipse(p.x + e.facing * 18 * scale, p.y - hgt * 0.5, 18 * scale, 32 * scale, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = 'rgba(160,210,255,0.8)'; ctx.lineWidth = 2; ctx.stroke();
   }
+
+  // range ring under the enemy whenever the hero can land a hit
+  if (!isHero && BATTLE.enemy.hp > 0 && inRange(BATTLE.hero, BATTLE.enemy, weaponPower(STATE.equippedWeapon) === 'reach' ? 0.16 : 0)) {
+    const pulse = 0.35 + 0.3 * Math.sin(t / 120);
+    ctx.strokeStyle = `rgba(120,255,170,${pulse})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(ground.x, ground.y, 36 * scale, 11 * scale, 0, 0, 7); ctx.stroke();
+  }
 }
-function drawHeroWeaponB(ctx, h, x, y, scale, t) {
-  const swinging = t < h.swingUntil;
-  const base = h.facing >= 0 ? 0 : Math.PI;
-  let ang = base + (h.facing >= 0 ? 0.5 : -0.5);
-  if (swinging) { const pr = 1 - (h.swingUntil - t) / 190; ang = base + h.facing * (-1.1 + pr * 2.2); }
+
+/* One weapon renderer for both fighters. Hero: the real equipped blade, big and
+   anchored to the front hand, with a bright swing trail. Enemy: a red slash arc
+   during its strike (the wind-up telegraph is drawn on the body). */
+function drawWeaponB(ctx, fighter, isHero, x, groundY, hgt, scale, t) {
+  const facing = fighter.facing;
+  if (!isHero) {
+    if (t < (fighter.swingUntil || 0)) {
+      const pr = clampB(1 - (fighter.swingUntil - t) / 170, 0, 1);
+      const y = groundY - hgt * 0.55, r = 42 * scale;
+      const a0 = facing > 0 ? -1.2 : Math.PI + 1.2, a1 = a0 + facing * (0.2 + pr * 2.0);
+      ctx.strokeStyle = `rgba(255,80,90,${0.7 * (1 - pr)})`; ctx.lineWidth = 7 * scale; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(x, y, r, Math.min(a0, a1), Math.max(a0, a1)); ctx.stroke();
+    }
+    return;
+  }
+  const hx = x + facing * 20 * scale, y = groundY - hgt * 0.6;
+  const swinging = t < fighter.swingUntil;
+  const base = facing >= 0 ? 0 : Math.PI;
+  let ang = base - facing * 0.5;                       // idle carry: raised up & forward
+  if (swinging) { const pr = 1 - (fighter.swingUntil - t) / 190; ang = base + facing * (-1.15 + pr * 2.3); }
   const wpn = WEAPONS[STATE.equippedWeapon] || { id: 'knife', art: 'knife' };
-  if (swinging) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 6 * scale; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(x, y, 34 * scale, base + h.facing * -1.1, ang); ctx.stroke(); }
-  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(scale, scale);
+  const wscale = scale * 1.5;
+  if (swinging) {
+    const pr = clampB(1 - (fighter.swingUntil - t) / 190, 0, 1);
+    const glowColor = weaponGlowColor(wpn) || '#dff1ff', r = 46 * wscale;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    for (let g = 0; g < 4; g++) {                       // motion-blur ghosts
+      const gp = pr - g * 0.09; if (gp < 0) continue;
+      const a = base + facing * (-1.15 + gp * 2.3);
+      ctx.strokeStyle = `rgba(255,255,255,${0.3 * (1 - g / 4) * (1 - pr)})`;
+      ctx.lineWidth = (8 - g) * wscale * 0.45;
+      ctx.beginPath(); ctx.arc(hx, y, r, base + facing * -1.15, a); ctx.stroke();
+    }
+    const grad = ctx.createRadialGradient(hx, y, r * 0.5, hx, y, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0)'); grad.addColorStop(1, glowColor);
+    ctx.strokeStyle = grad; ctx.globalAlpha = 0.5 * (1 - pr); ctx.lineWidth = 5 * wscale;
+    ctx.beginPath(); ctx.arc(hx, y, r, base + facing * -1.15, ang); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.save(); ctx.translate(hx, y); ctx.rotate(ang); ctx.scale(wscale, wscale);
   if (typeof drawBladeShape === 'function') drawBladeShape(ctx, wpn);
   ctx.restore();
 }
 
 /* ---------------- fx ---------------- */
-function popDamageB(e, dmg, dodged, color) { BATTLE.fx.push({ kind: 'dmg', x: e.x, depth: e.depth, z: e.z, text: dodged ? 'MISS' : '-' + dmg, color: color || (e === BATTLE.hero ? '#ff5c7a' : '#ffcf3f'), born: performance.now(), life: 700 }); }
-function burstB(emoji, e) { for (let i = 0; i < 6; i++) BATTLE.fx.push({ kind: 'particle', x: e.x, depth: e.depth, z: e.z, emoji, dx: (Math.random() - 0.5) * 60, dy: -Math.random() * 60 - 20, born: performance.now(), life: 800 }); }
+function popDamageB(e, dmg, dodged, color) { BATTLE.fx.push({ kind: 'dmg', x: e.x, depth: e.depth, z: e.z + 40, text: dodged ? 'MISS' : '-' + dmg, color: color || (e === BATTLE.hero ? '#ff5c7a' : '#ffcf3f'), born: performance.now(), life: 700 }); }
+function burstB(emoji, e) { for (let i = 0; i < 6; i++) BATTLE.fx.push({ kind: 'particle', x: e.x, depth: e.depth, z: e.z + 40, emoji, dx: (Math.random() - 0.5) * 60, dy: -Math.random() * 60 - 20, born: performance.now(), life: 800 }); }
 function drawFxB(ctx, cw, ch, f, t) {
   const p = projB(f.x, f.depth, f.z, cw, ch), age = (t - f.born) / f.life;
-  ctx.globalAlpha = 1 - age;
-  if (f.kind === 'dmg') { ctx.fillStyle = f.color; ctx.font = '900 20px Trebuchet MS, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(f.text, p.x, p.y - 70 - age * 30); }
-  else if (f.kind === 'particle') { ctx.font = '18px serif'; ctx.textAlign = 'center'; ctx.fillText(f.emoji, p.x + f.dx * age, p.y - 60 + f.dy * age); }
-  ctx.globalAlpha = 1;
+  if (f.kind === 'dmg') {
+    ctx.globalAlpha = 1 - age; ctx.font = '900 22px Trebuchet MS, sans-serif'; ctx.textAlign = 'center';
+    const yy = p.y - 60 - age * 34;
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.strokeText(f.text, p.x, yy);
+    ctx.fillStyle = f.color; ctx.fillText(f.text, p.x, yy); ctx.globalAlpha = 1; return;
+  }
+  if (f.kind === 'particle') { ctx.globalAlpha = 1 - age; ctx.font = '18px serif'; ctx.textAlign = 'center'; ctx.fillText(f.emoji, p.x + f.dx * age, p.y - 20 + f.dy * age); ctx.globalAlpha = 1; return; }
+  if (f.kind === 'ring') { const r = f.r0 + (f.r1 - f.r0) * age; ctx.globalAlpha = (1 - age) * 0.8; ctx.strokeStyle = f.color; ctx.lineWidth = 3 * (1 - age) + 1; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; return; }
+  if (f.kind === 'spark') {
+    const x = p.x + f.vx * age * 0.5, y = p.y + (f.vy * age + 70 * age * age) * 0.5;
+    ctx.globalAlpha = 1 - age; ctx.strokeStyle = f.color; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - f.vx * 0.035, y - f.vy * 0.035); ctx.stroke(); ctx.globalAlpha = 1; return;
+  }
 }
 
 /* ============================================================
