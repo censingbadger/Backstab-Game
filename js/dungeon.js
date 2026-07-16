@@ -259,7 +259,7 @@ function startDungeon(regionId) {
      rolling wave traps, sucking quicksand, an underwater boss arena, and a
      hidden passage. */
   const water = [], waves = [];
-  let secret = null;
+  let secret = null, key = null, corridor = null;
   if (theme.beach) {
     // tidal pools in the middle sections (flood when the tide is high)
     [0.34, 0.5, 0.64].forEach((f, i) => {
@@ -270,10 +270,30 @@ function startDungeon(regionId) {
       // deep water at the end = the underwater boss arena (always submerged)
       const bx = WP[WP.length - 1][0], by = WP[WP.length - 1][1];
       water.push({ x: bx, y: by, r: 8.5, deep: true });
-      // a hidden passage off to the side of the deep arena → unlocks the Sandcastle
+      // a hidden portal off to the side of the deep arena
       for (const off of [[5, 3], [-5, 3], [4, -4], [-4, -4], [6, 0]]) {
         const sx = clamp(bx + off[0], 4, W - 4), sy = clamp(by + off[1], 4, H - 4);
         if (tiles[Math.floor(sy)][Math.floor(sx)] === 'ground') { secret = { x: sx, y: sy, found: false }; break; }
+      }
+      // touching the portal opens a submerged GAUNTLET corridor lined with
+      // enemies; fight to the far end to claim the Key to the Sandcastle
+      if (secret) {
+        let dir = [0, 1];
+        for (const dd of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const ex = secret.x + dd[0] * 14, ey = secret.y + dd[1] * 14;
+          if (ex >= 5 && ex <= W - 5 && ey >= 5 && ey <= H - 5) { dir = dd; break; }
+        }
+        const len = 14, px = -dir[1], py = dir[0], spawns = [];
+        for (let s = 1; s <= len; s++) {
+          for (let w = -1; w <= 1; w++) {
+            const tx = Math.round(secret.x + dir[0] * s + px * w), ty = Math.round(secret.y + dir[1] * s + py * w);
+            if (tx >= 2 && tx < W - 2 && ty >= 2 && ty < H - 2) tiles[ty][tx] = 'ground';
+          }
+          if (s >= 3 && s <= len - 2 && s % 2 === 1) spawns.push({ x: secret.x + dir[0] * s, y: secret.y + dir[1] * s });
+        }
+        key = { x: clamp(secret.x + dir[0] * len, 3, W - 3), y: clamp(secret.y + dir[1] * len, 3, H - 3), taken: false };
+        corridor = { spawns };
+        water.push({ x: secret.x + dir[0] * len / 2, y: secret.y + dir[1] * len / 2, r: len / 2 + 4, deep: true }); // underwater tunnel
       }
     }
     // rolling wave traps along the shore
@@ -304,7 +324,7 @@ function startDungeon(regionId) {
   DUNGEON = {
     regionId, theme, W, H, tiles, props, path, checkpoints, canopy, traps, grabbers,
     hard: !!theme.hard,
-    beach: !!theme.beach, water, waves, secret, tide: 0,
+    beach: !!theme.beach, water, waves, secret, key, corridor, tide: 0,
     hero,
     enemies: [], drops: [], fx: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET, progress: 0,
@@ -1018,12 +1038,24 @@ function updateDungeon(dt, t) {
       if (h.hp <= 0) return loseDungeon();
     }
   }
-  // secret underwater passage → unlocks the Sandcastle
+  // secret portal: touch it to open a gauntlet corridor to the Key
   if (d.secret && !d.secret.found && submerged && dist(d.secret.x, d.secret.y, h.fx, h.fy) < 1.5) {
     d.secret.found = true;
+    banner('✨ The portal opens — fight through to the Key!', 2800);
+    Audio2.sfx.lose();   // ominous
+    if (d.corridor) d.corridor.spawns.forEach((sp, i) => {
+      const pool = d.theme.enemies, id = pool[Math.floor(rand(sp.x * 3.1 + i * 7.7) * pool.length)];
+      const e = makeDungeonEnemy(id, sp.x, sp.y, 500 + i * 3);
+      e.hp = e.maxhp = Math.round(e.maxhp * 1.35);   // a tougher gauntlet
+      d.enemies.push(e);
+    });
+  }
+  // reach the Key at the far end of the corridor to unlock the Sandcastle
+  if (d.key && !d.key.taken && d.secret && d.secret.found && dist(d.key.x, d.key.y, h.fx, h.fy) < 1.3) {
+    d.key.taken = true;
     if (typeof unlockRegion === 'function') unlockRegion('sandcastle');
-    banner('✨ SECRET PASSAGE — the Sandcastle is unlocked!', 2800);
-    Audio2.sfx.win(); spawnFloatText(h.fx, h.fy, '🏰 Sandcastle!', '#ffd23f');
+    banner('🗝️ You claimed the Key to the Sandcastle!', 3000);
+    Audio2.sfx.win(); spawnFloatText(h.fx, h.fy, '🗝️ Sandcastle Key!', '#ffd23f');
   }
 
   const dodging = t < h.dodgeUntil;
@@ -1261,8 +1293,10 @@ function renderDungeon() {
 
   // ---- tidal water pools (drawn over the sand, under everything else) ----
   if (d.water) d.water.forEach(w => { if (Math.abs(w.x - d.hero.fx) < RANGE + w.r && Math.abs(w.y - d.hero.fy) < RANGE + w.r) drawWaterZone(ctx, w, ox, oy); });
-  // ---- the hidden underwater passage (a shimmer you have to find) ----
-  if (d.secret && !d.secret.found) drawSecret(ctx, d.secret, ox, oy);
+  // ---- the hidden underwater passage (a shimmer you have to find), and the
+  //      glowing Key at the end of the gauntlet corridor once it's opened ----
+  if (d.secret) drawSecret(ctx, d.secret, ox, oy);
+  if (d.key && !d.key.taken && d.secret && d.secret.found && Math.abs(d.key.x - d.hero.fx) < RANGE && Math.abs(d.key.y - d.hero.fy) < RANGE) drawKey(ctx, d.key, ox, oy);
 
   // ---- floor traps (quicksand, poison pools, spikes, trap doors) sit on the ground ----
   if (d.traps) d.traps.forEach(tr => { if (Math.abs(tr.x - d.hero.fx) < RANGE && Math.abs(tr.y - d.hero.fy) < RANGE) drawTrap(ctx, tr, ox, oy); });
@@ -1450,6 +1484,20 @@ function drawSecret(ctx, secret, ox, oy) {
   g.addColorStop(0, `rgba(120,230,255,${0.5 * pulse})`); g.addColorStop(1, 'rgba(120,230,255,0)');
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - 6, 22, 0, 7); ctx.fill();
   for (let i = 0; i < 4; i++) { const ph = (t * 0.7 + i / 4) % 1; ctx.fillStyle = `rgba(200,245,255,${1 - ph})`; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + t) * 12, y - 6 - ph * 16, 1.6, 0, 7); ctx.fill(); }
+}
+/* The glowing golden Key to the Sandcastle at the end of the gauntlet. */
+function drawKey(ctx, key, ox, oy) {
+  const t = performance.now() / 1000;
+  const s = isoToScreen(key.x, key.y), x = s.x + ox, y = s.y + oy - 18 + Math.sin(t * 2) * 3;
+  const g = ctx.createRadialGradient(x, y, 2, x, y, 24);
+  g.addColorStop(0, `rgba(255,220,90,${0.55 + 0.25 * Math.sin(t * 3)})`); g.addColorStop(1, 'rgba(255,220,90,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 24, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,220,90,0.18)'; ctx.beginPath(); ctx.ellipse(x, s.y + oy, 14, 7, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(x, y - 5, 3.4, 0, 7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y - 1.6); ctx.lineTo(x, y + 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, y + 4); ctx.lineTo(x + 3, y + 4); ctx.moveTo(x, y + 6.5); ctx.lineTo(x + 2.4, y + 6.5); ctx.stroke();
+  for (let i = 0; i < 3; i++) { const ph = (t * 0.8 + i / 3) % 1; ctx.fillStyle = `rgba(255,245,200,${1 - ph})`; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + t) * 11, y - ph * 16, 1.4, 0, 7); ctx.fill(); }
 }
 
 /* Temple stairs in a corridor — a stack of stone steps + an up/down arrow. */

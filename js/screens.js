@@ -225,77 +225,87 @@ const BIOME_EMOJI = {
 function mrand(n) { const s = Math.sin(n * 91.7 + 13.1) * 43758.5453; return s - Math.floor(s); }
 
 /* ---- little terrain glyphs, drawn in 0..100 map space ---- */
-/* ---- LANDFORMS: real relief per biome, drawn in 0..100 map space ----
-   Each form shades a lit (top-left) and shadowed (bottom-right) face so the
-   terrain reads as elevation, not flat colour. */
+/* ---- LANDFORMS: real relief per biome, drawn LARGE so each region's whole
+   area reads as its terrain (a forest of trees, a desert of dunes, a range of
+   mountains). Lit (top-left) / shadowed (bottom-right) faces fake elevation. */
+function mtree(x, y, s) { s = s || 1; return `<circle cx="${x}" cy="${y + 0.6 * s}" r="${1.6 * s}" fill="#173316"/><circle cx="${x}" cy="${y}" r="${1.6 * s}" fill="#2f6030"/><circle cx="${x - 0.5 * s}" cy="${y - 0.5 * s}" r="${0.75 * s}" fill="#4a8a44"/>`; }
+function mcactus(x, y) { return `<path d="M${x} ${y} v-4 M${x} ${y - 2} q-1.5 0 -1.5 -1.4 M${x} ${y - 1.2} q1.5 0 1.5 -1.4" stroke="#4a8a3a" stroke-width="0.9" fill="none" stroke-linecap="round"/>`; }
+
 function lf_mountain(cx, cy) {
-  let s = `<ellipse cx="${cx + 2.5}" cy="${cy + 3.5}" rx="13" ry="5" fill="#000" opacity="0.2" filter="url(#mapSoft)"/>`;
-  // foothills
-  s += `<ellipse cx="${cx}" cy="${cy + 2}" rx="11" ry="5" fill="#6f7682"/>`;
-  const peaks = [[-7, 3, 7], [-2.5, 1, 11], [2, 2, 9], [6.5, 3.5, 6], [9.5, 4.5, 4.5]];
-  peaks.forEach(([dx, dy, h]) => {
-    const x = cx + dx, y = cy + dy;
-    s += `<path d="M${x} ${y - h} L${x + 3.4} ${y} L${x} ${y} Z" fill="#565d68"/>`;   // shadow face
-    s += `<path d="M${x} ${y - h} L${x - 3.4} ${y} L${x} ${y} Z" fill="#8b939f"/>`;   // lit face
-    const snow = h * 0.4;
-    s += `<path d="M${x} ${y - h} L${x - 1.4} ${y - h + snow} L${x - 0.5} ${y - h + snow * 0.6} L${x + 0.4} ${y - h + snow} L${x + 1.2} ${y - h + snow * 0.55} L${x + 1.1} ${y - h + snow} Z" fill="#f4f8fc"/>`;
-  });
+  // a range that stretches across the whole continent — tall snowy peaks in the
+  // middle, foothills tapering to the ends
+  let s = `<ellipse cx="${cx + 2}" cy="${cy + 3.5}" rx="40" ry="4.5" fill="#000" opacity="0.14" filter="url(#mapSoft)"/>`;
+  const span = 38, N = 21;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const x = cx - span + t * span * 2 + (mrand(i * 3.1) - 0.5) * 2.2;
+    const taper = Math.pow(Math.sin(t * Math.PI), 0.7);           // tall centre, low ends
+    const h = 3.5 + taper * (9 + mrand(i) * 4.5);
+    const y = cy + 3 + (mrand(i * 1.7) - 0.5) * 2.2;
+    const w = 2.6 + taper * 1.8;
+    s += `<path d="M${x} ${y - h} L${x + w} ${y} L${x} ${y} Z" fill="#565d68"/>`;   // shadow face
+    s += `<path d="M${x} ${y - h} L${x - w} ${y} L${x} ${y} Z" fill="#8b939f"/>`;   // lit face
+    if (h > 7.5) { const sn = h * 0.36; s += `<path d="M${x} ${y - h} L${x - 1.3} ${y - h + sn} L${x - 0.4} ${y - h + sn * 0.6} L${x + 0.4} ${y - h + sn} L${x + 1.1} ${y - h + sn * 0.55} L${x + 1} ${y - h + sn} Z" fill="#f4f8fc"/>`; }
+  }
   return s;
 }
 function lf_cliffs(cx, cy) {
-  let s = `<path d="M${cx - 7} ${cy - 2} Q ${cx - 2} ${cy - 6} ${cx + 5} ${cy - 3} Q ${cx + 8.5} ${cy} ${cx + 4} ${cy + 3} L ${cx - 6.5} ${cy + 3} Z" fill="#7d7b71"/>`; // plateau top
-  s += `<path d="M${cx - 6} ${cy - 3} Q ${cx} ${cy - 5.5} ${cx + 4} ${cy - 2.6}" fill="none" stroke="#9a988c" stroke-width="0.6"/>`; // lit rim
-  s += `<path d="M${cx - 6.5} ${cy + 3} L${cx + 4} ${cy + 3} L${cx + 3} ${cy + 7} L${cx - 7} ${cy + 6.4} Z" fill="#45443f"/>`;       // cliff face
-  s += `<g stroke="#33332e" stroke-width="0.35">`;
-  for (let i = -6; i <= 3; i += 1.4) s += `<line x1="${cx + i}" y1="${cy + 3}" x2="${cx + i - 0.4}" y2="${cy + 6.6}"/>`;
-  s += `</g>`;
-  s += `<path d="M${cx - 8.5} ${cy + 7.5} L${cx - 7.5} ${cy + 5.6} L${cx - 6.5} ${cy + 7.6} Z" fill="#5a5a55"/><path d="M${cx + 4.5} ${cy + 7.6} L${cx + 5.3} ${cy + 6.2} L${cx + 6} ${cy + 7.8} Z" fill="#5a5a55"/>`; // sea stacks
-  s += `<path d="M${cx - 7.5} ${cy + 7.2} q4.5 1.2 12 0.2" fill="none" stroke="#eaf6ff" stroke-width="0.5" opacity="0.7"/>`; // foam
+  // a rugged run of cliff headlands down the side of the continent
+  let s = '';
+  [[cx - 3, cy - 9, 3.4], [cx + 1, cy - 4, 4.2], [cx + 4, cy + 1, 4], [cx + 3, cy + 6, 3.4], [cx - 1, cy + 10, 3]].forEach(([x, y, w]) => {
+    s += `<path d="M${x - w} ${y - 2} Q ${x} ${y - 3.6} ${x + w} ${y - 2} L ${x + w} ${y + 1.6} L ${x - w} ${y + 1.6} Z" fill="#7d7b71"/>`;
+    s += `<path d="M${x - w} ${y + 1.6} L${x + w} ${y + 1.6} L${x + w - 0.5} ${y + 5} L${x - w - 0.5} ${y + 4.6} Z" fill="#45443f"/>`;
+    s += `<g stroke="#33332e" stroke-width="0.3">`;
+    for (let i = -w + 0.6; i < w; i += 1.1) s += `<line x1="${x + i}" y1="${y + 1.6}" x2="${x + i - 0.3}" y2="${y + 4.7}"/>`;
+    s += `</g>`;
+  });
+  for (let i = 0; i < 6; i++) { const x = cx - 9 + mrand(i * 2) * 5, y = cy - 6 + i * 2.8; s += `<path d="M${x} ${y + 1.4} L${x + 0.8} ${y - 1.2} L${x + 1.6} ${y + 1.4} Z" fill="#5a5a55"/>`; }  // sea stacks
+  for (let i = 0; i < 3; i++) s += `<path d="M${cx - 9} ${cy - 4 + i * 5} q5 1.4 11 0" fill="none" stroke="#eaf6ff" stroke-width="0.5" opacity="0.5"/>`; // foam
   return s;
 }
 function lf_forest(cx, cy) {
-  let s = `<ellipse cx="${cx + 1.5}" cy="${cy + 2.5}" rx="10" ry="4.5" fill="#000" opacity="0.14" filter="url(#mapSoft)"/>`;
-  s += `<ellipse cx="${cx}" cy="${cy + 1}" rx="9.5" ry="6.5" fill="#2c5632"/>`;   // canopy hill
-  for (let i = 0; i < 30; i++) {
-    const a = mrand(cx * 3 + i) * 6.283, rr = mrand(cx + i * 1.7) * 8.6;
-    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 0.62;
-    s += `<circle cx="${x}" cy="${y}" r="${1.5 + mrand(i) * 1.1}" fill="${y > cy ? '#20421f' : '#3a7038'}"/>`;
-  }
-  for (let i = 0; i < 5; i++) { const x = cx - 7 + i * 3.4, y = cy - 3.4; s += `<path d="M${x} ${y - 3} L${x - 1.2} ${y} L${x + 1.2} ${y} Z" fill="#16351b"/>`; }
+  // a huge, dense forest of trees
+  let s = `<ellipse cx="${cx + 1.5}" cy="${cy + 3}" rx="16" ry="7" fill="#000" opacity="0.12" filter="url(#mapSoft)"/>`;
+  s += `<ellipse cx="${cx}" cy="${cy + 1}" rx="16" ry="11" fill="#244a24"/>`;
+  const trees = [];
+  for (let i = 0; i < 90; i++) { const a = mrand(cx * 3 + i) * 6.283, rr = Math.sqrt(mrand(cx + i * 1.7)) * 15; trees.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.68, 0.9 + mrand(i) * 0.9]); }
+  trees.sort((a, b) => a[1] - b[1]).forEach(([x, y, sc]) => { s += mtree(x, y, sc); });
   return s;
 }
 function lf_grass(cx, cy) {
-  let s = `<ellipse cx="${cx}" cy="${cy}" rx="12" ry="7.5" fill="#93a556"/>`;
-  s += `<ellipse cx="${cx - 2}" cy="${cy - 1}" rx="9" ry="4" fill="#9fb060" opacity="0.7"/>`; // gentle rise
-  s += `<path d="M${cx - 10} ${cy + 1.5} q6 -3 11 0 M${cx - 7} ${cy + 4} q6 -3 11 0 M${cx - 3} ${cy - 2.5} q5 -2 9 0" fill="none" stroke="#7f9448" stroke-width="0.5" opacity="0.7"/>`;
-  for (let i = 0; i < 10; i++) { const x = cx - 9 + mrand(i * 3) * 18, y = cy - 5 + mrand(i) * 10; s += `<path d="M${x - 1} ${y} q0.3 -1.4 1 -1.9 M${x} ${y} q0 -1.6 0 -2.1 M${x + 1} ${y} q-0.3 -1.4 -1 -1.9" stroke="#6f8a3e" stroke-width="0.4" fill="none"/>`; }
-  s += `<path d="M${cx + 6} ${cy - 1} L${cx + 4.4} ${cy + 1.6} L${cx + 7.6} ${cy + 1.6} Z" fill="#3f7a3a"/><rect x="${cx + 5.7}" y="${cy + 1.4}" width="0.6" height="1.1" fill="#5a3a1a"/>`; // lone tree
+  // a broad grassy plain textured with blades
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="17" ry="11" fill="#8aa24e"/><ellipse cx="${cx - 3}" cy="${cy - 2}" rx="13" ry="6" fill="#99b158" opacity="0.7"/>`;
+  s += `<path d="M${cx - 15} ${cy + 2} q7 -3 15 0 M${cx - 12} ${cy + 5} q7 -3 15 0 M${cx - 8} ${cy - 3} q7 -2.5 14 0 M${cx - 4} ${cy + 8} q6 -2.5 12 0" fill="none" stroke="#7c9446" stroke-width="0.5" opacity="0.5"/>`;
+  for (let i = 0; i < 70; i++) { const x = cx - 15 + mrand(i * 3) * 30, y = cy - 9 + mrand(i * 1.3) * 18, c = mrand(i) > 0.5 ? '#6f8a3e' : '#82a04a'; s += `<path d="M${x - 0.8} ${y} q0.3 -1.3 0.8 -1.8 M${x} ${y} q0 -1.5 0.1 -2 M${x + 0.8} ${y} q-0.3 -1.3 -0.8 -1.8" stroke="${c}" stroke-width="0.4" fill="none"/>`; }
+  s += mtree(cx + 9, cy - 3, 1.2) + mtree(cx - 11, cy + 4, 1.1) + mtree(cx + 4, cy + 6, 1);
   return s;
 }
 function lf_temple(cx, cy) {
-  let s = `<ellipse cx="${cx}" cy="${cy + 1.5}" rx="11" ry="7" fill="#48602f"/>`;   // murky basin
-  s += `<ellipse cx="${cx - 4}" cy="${cy + 2.5}" rx="3.4" ry="1.5" fill="#37543f"/><ellipse cx="${cx + 3.5}" cy="${cy + 3.5}" rx="2.6" ry="1.2" fill="#37543f"/><ellipse cx="${cx + 5}" cy="${cy - 1}" rx="1.8" ry="0.9" fill="#37543f"/>`; // marsh pools
-  for (let i = 0; i < 7; i++) { const x = cx - 6 + i * 2; s += `<line x1="${x}" y1="${cy + 3.4}" x2="${x + mrand(i) - 0.5}" y2="${cy + 0.6}" stroke="#2c4522" stroke-width="0.4"/>`; }
-  s += `<path d="M${cx - 4} ${cy} L${cx + 4} ${cy} L${cx + 2.9} ${cy - 1.7} L${cx - 2.9} ${cy - 1.7} Z" fill="#5a7a4a"/><path d="M${cx - 2.9} ${cy - 1.7} L${cx + 2.9} ${cy - 1.7} L${cx + 2} ${cy - 3.4} L${cx - 2} ${cy - 3.4} Z" fill="#6a8a5a"/><path d="M${cx - 2} ${cy - 3.4} L${cx + 2} ${cy - 3.4} L${cx} ${cy - 5.2} Z" fill="#7a9a6a"/><rect x="${cx - 0.6}" y="${cy - 1.7}" width="1.2" height="1.7" fill="#1c2a16"/>`; // ziggurat
-  s += `<ellipse cx="${cx}" cy="${cy + 1.5}" rx="11" ry="7" fill="#9fe060" opacity="0.07"/>`; // toxic sheen
+  let s = `<ellipse cx="${cx}" cy="${cy + 1.5}" rx="13" ry="8.5" fill="#48602f"/>`;
+  for (let i = 0; i < 6; i++) { const x = cx - 9 + mrand(i * 3) * 18, y = cy - 3 + mrand(i) * 9; s += `<ellipse cx="${x}" cy="${y}" rx="${1.6 + mrand(i) * 1.6}" ry="1.1" fill="#37543f"/>`; }
+  for (let i = 0; i < 14; i++) { const x = cx - 10 + i * 1.5; s += `<line x1="${x}" y1="${cy + 4}" x2="${x + mrand(i) - 0.5}" y2="${cy + 1}" stroke="#2c4522" stroke-width="0.4"/>`; }
+  s += `<path d="M${cx - 4.5} ${cy} L${cx + 4.5} ${cy} L${cx + 3.3} ${cy - 2} L${cx - 3.3} ${cy - 2} Z" fill="#5a7a4a"/><path d="M${cx - 3.3} ${cy - 2} L${cx + 3.3} ${cy - 2} L${cx + 2.3} ${cy - 4} L${cx - 2.3} ${cy - 4} Z" fill="#6a8a5a"/><path d="M${cx - 2.3} ${cy - 4} L${cx + 2.3} ${cy - 4} L${cx} ${cy - 6} Z" fill="#7a9a6a"/><rect x="${cx - 0.7}" y="${cy - 2}" width="1.4" height="2" fill="#1c2a16"/>`;
+  s += `<ellipse cx="${cx}" cy="${cy + 1.5}" rx="13" ry="8.5" fill="#9fe060" opacity="0.06"/>`;
   return s;
 }
 function lf_coast(cx, cy) {
-  let s = `<ellipse cx="${cx}" cy="${cy - 4.5}" rx="12" ry="7" fill="#2f9fc0"/><ellipse cx="${cx}" cy="${cy - 4}" rx="9.5" ry="5" fill="#5fd0dd"/>`; // bay + shallows
-  s += `<path d="M${cx - 12} ${cy + 2} Q ${cx} ${cy - 3.5} ${cx + 12} ${cy + 2} L ${cx + 12} ${cy + 5} Q ${cx} ${cy + 0.5} ${cx - 12} ${cy + 5} Z" fill="#ecd8a0"/>`; // beach
-  s += `<path d="M${cx - 12} ${cy + 1.4} Q ${cx} ${cy - 4} ${cx + 12} ${cy + 1.4}" fill="none" stroke="#f4fbff" stroke-width="0.6"/>`; // foam
-  s += `<ellipse cx="${cx - 5}" cy="${cy - 5.5}" rx="1.4" ry="0.9" fill="#6b7480"/><ellipse cx="${cx + 4}" cy="${cy - 6.5}" rx="1.1" ry="0.7" fill="#6b7480"/><ellipse cx="${cx + 1}" cy="${cy - 3}" rx="0.9" ry="0.6" fill="#6b7480"/>`; // islets
-  [-6, 6].forEach(dx => { s += `<path d="M${cx + dx} ${cy + 3} q${-0.5 * Math.sign(dx)} -2.4 ${0.5 * Math.sign(dx)} -4" stroke="#8a6a3a" stroke-width="0.6" fill="none"/><path d="M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q-1.6 -0.9 -2.8 0 M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q1.6 -0.9 2.8 0 M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q-0.8 -1.4 -2 -1.7 M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q0.8 -1.4 2 -1.7" stroke="#3f9a4a" stroke-width="0.55" fill="none"/>`; });
+  // a wide beach along a turquoise bay
+  let s = `<ellipse cx="${cx}" cy="${cy - 5}" rx="15" ry="8" fill="#2f9fc0"/><ellipse cx="${cx}" cy="${cy - 4.5}" rx="12" ry="6" fill="#5fd0dd"/>`;
+  s += `<path d="M${cx - 15} ${cy + 3} Q ${cx} ${cy - 4} ${cx + 15} ${cy + 3} L ${cx + 15} ${cy + 7} Q ${cx} ${cy + 1.5} ${cx - 15} ${cy + 7} Z" fill="#ecd8a0"/>`;
+  s += `<path d="M${cx - 15} ${cy + 2} Q ${cx} ${cy - 4.6} ${cx + 15} ${cy + 2}" fill="none" stroke="#f4fbff" stroke-width="0.6"/><path d="M${cx - 13} ${cy + 4.6} Q ${cx} ${cy - 1} ${cx + 13} ${cy + 4.6}" fill="none" stroke="#f4fbff" stroke-width="0.4" opacity="0.6"/>`;
+  for (let i = 0; i < 4; i++) { const x = cx - 8 + mrand(i * 4) * 16, y = cy - 7 + mrand(i) * 3; s += `<ellipse cx="${x}" cy="${y}" rx="${0.9 + mrand(i)}" ry="0.7" fill="#6b7480"/>`; }
+  [-10, -3, 5, 11].forEach(dx => { const x = cx + dx, y = cy + 3, o = dx < 0 ? 0.5 : -0.5; s += `<path d="M${x} ${y} q${-o} -2.6 ${o} -4.4" stroke="#8a6a3a" stroke-width="0.6" fill="none"/><path d="M${x + o} ${y - 4.2} q-1.7 -0.9 -3 0 M${x + o} ${y - 4.2} q1.7 -0.9 3 0 M${x + o} ${y - 4.2} q-0.9 -1.5 -2.2 -1.8 M${x + o} ${y - 4.2} q0.9 -1.5 2.2 -1.8" stroke="#3f9a4a" stroke-width="0.55" fill="none"/>`; });
   return s;
 }
 function lf_dunes(cx, cy) {
-  let s = `<ellipse cx="${cx}" cy="${cy}" rx="12" ry="7.5" fill="#d9b25a"/>`;
-  for (let i = 0; i < 6; i++) {
-    const y = cy - 5 + i * 2.1, x = cx - 5 + (i % 2) * 5;
-    s += `<path d="M${x - 6} ${y + 0.7} q6 -2.6 12 0" fill="none" stroke="#b58c3a" stroke-width="1.1" stroke-linecap="round"/>`;   // shadowed lee
-    s += `<path d="M${x - 6} ${y} q6 -3.2 12 0" fill="none" stroke="#f0d488" stroke-width="1.3" stroke-linecap="round"/>`;        // lit crest
+  // a broad desert of rolling dunes
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="17" ry="11" fill="#d9b25a"/><ellipse cx="${cx - 2}" cy="${cy - 2}" rx="13" ry="6" fill="#e6c576" opacity="0.6"/>`;
+  for (let i = 0; i < 16; i++) {
+    const y = cy - 8 + (i % 6) * 3.1 + Math.floor(i / 6) * 0.6, x = cx - 12 + mrand(i * 2.3) * 24, w = 4.5 + mrand(i) * 4.5;
+    s += `<path d="M${x - w} ${y + 0.9} q${w} -3 ${w * 2} 0" fill="none" stroke="#b58c3a" stroke-width="1.2" stroke-linecap="round"/>`;
+    s += `<path d="M${x - w} ${y} q${w} -3.6 ${w * 2} 0" fill="none" stroke="#f2d88a" stroke-width="1.3" stroke-linecap="round"/>`;
   }
-  s += `<path d="M${cx + 5} ${cy + 2} v-4 M${cx + 5} ${cy} q-1.4 0 -1.4 -1.3 M${cx + 5} ${cy + 0.6} q1.4 0 1.4 -1.3" stroke="#4a8a3a" stroke-width="0.9" fill="none" stroke-linecap="round"/>`; // cactus
+  [[-9, 4], [-2, -5], [6, 2], [11, 6]].forEach(([dx, dy]) => s += mcactus(cx + dx, cy + dy));
   return s;
 }
 function lf_sandcastle(cx, cy) {
