@@ -6,6 +6,7 @@
    ============================================================ */
 
 const ISO = { TW: 64, TH: 32 };          // tile width / height (screen px)
+const JUMP_DUR = 520;                     // hop duration (ms)
 const DUN = {
   KILLS_TARGET: 50,
   MAX_ENEMIES: 9,                         // concurrent swarm size
@@ -24,6 +25,19 @@ const DUNGEON_THEMES = {
     enemies: ['skeleton', 'zombie', 'skeleton', 'zombie', 'giant_tick'],
     boss: 'brute',
     waypoints: [[8, 12], [8, 28], [22, 32], [22, 16], [38, 14], [40, 32], [28, 42], [42, 50], [54, 54]],
+  },
+  dark_forest: {
+    name: 'Dark Forest',
+    sky: ['#0d140d', '#080d08', '#040604'],   // near-black canopy gloom
+    ground: ['#2f3a26', '#28331f'],           // dark moss
+    speckle: 'rgba(30,55,25,0.45)',
+    edge: ['#18220f', '#10160b'],
+    props: ['pine', 'pine', 'tree', 'stump', 'rock', 'bush', 'pine'],
+    trail: '150,235,150',
+    enemies: ['baby_werewolf', 'bear', 'baby_werewolf', 'bear', 'werewolf', 'baby_werewolf'],
+    boss: 'alpha_werewolf',
+    waypoints: [[10, 10], [10, 28], [26, 34], [26, 16], [44, 14], [46, 34], [30, 46], [46, 52], [56, 54]],
+    hard: true, canopy: true, traps: true, wider: true,
   },
   barren_grasslands: {
     name: 'Barren Grasslands',
@@ -73,7 +87,7 @@ function startDungeon(regionId) {
 
   const theme = dungeonTheme(regionId) || DUNGEON_THEMES.dead_cliffs;
   const W = 62, H = 62;                    // map size in tiles
-  const HALF = 3.1;                        // half-width of the walkable trail
+  const HALF = theme.wider ? 4.6 : 3.1;    // wider = a canyon valley floor
 
   // A winding trail: carve a corridor along a polyline; everything else is
   // void (chasm / edge), so you follow a path with drops on both sides.
@@ -110,6 +124,43 @@ function startDungeon(regionId) {
     return { x: s.x, y: s.y, reached: false, idx: idx + 1 };
   });
 
+  // canopy: big overhead tree-tops that shadow (and hide) the hero
+  const canopy = [];
+  if (theme.canopy) {
+    for (let i = 0; i < 70; i++) {
+      const c = 10 + rand(i * 5.7) * (path.length - 20);
+      const s = sampleAtCum(path, c);
+      const ox = (rand(i * 2.1) - 0.5) * 9, oy = (rand(i * 3.3) - 0.5) * 9;
+      canopy.push({ x: s.x + ox, y: s.y + oy, r: 26 + rand(i) * 26, seed: i });
+    }
+  }
+
+  // floor traps: quicksand pits + hidden trap doors, spaced along the trail
+  const traps = [];
+  if (theme.traps) {
+    for (let i = 0; i < 22; i++) {
+      const c = 12 + rand(i * 4.3 + 1) * (path.length - 20);
+      const s = sampleAtCum(path, c);
+      const off = (rand(i * 6.1) - 0.5) * (HALF * 1.4);
+      const perp = rand(i) < 0.5 ? { x: off, y: 0 } : { x: 0, y: off };
+      const tx = clamp(s.x + perp.x, 3, W - 3), ty = clamp(s.y + perp.y, 3, H - 3);
+      if (tiles[Math.floor(ty)][Math.floor(tx)] !== 'ground') continue;
+      traps.push({ x: tx, y: ty, kind: rand(i * 9.9) < 0.55 ? 'quicksand' : 'trapdoor', sprung: false, seed: i });
+    }
+  }
+
+  // grabber trees: living trees that root the hero when close
+  const grabbers = [];
+  if (theme.traps) {
+    for (let i = 0; i < 6; i++) {
+      const c = 18 + rand(i * 8.7 + 3) * (path.length - 26);
+      const s = sampleAtCum(path, c);
+      const off = (rand(i * 3.1) < 0.5 ? -1 : 1) * (HALF - 0.6);
+      const gx = clamp(s.x + off, 3, W - 3), gy = clamp(s.y, 3, H - 3);
+      grabbers.push({ x: gx, y: gy, hp: 30, maxhp: 30, grabUntil: 0, cooldownUntil: 0, hurtUntil: 0, dead: false, seed: i });
+    }
+  }
+
   const hero = {
     fx: WP[0][0], fy: WP[0][1], r: 0.42,
     facing: 1, faceAngle: Math.PI / 2,      // faceAngle in world radians
@@ -118,10 +169,12 @@ function startDungeon(regionId) {
     hp: STATE.maxHearts + 5, maxhp: STATE.maxHearts + 5, hurtInvulnUntil: 0,
     attackReadyAt: 0, dodgeUntil: 0, dodgeReadyAt: 0,
     hurtUntil: 0, swingUntil: 0, moving: false, animT: 0,
+    jumpUntil: 0, jumpReadyAt: 0, jumpZ: 0, rootedUntil: 0, sinkUntil: 0,
   };
 
   DUNGEON = {
-    regionId, theme, W, H, tiles, props, path, checkpoints,
+    regionId, theme, W, H, tiles, props, path, checkpoints, canopy, traps, grabbers,
+    hard: !!theme.hard,
     hero,
     enemies: [], drops: [], fx: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET,
@@ -208,6 +261,7 @@ function buildDungeonDOM() {
       <div id="joy" class="joy"><div id="joy-knob" class="joy-knob"></div></div>
       <div class="touch-btns">
         <button class="tbtn heal" id="t-heal">❤️</button>
+        <button class="tbtn jump" id="t-jump">⤴️</button>
         <button class="tbtn dodge" id="t-dodge">💨</button>
         <button class="tbtn attack" id="t-attack">🗡️</button>
       </div>
@@ -238,7 +292,8 @@ function bindDungeonInput() {
   d._kd = e => {
     d.keys[e.key.toLowerCase()] = true;
     if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
-    if (e.key === ' ') heroAttack();
+    if (e.key === ' ') heroJump();               // Space = jump
+    if (e.key.toLowerCase() === 'k') heroAttack();
     if (e.key.toLowerCase() === 'shift') heroDodge();
     if (e.key.toLowerCase() === 'q') heroHeal();
   };
@@ -270,6 +325,7 @@ function bindDungeonInput() {
   atk.addEventListener('mouseup', holdOff);
   document.getElementById('t-dodge').addEventListener('click', heroDodge);
   document.getElementById('t-heal').addEventListener('click', heroHeal);
+  document.getElementById('t-jump').addEventListener('click', heroJump);
   bindJoystick();
 }
 
@@ -341,8 +397,26 @@ function heroAttack() {
     const b = d.boss;
     if (dist(h.fx, h.fy, b.fx, b.fy) <= reach + b.r) { damageEnemy(b, dmg); hitAny = true; }
   }
+  // chop grabber trees
+  if (d.grabbers) d.grabbers.forEach(g => {
+    if (g.dead) return;
+    if (dist(h.fx, h.fy, g.x, g.y) <= reach + 0.6) {
+      g.hp -= dmg; g.hurtUntil = performance.now() + 160;
+      spawnFloatText(g.x, g.y - 0.3, '-' + dmg, '#8ff0a0');
+      if (g.hp <= 0) { g.dead = true; Audio2.sfx.bighit(); spawnPuff(g.x, g.y); }
+    }
+  });
   spawnSwingFx(h);
   updateWeaponHUD();
+}
+
+function heroJump() {
+  const d = DUNGEON; if (!d || d.over) return;
+  const now = performance.now(), h = d.hero;
+  if (now < h.jumpReadyAt) return;
+  h.jumpUntil = now + JUMP_DUR;
+  h.jumpReadyAt = now + JUMP_DUR + 140;
+  Audio2.sfx.dodge();
 }
 
 function heroDodge() {
@@ -471,17 +545,22 @@ function spawnEnemy() {
   return false;
 }
 
-/* Build a swarm enemy from a roster id, scaling its card stats for melee. */
+/* Build a swarm enemy from a roster id, scaling its card stats for melee.
+   On "hard" themes enemies are tougher and keep getting tougher the further
+   along you are (by kill count). */
 function makeDungeonEnemy(id, fx, fy, seed) {
+  const d = DUNGEON;
   const f = ENEMIES[id] || ENEMIES.zombie;
-  const hp = Math.max(4, Math.round(f.hearts * 6));
-  const speed = f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5;
+  // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 across a hard run
+  const ramp = d.hard ? 1.35 + Math.min(0.65, d.kills / d.target * 0.65) : 1;
+  const hp = Math.max(4, Math.round(f.hearts * 6 * ramp));
+  const speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
   return {
     fighter: f, art: f.art, palette: f.palette,
     fx, fy, r: 0.4,
     hp, maxhp: hp, speed,
     attack: f.attack, reward: f.reward || 1,
-    contact: f.attack >= 3 ? 0.75 : 0.5,   // heavier hitters do more
+    contact: (f.attack >= 3 ? 0.75 : 0.5) * (d.hard ? 1.4 : 1),   // heavier hitters do more
     facing: -1, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: rand(seed),
   };
 }
@@ -513,13 +592,39 @@ function updateDungeon(dt, t) {
     if (d.keys['d'] || d.keys['arrowright']) sx += 1;
     if (sx || sy) { const wr = screenDirToWorld(sx, sy); mvx = wr.x; mvy = wr.y; }
   }
+  // jump arc (a hop that clears floor traps)
+  const jumping = t < h.jumpUntil;
+  h.jumpZ = jumping ? Math.sin((1 - (h.jumpUntil - t) / JUMP_DUR) * Math.PI) * 46 : 0;
+  // rooted by a grab or trap door => can't move
+  const rooted = t < h.rootedUntil;
+
+  // floor hazards (Dark Forest): quicksand slows + sinks, trap doors spring
+  let inQuick = false;
+  if (d.traps && !jumping) {
+    for (const tr of d.traps) {
+      const dd = dist(tr.x, tr.y, h.fx, h.fy);
+      if (tr.kind === 'quicksand' && dd < 1.15) inQuick = true;
+      if (tr.kind === 'trapdoor' && !tr.sprung && dd < 0.9) {
+        tr.sprung = true; tr.sprungAt = t; h.rootedUntil = t + 650; shake();
+        banner('TRAP DOOR!', 700); hurtHero(1);
+      }
+    }
+  }
+  if (inQuick) {
+    h.sinking = true;
+    if (t > (h.quickDmgAt || 0)) {
+      h.quickDmgAt = t + 800; h.hp = Math.max(0, h.hp - 0.5); h.hurtUntil = t + 200;
+      Audio2.sfx.hurt(); spawnFloatText(h.fx, h.fy, '-½ sink', '#caa15a'); updateDungeonHUD();
+      if (h.hp <= 0) return loseDungeon();
+    }
+  } else h.sinking = false;
+
   const dodging = t < h.dodgeUntil;
-  const spd = (dodging ? 8.5 : 4.2);
-  h.moving = !!(mvx || mvy);
+  let spd = (dodging ? 8.5 : 4.2) * (inQuick ? 0.3 : 1);
+  h.moving = !!(mvx || mvy) && !rooted;
   if (h.moving) {
     h.animT += dt * 10;
     moveEntity(h, mvx * spd * dt, mvy * spd * dt);
-    if (!d.joy.active || true) { /* facing set on attack & below */ }
     // face travel direction when using keyboard/joystick and not aiming with mouse
     if (d.joy.active || d.keys['w'] || d.keys['a'] || d.keys['s'] || d.keys['d'] ||
         d.keys['arrowup'] || d.keys['arrowleft'] || d.keys['arrowdown'] || d.keys['arrowright']) {
@@ -528,8 +633,17 @@ function updateDungeon(dt, t) {
     }
   }
 
+  // grabber trees: root the hero when close (unless jumping)
+  if (d.grabbers) d.grabbers.forEach(g => {
+    if (g.dead) return;
+    if (!jumping && t > g.cooldownUntil && t > h.rootedUntil && dist(g.x, g.y, h.fx, h.fy) < 1.7) {
+      g.grabUntil = t + 850; g.cooldownUntil = t + 2600;
+      h.rootedUntil = t + 850; banner('GRABBED!', 700); hurtHero(0.5);
+    }
+  });
+
   /* --- attack while moving: holding attack keeps swinging (cooldown-gated) --- */
-  if (d.attackHeld || d.mouse.down || d.keys[' ']) heroAttack();
+  if (d.attackHeld || d.mouse.down || d.keys['k']) heroAttack();
 
   /* --- checkpoints along the trail --- */
   d.checkpoints.forEach(cp => {
@@ -543,8 +657,9 @@ function updateDungeon(dt, t) {
   });
 
   /* --- keep the swarm populated (until boss), ramping up with kills --- */
-  const swarmCap = Math.min(DUN.MAX_ENEMIES, 3 + Math.floor(d.kills / 7));
-  const spawnGap = Math.max(0.55, 1.1 - d.kills * 0.01);
+  const capMax = d.hard ? 13 : DUN.MAX_ENEMIES;
+  const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.floor(d.kills / (d.hard ? 5 : 7)));
+  const spawnGap = Math.max(d.hard ? 0.34 : 0.55, (d.hard ? 0.9 : 1.1) - d.kills * 0.012);
   if (!d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap && d.spawned < d.target + 6) {
     d.spawnTimer -= dt;
     if (d.spawnTimer <= 0) { spawnEnemy(); d.spawnTimer = spawnGap; }
@@ -689,10 +804,14 @@ function renderDungeon() {
   // ---- animated trail flowing forward along the path ----
   drawTrail(ctx, ox, oy);
 
-  // ---- collect depth-sorted sprites (props + entities + drops + checkpoints) ----
+  // ---- floor traps (quicksand + trap doors) sit on the ground ----
+  if (d.traps) d.traps.forEach(tr => { if (Math.abs(tr.x - d.hero.fx) < RANGE && Math.abs(tr.y - d.hero.fy) < RANGE) drawTrap(ctx, tr, ox, oy); });
+
+  // ---- collect depth-sorted sprites (props + entities + drops + checkpoints + grabbers) ----
   const draws = [];
   d.checkpoints.forEach(cp => draws.push({ z: cp.x + cp.y, kind: 'checkpoint', cp }));
   d.props.forEach(p => { if (Math.abs(p.x - d.hero.fx) < RANGE && Math.abs(p.y - d.hero.fy) < RANGE) draws.push({ z: p.x + p.y, kind: 'prop', p }); });
+  if (d.grabbers) d.grabbers.forEach(g => { if (!g.dead && Math.abs(g.x - d.hero.fx) < RANGE && Math.abs(g.y - d.hero.fy) < RANGE) draws.push({ z: g.x + g.y, kind: 'grabber', g }); });
   d.drops.forEach(dr => draws.push({ z: dr.fx + dr.fy - 0.01, kind: 'drop', dr }));
   d.enemies.forEach(e => { if (!e.dead) draws.push({ z: e.fx + e.fy, kind: 'enemy', e }); });
   if (d.boss && !d.boss.dead) draws.push({ z: d.boss.fx + d.boss.fy, kind: 'enemy', e: d.boss });
@@ -702,6 +821,7 @@ function renderDungeon() {
   draws.forEach(item => {
     if (item.kind === 'prop') drawProp(ctx, item.p, ox, oy);
     else if (item.kind === 'checkpoint') drawCheckpoint(ctx, item.cp, ox, oy);
+    else if (item.kind === 'grabber') drawGrabber(ctx, item.g, ox, oy);
     else if (item.kind === 'drop') drawDrop(ctx, item.dr, ox, oy);
     else if (item.kind === 'enemy') drawCombatant(ctx, item.e, ox, oy);
     else if (item.kind === 'hero') drawHero(ctx, item.h, ox, oy);
@@ -710,10 +830,70 @@ function renderDungeon() {
   // floating texts / swing fx
   d.fx.forEach(f => drawFx(ctx, f, ox, oy));
 
-  // vignette
-  const vg = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.3, cw / 2, ch / 2, ch * 0.75);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  // ---- canopy: overhead tree-tops that shadow + hide the hero ----
+  if (d.canopy && d.canopy.length) {
+    d.canopy.forEach(c => {
+      if (Math.abs(c.x - d.hero.fx) > RANGE + 4 || Math.abs(c.y - d.hero.fy) > RANGE + 4) return;
+      const sc = isoToScreen(c.x, c.y); const x = sc.x + ox, y = sc.y + oy - 46;
+      const sway = Math.sin(performance.now() / 1300 + c.seed) * 4;
+      ctx.fillStyle = 'rgba(10,26,10,0.82)';
+      ctx.beginPath(); ctx.ellipse(x + sway, y, c.r, c.r * 0.62, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(30,55,25,0.5)';
+      ctx.beginPath(); ctx.ellipse(x + sway - c.r * 0.3, y - 6, c.r * 0.5, c.r * 0.33, 0, 0, 7); ctx.fill();
+    });
+  }
+
+  // vignette (darker for shadowy forests)
+  const dark = d.theme.canopy ? 0.82 : 0.55;
+  const vg = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.22, cw / 2, ch / 2, ch * 0.72);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${dark})`);
   ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+}
+
+/* A floor trap: quicksand pit or trap door. */
+function drawTrap(ctx, tr, ox, oy) {
+  const s = isoToScreen(tr.x, tr.y), x = s.x + ox, y = s.y + oy, t = performance.now() / 1000;
+  if (tr.kind === 'quicksand') {
+    ctx.fillStyle = '#5a4a2a'; ctx.beginPath(); ctx.ellipse(x, y, 26, 14, 0, 0, 7); ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      const rr = ((t * 0.5 + i / 3) % 1);
+      ctx.strokeStyle = `rgba(180,150,90,${0.5 * (1 - rr)})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(x, y, 6 + rr * 20, (6 + rr * 20) * 0.55, 0, 0, 7); ctx.stroke();
+    }
+  } else { // trap door
+    if (!tr.sprung) {
+      ctx.strokeStyle = 'rgba(20,14,8,0.55)'; ctx.lineWidth = 2;
+      ctx.strokeRect(x - 14, y - 8, 28, 16);
+      ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(x, y + 8); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#0a0806'; ctx.beginPath(); ctx.ellipse(x, y, 20, 11, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#3a2a18'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x - 18, y - 10); ctx.lineTo(x - 22, y - 22); ctx.moveTo(x + 18, y - 10); ctx.lineTo(x + 22, y - 22); ctx.stroke();
+    }
+  }
+}
+
+/* A grabber tree — a living tree with a snarling face and reaching branches. */
+function drawGrabber(ctx, g, ox, oy) {
+  const s = isoToScreen(g.x, g.y), x = s.x + ox, y = s.y + oy, t = performance.now();
+  const grabbing = t < g.grabUntil;
+  const hurt = t < g.hurtUntil;
+  shadowOval(ctx, x, y, 20, 8);
+  // trunk
+  ctx.fillStyle = hurt ? '#6a4a2a' : '#3a2a1a';
+  ctx.beginPath(); ctx.moveTo(x - 14, y); ctx.lineTo(x - 9, y - 54); ctx.lineTo(x + 9, y - 54); ctx.lineTo(x + 14, y); ctx.closePath(); ctx.fill();
+  // reaching branch-arms
+  const reach = grabbing ? 20 : 8 + Math.sin(t / 500 + g.seed) * 3;
+  ctx.strokeStyle = '#2e2012'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x - 8, y - 40); ctx.lineTo(x - 18 - reach, y - 44); ctx.lineTo(x - 26 - reach, y - 34); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 8, y - 40); ctx.lineTo(x + 18 + reach, y - 44); ctx.lineTo(x + 26 + reach, y - 34); ctx.stroke();
+  // snarling face
+  ctx.fillStyle = '#ffce3f'; ctx.beginPath(); ctx.ellipse(x - 5, y - 34, 3, 4, 0, 0, 7); ctx.ellipse(x + 5, y - 34, 3, 4, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#1a1008'; ctx.beginPath(); ctx.arc(x - 5, y - 33, 1.4, 0, 7); ctx.arc(x + 5, y - 33, 1.4, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#1a0e06'; ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.moveTo(x - 8, y - 22); ctx.lineTo(x - 4, y - 25); ctx.lineTo(x, y - 22); ctx.lineTo(x + 4, y - 25); ctx.lineTo(x + 8, y - 22); ctx.stroke();
+  // hp pip when hurt
+  if (hurt || g.hp < g.maxhp) { const w = 30, pct = Math.max(0, g.hp / g.maxhp); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2, y - 62, w, 5); ctx.fillStyle = '#8ff0a0'; ctx.fillRect(x - w / 2, y - 62, w * pct, 5); }
 }
 
 function isEdgeTile(gx, gy) {
@@ -856,6 +1036,19 @@ function drawProp(ctx, p, ox, oy) {
       ctx.beginPath(); for (let i = -1; i <= 1; i++) ctx.ellipse(x, y - 10, 5, 10, 0, 0, 7); ctx.stroke();
       ctx.strokeStyle = '#8a6a1a'; ctx.lineWidth = 2; ctx.strokeRect(x - 15, y - 15, 30, 2);
       break;
+    case 'pine': {
+      const sway = Math.sin(performance.now() / 700 + r) * 1.5;
+      ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 16); ctx.stroke();
+      ctx.fillStyle = '#1e3018';
+      for (let k = 0; k < 3; k++) { const yy = y - 10 - k * 17, wdt = 23 - k * 5; ctx.beginPath(); ctx.moveTo(x + sway, yy - 24); ctx.lineTo(x + wdt, yy); ctx.lineTo(x - wdt, yy); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = 'rgba(70,100,50,0.45)'; ctx.beginPath(); ctx.moveTo(x + sway, y - 62); ctx.lineTo(x + 6, y - 52); ctx.lineTo(x - 6, y - 52); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'stump':
+      ctx.fillStyle = '#3a2a1a'; ctx.fillRect(x - 12, y - 13, 24, 9);
+      ctx.fillStyle = '#4a3524'; ctx.beginPath(); ctx.ellipse(x, y - 13, 12, 6, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#5a4530'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(x, y - 13, 8, 4, 0, 0, 7); ctx.stroke();
+      break;
   }
 }
 
@@ -891,22 +1084,32 @@ function drawCombatant(ctx, e, ox, oy) {
 function drawHero(ctx, h, ox, oy) {
   const s = isoToScreen(h.fx, h.fy);
   const x = s.x + ox, y = s.y + oy;
-  shadowOval(ctx, x, y, 20, 8);
+  const jz = h.jumpZ || 0;                 // hop height
+  const sink = h.sinking ? 10 : 0;         // sunk into quicksand
+  const yb = y - jz + sink;                // body base y
+  // shadow stays on the ground, shrinks while airborne
+  shadowOval(ctx, x, y + sink, 20 * (1 - jz / 90), 8 * (1 - jz / 90));
   const img = getSprite('hero', { art: 'hero', palette: {} }, h.facing);
   const bob = h.moving ? Math.sin(h.animT) * 3 : 0;
   const dodging = performance.now() < h.dodgeUntil;
   const hurt = performance.now() < h.hurtUntil;
+  const rooted = performance.now() < h.rootedUntil;
   const aimScreen = isoDirToScreenAngle(h.faceAngle);
-  // weapon drawn BEHIND the body when aiming away (up), in front otherwise
   const behind = Math.sin(aimScreen) < -0.2;
-  if (behind) drawHeroWeapon(ctx, h, x, y - 34, aimScreen);
+  if (behind) drawHeroWeapon(ctx, h, x, yb - 34, aimScreen);
   ctx.save();
   if (dodging) ctx.globalAlpha = 0.5;
   if (hurt) ctx.globalAlpha = 0.6;
-  if (img.complete && img.naturalWidth) ctx.drawImage(img, x - 33, y - 70 - bob, 66, 80);
+  // clip the body when sunk in quicksand
+  if (sink) { ctx.beginPath(); ctx.rect(x - 40, y - 80, 80, 60 + sink); ctx.clip(); }
+  if (img.complete && img.naturalWidth) ctx.drawImage(img, x - 33, yb - 70 - bob, 66, 80);
   ctx.restore();
-  drawHeroShield(ctx, h, x, y - 30 - bob);
-  if (!behind) drawHeroWeapon(ctx, h, x, y - 34 - bob, aimScreen);
+  if (rooted) { // vines wrapping the hero
+    ctx.strokeStyle = '#3a5a2a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) { const yy = yb - 20 - i * 14; ctx.beginPath(); ctx.moveTo(x - 16, yy); ctx.quadraticCurveTo(x, yy - 6, x + 16, yy); ctx.stroke(); }
+  }
+  drawHeroShield(ctx, h, x, yb - 30 - bob);
+  if (!behind) drawHeroWeapon(ctx, h, x, yb - 34 - bob, aimScreen);
 }
 
 /* The equipped shield on the hero's off-hand (prominent, shows wear). */
