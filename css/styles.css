@@ -238,7 +238,22 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .bc-beaten{ font-size:11px; color:var(--green); font-weight:800; margin-top:4px; }
 
 /* ---------------- Battle ---------------- */
-.screen-battle{ display:flex; flex-direction:column; min-height:100vh; }
+/* 2.5D canvas arena */
+.screen-battle{ position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; background:#0f0a22; }
+#bat-canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+.bat-hud{ position:absolute; top:0; left:0; right:0; z-index:10; pointer-events:none; }
+.bat-hud button{ pointer-events:auto; }
+.bat-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:12px 14px; }
+.bat-top .fighter-hud.left{ margin-left:44px; }
+.combo-text{ align-self:center; font-family:var(--display); color:var(--gold); font-size:20px; text-shadow:0 2px 0 #000,0 0 14px rgba(255,59,92,.6); opacity:0; transform:scale(.8); transition:opacity .15s, transform .15s; }
+.combo-text.show{ opacity:1; transform:scale(1.12); }
+.bat-quit{ position:absolute; top:10px; left:10px; }
+.screen-battle .crowd-strip{ padding:2px 16px 6px; }
+.screen-battle .battle-controls{ position:absolute; left:0; right:0; bottom:0; z-index:11; }
+.bat-move{ position:absolute; left:20px; bottom:118px; z-index:11; }
+.bat-move .joy{ position:static; width:118px; height:118px; }
+@media (hover:hover) and (pointer:fine){ .bat-move{ display:none; } }
+.cbtn.jump{ border-color:var(--blue); }
 .battle-top{ display:flex; align-items:center; gap:10px; padding:12px 14px; }
 .fighter-hud{ flex:1; }
 .fighter-hud.right{ text-align:right; }
