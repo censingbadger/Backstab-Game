@@ -365,6 +365,26 @@ function renderShop() {
     html += shopRow('item', id, it.name, it.blurb, it.rarity, it.price, false, itemSVG(it.art));
   });
 
+  // ---- Trash (sell) your weapons for coins ----
+  const ownedWeapons = Object.keys(STATE.weapons);
+  if (ownedWeapons.length) {
+    html += `<div class="shop-sep">🗑️ Trash a weapon for coins</div>`;
+    const canSell = ownedWeapons.length > 1;   // always keep at least one weapon
+    ownedWeapons.forEach(id => {
+      const w = WEAPONS[id];
+      const val = sellValue(w);
+      const equipped = STATE.equippedWeapon === id;
+      html += `<div class="shop-item sell" style="--rc:${RARITY[w.rarity].color}">
+        <div class="si-art">${weaponSVG(w.art)}</div>
+        <div class="si-info">
+          <div class="si-name">${w.name}${equipped ? ' <span class="eq-tag">equipped</span>' : ''}</div>
+          <div class="si-sub">${canSell ? 'trash for coins' : 'your only weapon'}</div>
+        </div>
+        <button class="sell-btn ${canSell ? '' : 'disabled'}" data-sell="${id}" data-val="${val}">🗑️ +${val} ${coinSVG()}</button>
+      </div>`;
+    });
+  }
+
   list.innerHTML = html;
 
   list.querySelectorAll('.buy-btn[data-repair]').forEach(btn => {
@@ -385,7 +405,21 @@ function renderShop() {
       Audio2.sfx.buy(); saveGame(); renderStats();
     });
   });
+  list.querySelectorAll('.sell-btn[data-sell]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.sell, val = +btn.dataset.val, w = WEAPONS[id];
+      if (Object.keys(STATE.weapons).length <= 1) { alert('You need to keep at least one weapon!'); return; }
+      if (!confirm(`Trash your ${w.name} for ${val} coins? This cannot be undone.`)) return;
+      delete STATE.weapons[id];
+      if (STATE.equippedWeapon === id) STATE.equippedWeapon = Object.keys(STATE.weapons)[0];
+      earn(val);
+      Audio2.sfx.coin(); saveGame(); renderStats();
+    });
+  });
 }
+
+// Resale value of a weapon (about 60% of its shop price).
+function sellValue(w) { return Math.max(0, Math.round((w.price || 0) * 0.6)); }
 
 function shopRow(type, id, name, sub, rarity, price, owned, art) {
   const r = RARITY[rarity];
