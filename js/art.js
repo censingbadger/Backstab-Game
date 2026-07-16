@@ -78,15 +78,121 @@ function itemSVG(art, color) {
   }
 }
 
-/* ---------- Weapon art ---------- */
-function weaponSVG(art) {
-  switch (art) {
-    case 'knife': return `<svg viewBox="0 0 40 40"><path d="M8 30 L26 12 C30 9 33 12 30 16 L14 32Z" fill="#d7dde6" stroke="#5a6472" stroke-width="1.4"/><rect x="6" y="28" width="8" height="4" rx="2" transform="rotate(-45 10 30)" fill="#8a5a2a"/></svg>`;
-    case 'sword': return `<svg viewBox="0 0 40 40"><path d="M20 4 L24 8 L24 26 L20 30 L16 26 L16 8Z" fill="#cfe0ee" stroke="#5a6472" stroke-width="1.4"/><rect x="12" y="26" width="16" height="3" fill="#b98a3a"/><rect x="18" y="29" width="4" height="7" fill="#8a5a2a"/></svg>`;
-    case 'spear': return `<svg viewBox="0 0 40 40"><rect x="18.5" y="10" width="3" height="28" fill="#8a5a2a"/><path d="M20 2 L25 12 L20 10 L15 12Z" fill="#cfe0ee" stroke="#5a6472" stroke-width="1.2"/></svg>`;
-    case 'bow': return `<svg viewBox="0 0 40 40"><path d="M12 4 C28 12 28 28 12 36" fill="none" stroke="#8a5a2a" stroke-width="3"/><line x1="12" y1="4" x2="12" y2="36" stroke="#eee" stroke-width="1"/><path d="M12 20 H32 M28 17 L32 20 L28 23" stroke="#c0392b" stroke-width="1.6" fill="none"/></svg>`;
-    case 'katana': return `<svg viewBox="0 0 40 40"><path d="M8 34 C18 20 26 12 34 6 L36 8 C28 16 20 26 12 36Z" fill="#e6eef6" stroke="#5a6472" stroke-width="1.2"/><rect x="6" y="30" width="9" height="3" rx="1" transform="rotate(-45 10 31)" fill="#2a2a2a"/></svg>`;
-    default: return weaponSVG('sword');
+/* ---------- Weapon identity helpers (shared by menu icons + in-game render) ----------
+   Every weapon reads as its OWN silhouette. `art` keys are reused across many
+   weapons, so classification keys off the weapon id/power/rarity instead. These
+   helpers are global so the canvas renderer (drawBladeShape) and the SVG menu
+   icons (weaponSVG) stay in sync. */
+function mixHex(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ar = pa >> 16, ag = (pa >> 8) & 255, ab = pa & 255;
+  const br = pb >> 16, bg = (pb >> 8) & 255, bb = pb & 255;
+  const r = Math.round(ar + (br - ar) * t), g = Math.round(ag + (bg - ag) * t), bl = Math.round(ab + (bb - ab) * t);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+}
+// Classify a weapon (object OR art string) into a visual family.
+function weaponFamily(w) {
+  if (!w) return 'sword';
+  if (typeof w === 'string') w = (typeof WEAPONS !== 'undefined' && WEAPONS[w]) || { id: w, art: w };
+  const id = w.id || '';
+  if (id === 'double_dagger') return 'twindagger';
+  if (id === 'cracked_dagger') return 'dagger';
+  if (id === 'old_knife' || id === 'knife') return 'knife';
+  if (id === 'pastors_blade') return 'masterblade';
+  if (id.indexOf('scythe') >= 0) return 'scythe';
+  if (id === 'spiked_spear') return 'spikespear';
+  if (id.indexOf('spear') >= 0) return 'spear';
+  if (w.art === 'bow') return 'bow';
+  if (w.art === 'katana') return 'katana';
+  if (id.indexOf('mace') >= 0 || w.power === 'stun') return 'mace';
+  return 'sword';
+}
+// Steel tinted toward the weapon's rarity colour (higher rarity = richer metal).
+function weaponMetal(w) {
+  if (typeof w === 'string') w = (typeof WEAPONS !== 'undefined' && WEAPONS[w]) || {};
+  const rar = (typeof RARITY !== 'undefined' && w && RARITY[w.rarity]) || { key: 'C', color: '#b8c0cc' };
+  const strength = { C: 0, U: 0.16, R: 0.26, E: 0.36, L: 0.5, T: 0.6 }[rar.key] || 0;
+  return mixHex('#e4eef8', rar.color, strength);
+}
+// Glow colour for an upgraded / high-rarity weapon (null = no glow).
+function weaponGlowColor(w) {
+  if (typeof w === 'string') w = (typeof WEAPONS !== 'undefined' && WEAPONS[w]) || {};
+  const lvl = (typeof weaponUpgradeLevel === 'function' && w && w.id) ? weaponUpgradeLevel(w.id) : 0;
+  const rar = (typeof RARITY !== 'undefined' && w && RARITY[w.rarity]) || null;
+  if (lvl >= 5) return '#ffd23f';
+  if (lvl >= 3) return '#b061ff';
+  if (lvl >= 1) return '#6cd8ff';
+  if (rar && (rar.key === 'L' || rar.key === 'T')) return rar.color;
+  if (rar && rar.key === 'E') return rar.color;
+  return null;
+}
+
+/* ---------- Weapon art (menu / shop / inventory icons) ----------
+   Accepts a weapon OBJECT (preferred) or a bare art string. Each family gets a
+   distinct silhouette; the blade is tinted by rarity. */
+function weaponSVG(w) {
+  const fam = weaponFamily(w);
+  const blade = weaponMetal(w);
+  const glow = weaponGlowColor(w);
+  const st = '#3a424e', wood = '#7a5327', grip = '#5b3d1f', gold = '#c9962f';
+  const filt = glow ? `<filter id="wg" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="0" stdDeviation="1.6" flood-color="${glow}" flood-opacity="0.9"/></filter>` : '';
+  const g = glow ? ' filter="url(#wg)"' : '';
+  function svg(inner) { return `<svg viewBox="0 0 40 40"><defs>${filt}</defs><g${g}>${inner}</g></svg>`; }
+  switch (fam) {
+    case 'knife':
+      return svg(`<rect x="4" y="27" width="12" height="4" rx="2" transform="rotate(-42 10 29)" fill="${grip}"/>
+        <path d="M12 26 L28 12 L33 12 L31 17 L17 31 Z" fill="${blade}" stroke="${st}" stroke-width="1.3"/>`);
+    case 'dagger':
+      return svg(`<rect x="4" y="28" width="11" height="4" rx="2" transform="rotate(-42 9 30)" fill="${grip}"/>
+        <rect x="9" y="24" width="10" height="3" rx="1.5" transform="rotate(-42 14 25)" fill="${gold}"/>
+        <path d="M15 25 Q23 11 32 6 Q31 16 20 30 Z" fill="${blade}" stroke="${st}" stroke-width="1.3"/>`);
+    case 'twindagger':
+      return svg(`<path d="M8 34 L20 22 L23 25 L11 37 Z" fill="${grip}"/>
+        <path d="M18 24 Q28 12 36 8 Q33 18 24 30 Z" fill="${blade}" stroke="${st}" stroke-width="1.2"/>
+        <path d="M6 8 Q14 20 18 30 Q9 27 4 16 Z" fill="${blade}" stroke="${st}" stroke-width="1.2" opacity="0.95"/>
+        <rect x="3" y="30" width="10" height="3.4" rx="1.6" transform="rotate(42 8 32)" fill="${grip}"/>`);
+    case 'sword':
+      return svg(`<rect x="17.5" y="30" width="5" height="7" rx="1.5" fill="${grip}"/>
+        <circle cx="20" cy="37" r="2.2" fill="${gold}"/>
+        <rect x="11" y="27" width="18" height="3.4" rx="1.5" fill="${gold}"/>
+        <path d="M20 3 L24 8 L24 27 L16 27 L16 8 Z" fill="${blade}" stroke="${st}" stroke-width="1.3"/>
+        <line x1="20" y1="8" x2="20" y2="25" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/>`);
+    case 'mace':
+      return svg(`<rect x="10" y="20" width="4" height="18" rx="2" transform="rotate(-32 12 29)" fill="${wood}"/>
+        <g fill="${blade}" stroke="${st}" stroke-width="1.1">
+          <path d="M27 6 L31 2 L31 8 Z"/><path d="M34 12 L40 12 L34 16 Z"/><path d="M27 6 L23 2 L21 7 Z"/>
+          <path d="M20 8 L15 6 L20 12 Z"/><path d="M33 20 L38 24 L31 22 Z"/><path d="M24 20 L22 26 L28 22 Z"/></g>
+        <circle cx="27" cy="13" r="8" fill="${blade}" stroke="${st}" stroke-width="1.4"/>
+        <circle cx="24.5" cy="10.5" r="2.4" fill="rgba(255,255,255,0.55)"/>`);
+    case 'katana':
+      return svg(`<rect x="6" y="30" width="12" height="3.6" rx="1.6" transform="rotate(-42 12 32)" fill="#2b2b2b"/>
+        <circle cx="17" cy="24" r="3" fill="${gold}"/>
+        <path d="M18 24 Q28 12 37 5 Q39 8 36 11 Q27 19 21 27 Z" fill="${blade}" stroke="${st}" stroke-width="1.2"/>`);
+    case 'masterblade':
+      return svg(`<rect x="5" y="31" width="13" height="4" rx="2" transform="rotate(-42 11 33)" fill="#4a2e12"/>
+        <circle cx="17" cy="24" r="3.4" fill="${gold}"/>
+        <path d="M18 25 Q28 11 38 3 Q40 7 37 11 Q27 19 21 28 Z" fill="${blade}" stroke="${gold}" stroke-width="1.4"/>
+        <path d="M20 24 Q28 14 35 8" stroke="rgba(255,255,255,0.7)" stroke-width="1.2" fill="none"/>
+        <circle cx="34" cy="7" r="1.6" fill="#fff"/>`);
+    case 'spear':
+      return svg(`<rect x="18.5" y="12" width="3" height="26" rx="1.5" transform="rotate(-20 20 25)" fill="${wood}"/>
+        <path d="M27 3 L31 13 L26 11 L24 15 L23 9 Z" fill="${blade}" stroke="${st}" stroke-width="1.2"/>
+        <rect x="24" y="12" width="5" height="2.6" rx="1" transform="rotate(-20 26 13)" fill="${gold}"/>`);
+    case 'spikespear':
+      return svg(`<rect x="18.5" y="12" width="3" height="26" rx="1.5" transform="rotate(-20 20 25)" fill="${wood}"/>
+        <path d="M28 2 L30 14 L26 12 Z" fill="${blade}" stroke="${st}" stroke-width="1.1"/>
+        <path d="M26 12 L19 10 L25 15 Z" fill="${blade}" stroke="${st}" stroke-width="1"/>
+        <path d="M28 12 L34 12 L28 16 Z" fill="${blade}" stroke="${st}" stroke-width="1"/>`);
+    case 'scythe':
+      return svg(`<rect x="20" y="8" width="3.2" height="30" rx="1.6" transform="rotate(-8 21 23)" fill="${wood}"/>
+        <path d="M23 9 Q9 8 5 20 Q13 12 22 15 Z" fill="${blade}" stroke="${st}" stroke-width="1.3"/>
+        <rect x="19" y="11" width="6" height="2.6" rx="1" fill="${gold}"/>`);
+    case 'bow':
+      return svg(`<path d="M12 4 C28 12 28 28 12 36" fill="none" stroke="${wood}" stroke-width="3"/>
+        <line x1="12" y1="4" x2="12" y2="36" stroke="#eee" stroke-width="1"/>
+        <path d="M12 20 H32 M28 17 L32 20 L28 23" stroke="${mixHex('#c0392b', blade, 0.2)}" stroke-width="1.8" fill="none"/>`);
+    default:
+      return weaponSVG({ id: 'aluminum_sword', art: 'sword', rarity: 'C' });
   }
 }
 
