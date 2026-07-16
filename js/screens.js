@@ -233,6 +233,10 @@ function renderStats() {
         <div class="stat-line">Weapon: <b>${w.name}</b></div>
         <div class="stat-sub">${w.damage} dmg → ${dur}/${w.durability} durability</div>
         <div class="durbar"><div class="durfill" style="width:${(dur / w.durability) * 100}%"></div></div>
+        ${(() => { const sid = STATE.equippedShield, s = SHIELDS[sid]; if (!s) return ''; const sd = STATE.shields[sid] || 0;
+          return `<div class="stat-line">Shield: <b>${s.name}</b></div>
+        <div class="stat-sub">blocks ${Math.round(s.block * 100)}% → ${sd}/${s.durability} durability${sd <= 0 ? ' (broken!)' : ''}</div>
+        <div class="durbar"><div class="durfill shield ${sd <= 0 ? 'broken' : ''}" style="width:${(sd / s.durability) * 100}%"></div></div>`; })()}
         <div class="stat-line">Level: <b>${STATE.level}</b></div>
         <div class="xpbar"><div class="xpfill" style="width:${(STATE.xp / xpForLevel(STATE.level)) * 100}%"></div></div>
         <div class="stat-line">Max health: <b>${STATE.maxHearts}</b> ❤️</div>
@@ -278,14 +282,18 @@ function renderInventory() {
       ${broken ? '<div class="badge broken">Broken</div>' : ''}
     </button>`;
   });
-  // Shields owned
+  // Shields owned (with durability)
   Object.keys(STATE.shields).forEach(id => {
     const s = SHIELDS[id];
     const equipped = STATE.equippedShield === id;
-    cells += `<button class="inv-cell ${equipped ? 'equipped' : ''}" data-type="shield" data-id="${id}" style="--rc:${RARITY[s.rarity].color}">
-      <div class="cell-art">${shieldIcon('#b98a3a')}</div>
+    const sdur = STATE.shields[id] || 0;
+    const broken = sdur <= 0;
+    cells += `<button class="inv-cell ${equipped ? 'equipped' : ''} ${broken ? 'broken' : ''}" data-type="shield" data-id="${id}" style="--rc:${RARITY[s.rarity].color}">
+      <div class="cell-art">${shieldIcon(broken ? '#666' : '#b98a3a')}</div>
       <div class="cell-name">${s.name}</div>
+      <div class="cell-sub">🛡️ ${sdur}/${s.durability}</div>
       ${equipped ? '<div class="badge">Equipped</div>' : ''}
+      ${broken ? '<div class="badge broken">Broken</div>' : ''}
     </button>`;
   });
   // Items
@@ -349,6 +357,21 @@ function renderShop() {
     </div>`;
   }
 
+  // Repair equipped shield if worn
+  const eqSId = STATE.equippedShield;
+  const eqS = SHIELDS[eqSId];
+  const eqSDur = STATE.shields[eqSId] || 0;
+  if (eqS && eqSDur < eqS.durability) {
+    const cost = eqS.repairCost;
+    html += `<div class="shop-item repair">
+      <div class="si-art">🛡️</div>
+      <div class="si-info"><div class="si-name">Repair ${eqS.name}</div>
+        <div class="si-sub">restore to ${eqS.durability} shield durability</div></div>
+      <button class="buy-btn ${canAfford(cost) ? '' : 'disabled'}" data-repair-shield="${eqSId}" data-cost="${cost}">
+        ${cost} ${coinSVG()}</button>
+    </div>`;
+  }
+
   const shopWeapons = ['aluminum_sword', 'wood_spear', 'reinforced_bow', 'steel_katana'];
   shopWeapons.forEach(id => {
     const w = WEAPONS[id];
@@ -400,8 +423,16 @@ function renderShop() {
       const type = btn.dataset.type, id = btn.dataset.buy, cost = +btn.dataset.cost;
       if (!spend(cost)) { Audio2.sfx.lose(); return; }
       if (type === 'weapon') STATE.weapons[id] = WEAPONS[id].durability;
-      else if (type === 'shield') STATE.shields[id] = true;
+      else if (type === 'shield') STATE.shields[id] = SHIELDS[id].durability;
       else if (type === 'item') STATE.items[id] = (STATE.items[id] || 0) + 1;
+      Audio2.sfx.buy(); saveGame(); renderStats();
+    });
+  });
+  list.querySelectorAll('.buy-btn[data-repair-shield]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.repairShield, cost = +btn.dataset.cost;
+      if (!spend(cost)) { Audio2.sfx.lose(); return; }
+      STATE.shields[id] = SHIELDS[id].durability;
       Audio2.sfx.buy(); saveGame(); renderStats();
     });
   });
