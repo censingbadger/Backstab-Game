@@ -15,6 +15,50 @@ const WALLB = 0.92;                    // arena wall (hard x limit / corner)
 function clampB(v, a, b) { return v < a ? a : v > b ? b : v; }
 function distB(ax, ad, bx, bd) { return Math.hypot((ax - bx), (ad - bd) * 1.3); }
 
+/* Every arena fighter has a signature ranged SPECIAL they hurl at you from a
+   distance — a creative power you must DODGE. behavior:
+     'shot'  — a straight projectile: JUMP over it (or block) to avoid it.
+     'lob'   — arcs to a marked landing spot and bursts: STEP OFF the spot.
+     'slick' — a lob that also leaves a lingering hazard puddle: don't stand in it.
+   kind drives the visual; speed is world-units/sec (shots) or arc speed (lobs). */
+const SPECIALS = {
+  skeleton:       { name: 'Bone Toss',      kind: 'bone',    behavior: 'shot',  color: '#ece3c8', speed: 1.6 },
+  sandy_skeleton: { name: 'Bone Toss',      kind: 'bone',    behavior: 'shot',  color: '#e6d29a', speed: 1.7 },
+  zombie:         { name: 'Bile Spit',      kind: 'goo',     behavior: 'slick', color: '#7fc24a', speed: 1.3 },
+  giant_tick:     { name: 'Blood Spit',     kind: 'blood',   behavior: 'shot',  color: '#c0392b', speed: 1.5 },
+  mosquito:       { name: 'Stinger',        kind: 'stinger', behavior: 'shot',  color: '#e8e04a', speed: 2.2 },
+  angry_peasant:  { name: 'Rock Throw',     kind: 'rock',    behavior: 'lob',   color: '#9a8f80', speed: 1 },
+  lumberjack:     { name: 'Axe Hurl',       kind: 'axe',     behavior: 'shot',  color: '#c8ccd2', speed: 1.5 },
+  baby_werewolf:  { name: 'Yip Wave',       kind: 'howl',    behavior: 'shot',  color: '#cfd6e6', speed: 1.7 },
+  werewolf:       { name: 'Howl Blast',     kind: 'howl',    behavior: 'shot',  color: '#cfd6e6', speed: 1.9 },
+  bear:           { name: 'Boulder',        kind: 'rock',    behavior: 'lob',   color: '#7a5230', speed: 1 },
+  polar_bear:     { name: 'Snowball',       kind: 'snow',    behavior: 'shot',  color: '#eef4fb', speed: 1.6 },
+  mummy:          { name: 'Cursed Skull',   kind: 'skull',   behavior: 'shot',  color: '#b7d98a', speed: 1.5 },
+  gooster:        { name: 'Slime Sling',    kind: 'goo',     behavior: 'slick', color: '#57c98a', speed: 1.3 },
+  phantom:        { name: 'Spectral Bolt',  kind: 'ghost',   behavior: 'shot',  color: '#c9d6ff', speed: 1.9 },
+  colossal_squid: { name: 'Ink Blast',      kind: 'ink',     behavior: 'slick', color: '#7a4a8a', speed: 1.5 },
+  pirate:         { name: 'Cannonball',     kind: 'cannon',  behavior: 'lob',   color: '#2a2a2a', speed: 1 },
+  swordfish:      { name: 'Water Jet',      kind: 'water',   behavior: 'shot',  color: '#4a90d9', speed: 2.1 },
+  crab:           { name: 'Bubble Shot',    kind: 'bubble',  behavior: 'shot',  color: '#8fe0e6', speed: 1.5 },
+  yeti:           { name: 'Snowball',       kind: 'snow',    behavior: 'lob',   color: '#eef4fb', speed: 1 },
+  icius:          { name: 'Ice Shard',      kind: 'ice',     behavior: 'shot',  color: '#8fd6ff', speed: 2.2 },
+  sandworm:       { name: 'Sand Spit',      kind: 'sand',    behavior: 'lob',   color: '#d9a441', speed: 1 },
+  // bosses — stronger and, for some, multi-shot volleys
+  brute:          { name: 'Ground Pound',   kind: 'shock',   behavior: 'lob',   color: '#8a6a3a', speed: 1, dmgMul: 1.2, radius: 0.22 },
+  hexstraw:       { name: 'Crow Swarm',     kind: 'crow',    behavior: 'shot',  color: '#2a2530', speed: 1.7, count: 3 },
+  alpha_werewolf: { name: 'Alpha Howl',     kind: 'howl',    behavior: 'shot',  color: '#dfe6f6', speed: 2.0, count: 2 },
+  venombane:      { name: 'Venom Bomb',     kind: 'venom',   behavior: 'slick', color: '#9be24a', speed: 1.2, dmgMul: 1.15, radius: 0.2 },
+  great_white:    { name: 'Water Torpedo',  kind: 'water',   behavior: 'shot',  color: '#6fb0e0', speed: 2.3, dmgMul: 1.15 },
+  crab_king:      { name: 'Bubble Barrage', kind: 'bubble',  behavior: 'shot',  color: '#8fe0e6', speed: 1.7, count: 2 },
+  bread_boi:      { name: 'Toast Beam',     kind: 'beam',    behavior: 'shot',  color: '#f0c060', speed: 2.4 },
+  dragok:         { name: 'Fireball',       kind: 'fire',    behavior: 'lob',   color: '#ff7a2a', speed: 1, dmgMul: 1.2, radius: 0.2 },
+  gorton:         { name: 'Sword Beam',     kind: 'sword',   behavior: 'shot',  color: '#ffe08a', speed: 2.1, dmgMul: 1.15 },
+  backstabber:    { name: 'Shadow Daggers', kind: 'shadow',  behavior: 'shot',  color: '#b03050', speed: 2.2, count: 3 },
+};
+function getSpecial(f) {
+  return SPECIALS[f.id] || { name: 'Hurl', kind: 'rock', behavior: 'lob', color: '#9a8f80', speed: 1 };
+}
+
 function startBattle(fighterId, regionId, isBoss) {
   const f = getFighter(fighterId);
   if (!f) return;
@@ -36,7 +80,9 @@ function startBattle(fighterId, regionId, isBoss) {
       hp: emax, maxhp: emax,
       attackReadyAt: 0, windUntil: 0, swingUntil: 0, state: 'idle',
       hurtUntil: 0, hurtAt: 0, hitstunUntil: 0, stunUntil: 0, blockUntil: 0, backoffUntil: 0, animT: 0, nextDecision: 0,
+      special: getSpecial(f), specialReadyAt: 0, specialWind: false,
     },
+    projectiles: [], hazards: [],
     favor: clampB(Game.crowd || 60, 20, 80),   // 0..100 = crowd favouring the player
     intensity: 0,                               // recent action -> crowd excitement
     over: false, outcome: null,
@@ -49,6 +95,7 @@ function startBattle(fighterId, regionId, isBoss) {
   buildBattleDOM();
   bindBattleInput();
   BATTLE.enemy.nextDecision = performance.now() + 900;
+  BATTLE.enemy.specialReadyAt = performance.now() + 1800;   // first special after a beat
   BATTLE.raf = requestAnimationFrame(battleLoop);
 }
 
@@ -363,7 +410,8 @@ function updateBattle(dt, t) {
   }
   if (b.keys['w'] || b.keys['arrowup']) heroJumpB();
   const airborne = h.z > 2;
-  const moveScale = h.blocking ? 0.34 : (airborne ? 0.85 : 1);   // guard-walk / air-control
+  let moveScale = h.blocking ? 0.34 : (airborne ? 0.85 : 1);      // guard-walk / air-control
+  if (h.sludgeUntil && t < h.sludgeUntil) moveScale *= 0.5;       // slowed while stuck in a hazard puddle
   h.moving = Math.abs(mx) > 0.01;
   if (h.moving) { h.x = clampB(h.x + mx * spd * moveScale * dt, -WALLB, WALLB); h.animT += dt * 10; }
   applyKnock(h, dt);
@@ -384,6 +432,8 @@ function updateBattle(dt, t) {
   }
 
   updateEnemyAI(dt, t);
+  updateProjectiles(dt, t);                   // enemy specials in flight
+  updateHazards(dt, t);                       // lingering ground hazards
   separateBodies(h, e);                       // bodies never overlap or pass through
 
   // crowd favour drifts toward the current health leader; intensity decays
@@ -413,18 +463,141 @@ function updateEnemyAI(dt, t) {
   if (t < e.windUntil) { /* committed to a telegraphed strike, hold */ }
   else if (t >= e.nextDecision) {
     const r = Math.random();
+    const canSpecial = t >= (e.specialReadyAt || 0);
     if (distX < 0.34) {
-      if (r < 0.66) { // attack — long, reactable wind-up (telegraph)
+      if (canSpecial && r < 0.26) { specialWindup(e, t); }   // occasional point-blank special
+      else if (r < 0.62) { // attack — long, reactable wind-up (telegraph)
         e.windUntil = t + Math.max(420, 720 - b.fighter.attack * 34);
         e.swingUntil = e.windUntil + 170;
         setTimeout(() => enemyStrikeB(), (e.windUntil - t));
         e.nextDecision = t + Math.max(800, 1500 - b.fighter.attack * 80);
-      } else if (r < 0.85) { e.blockUntil = t + 600; e.nextDecision = t + 700; }   // block
+      } else if (r < 0.82) { e.blockUntil = t + 600; e.nextDecision = t + 700; }   // block
       else { e.backoffUntil = t + 450; e.nextDecision = t + 750; }                 // space out
-    } else { e.nextDecision = t + 180; }
+    } else {
+      // at range: mostly close the gap, but often let a signature special fly
+      if (canSpecial && r < 0.72) { specialWindup(e, t); }
+      else { e.nextDecision = t + 180; }
+    }
   }
   if (t < (e.backoffUntil || 0)) { e.x = clampB(e.x - Math.sign(dx || 1) * espd * dt, -WALLB, WALLB); e.animT += dt * 9; }
   else if (t >= e.windUntil && distX > 0.30) { e.x = clampB(e.x + Math.sign(dx) * espd * dt, -WALLB, WALLB); e.animT += dt * 9; }
+}
+
+/* ============================================================
+   ENEMY SPECIALS — a dodgeable ranged power for every fighter
+   ============================================================ */
+// Begin a special: a telegraphed wind-up (aura glows the special's colour), then
+// the projectile(s) fly. Long enough to be reactable.
+function specialWindup(e, t) {
+  const b = BATTLE;
+  const tel = b.isBoss ? 480 : 580;
+  e.windUntil = t + tel;
+  e.specialWind = true;
+  e.specialReadyAt = t + (b.isBoss ? 2100 : 3100) + Math.random() * 900;
+  e.nextDecision = t + tel + 260;
+  flashB(b.fighter.name + ': ' + e.special.name + '!');
+  setTimeout(() => fireSpecialB(e), tel);
+}
+
+function fireSpecialB(e) {
+  const b = BATTLE; if (!b || b.over || e.hp <= 0) return;
+  const t = performance.now();
+  e.specialWind = false;
+  if ((e.stunUntil && t < e.stunUntil) || t < e.hitstunUntil) return;   // interrupted mid-charge
+  const sp = e.special, dir = e.facing;
+  const dmg = Math.round((b.fighter.attack * 5 + 6) * (sp.dmgMul || 1));
+  Audio2.sfx.special();
+  const count = sp.count || 1;
+  for (let k = 0; k < count; k++) {
+    if (k === 0) launchProjectile(e, sp, dmg, dir, t);
+    else setTimeout(() => { if (BATTLE === b && !b.over && e.hp > 0) launchProjectile(e, sp, dmg, dir, performance.now()); }, k * 190);
+  }
+}
+
+function launchProjectile(e, sp, dmg, dir, t) {
+  const b = BATTLE, h = b.hero;
+  if (sp.behavior === 'shot') {
+    // all shots in a volley fly at the same height so ONE well-timed jump clears them
+    b.projectiles.push({
+      behavior: 'shot', kind: sp.kind, color: sp.color, dmg,
+      x: e.x + dir * 0.14, z: 30, vx: dir * (sp.speed || 1.6), spin: 0,
+      born: t, fromX: e.x,
+    });
+  } else { // lob / slick
+    const target = clampB(h.x + (Math.random() - 0.5) * 0.05, -WALLB, WALLB);
+    b.projectiles.push({
+      behavior: sp.behavior, kind: sp.kind, color: sp.color, dmg,
+      x0: e.x, target, cx: e.x, cz: 0, t0: t, dur: 880 + Math.random() * 120,
+      peak: 130, radius: sp.radius || 0.17, leaveHazard: sp.behavior === 'slick',
+      born: t, fromX: e.x,
+    });
+  }
+}
+
+// Move projectiles, resolve hits/dodges. Called each frame from updateBattle.
+function updateProjectiles(dt, t) {
+  const b = BATTLE, h = b.hero;
+  b.projectiles = b.projectiles.filter(p => {
+    if (p.behavior === 'shot') {
+      p.x += p.vx * dt; p.spin = (p.spin || 0) + dt * 16;
+      if (!p.dead && Math.abs(p.x - h.x) < 0.11) {
+        if (h.z > p.z - 6) {                              // hero jumped: the shot passes under
+          if (!p.grazed) { p.grazed = true; popDamageB(h, 0, true, '#8ff0a0'); Audio2.sfx.dodge(); }
+        } else { applyHeroHit(p.dmg, p.fromX, p.color); p.dead = true; }
+      }
+      if (p.x < -1.08 || p.x > 1.08) return false;
+      return !p.dead;
+    }
+    // lob / slick: arc to the marked spot, then burst
+    const age = (t - p.t0) / p.dur;
+    if (age >= 1) { detonateLob(p); return false; }
+    p.cx = p.x0 + (p.target - p.x0) * age;
+    p.cz = Math.sin(age * Math.PI) * p.peak;
+    return true;
+  });
+}
+
+function detonateLob(p) {
+  const b = BATTLE, h = b.hero, now = performance.now();
+  spawnHitFx(p.target, h.depth, 20, p.color, true);
+  shakeB(6, 150); Audio2.sfx.bighit();
+  if (Math.abs(p.target - h.x) < p.radius && h.z < 42) applyHeroHit(p.dmg, p.fromX, p.color);
+  if (p.leaveHazard) b.hazards.push({ x: p.target, r: p.radius * 0.92, color: p.color, kind: p.kind, born: now, life: 2900, nextTick: now + 300, dmg: Math.max(2, Math.round(p.dmg * 0.22)) });
+}
+
+// Lingering ground hazards (slime/ink/venom): slow + chip damage while stood in.
+function updateHazards(dt, t) {
+  const b = BATTLE, h = b.hero;
+  b.hazards = b.hazards.filter(hz => {
+    if (t - hz.born > hz.life) return false;
+    if (h.z < 24 && Math.abs(h.x - hz.x) < hz.r) {
+      h.sludgeUntil = t + 120;                            // read by movement to slow the hero
+      if (t >= hz.nextTick) { hz.nextTick = t + 460; applyHeroHit(hz.dmg, hz.x, hz.color, true); }
+    }
+    return true;
+  });
+}
+
+// Apply a projectile/hazard hit to the hero (block + armour + i-frames aware).
+// `minor` hits (hazard ticks) skip knockback/hitstop so puddles feel like chip.
+function applyHeroHit(dmg, fromX, color, minor) {
+  const b = BATTLE, h = b.hero, now = performance.now();
+  if (b.over) return;
+  if (now < h.hurtInvuln) return;                          // brief mercy i-frames
+  let blocked = false;
+  if (h.blocking && !minor) {
+    const block = absorbWithShield();
+    dmg *= (1 - (block || 0.15)); Audio2.sfx.block(); updateShieldB(); blocked = true;
+  } else { Audio2.sfx.hurt(); bumpFavor(-3); b.intensity = Math.min(1, b.intensity + 0.3); h.combo = 0; }
+  dmg *= (1 - (STATE.armorBonus || 0));
+  dmg = Math.max(1, Math.round(dmg));
+  h.hp = Math.max(0, h.hp - dmg); h.hurtUntil = now + 200; h.hurtAt = now;
+  h.hurtInvuln = now + (minor ? 200 : 300);
+  popDamageB(h, dmg, false, color);
+  spawnHitFx(h.x, h.depth, Math.max(h.z, 34), blocked ? '#8fd0ff' : (color || '#ff6a8a'), false);
+  if (!minor) { hitstopB(now, blocked ? 40 : 60); shakeB(blocked ? 4 : 7, 140); knockback(h, { x: fromX }, blocked ? 0.8 : 1.5); }
+  updateBattleHUD();
+  if (h.hp <= 0) return loseBattle();
 }
 
 function enemyStrikeB() {
@@ -480,10 +653,17 @@ function renderBattleCanvas() {
   drawCrowd(ctx, cw, ch, t);
   drawArenaFloor(ctx, cw, ch);
 
+  // ground hazards + lobbed-blast landing markers sit on the floor, under the fighters
+  b.hazards.forEach(hz => drawHazardB(ctx, cw, ch, hz, t));
+  b.projectiles.forEach(p => { if (p.behavior !== 'shot') drawLandMarkerB(ctx, cw, ch, p, t); });
+
   // Both fighters share the floor line — draw enemy first so the hero (and their
   // big in-hand weapon) reads on top when the two bodies are close.
   drawFighter(ctx, cw, ch, b.enemy, false, t);
   drawFighter(ctx, cw, ch, b.hero, true, t);
+
+  // enemy specials in flight, drawn over the fighters
+  b.projectiles.forEach(p => drawProjectileB(ctx, cw, ch, p, t));
 
   // fx
   b.fx = b.fx.filter(f => t - f.born < f.life);
@@ -575,11 +755,21 @@ function drawFighter(ctx, cw, ch, e, isHero, t) {
   }
   const bx = p.x + lunge, byTop = p.y - hgt;
 
-  // enemy wind-up telegraph — pulsing red aura so every strike is reactable
+  // enemy wind-up telegraph — pulsing aura so every strike is reactable. A
+  // special charge glows the special's own colour (with a gathering orb) so you
+  // know a projectile is coming, not a melee swing.
   if (winding) {
-    const g = 0.35 + 0.35 * Math.sin(t / 45);
-    ctx.save(); ctx.globalAlpha = g; ctx.strokeStyle = '#ff4d5e'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.ellipse(p.x, p.y - hgt * 0.5, w * 0.5, hgt * 0.52, 0, 0, 7); ctx.stroke(); ctx.restore();
+    const charging = e.specialWind;
+    const aura = charging ? (e.special && e.special.color) || '#ffd23f' : '#ff4d5e';
+    const g = 0.35 + 0.35 * Math.sin(t / (charging ? 60 : 45));
+    ctx.save(); ctx.globalAlpha = g; ctx.strokeStyle = aura; ctx.lineWidth = charging ? 5 : 4;
+    ctx.beginPath(); ctx.ellipse(p.x, p.y - hgt * 0.5, w * 0.5, hgt * 0.52, 0, 0, 7); ctx.stroke();
+    if (charging) {
+      const pr = clampB(1 - (e.windUntil - t) / 560, 0, 1);
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.8;
+      ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(p.x + e.facing * 22 * scale, p.y - hgt * 0.58, (3 + pr * 8) * scale, 0, 7); ctx.fill();
+    }
+    ctx.restore();
   }
 
   // squash-stretch recoil on the first ~90ms of a hit
@@ -677,6 +867,84 @@ function drawFxB(ctx, cw, ch, f, t) {
     ctx.globalAlpha = 1 - age; ctx.strokeStyle = f.color; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - f.vx * 0.035, y - f.vy * 0.035); ctx.stroke(); ctx.globalAlpha = 1; return;
   }
+}
+
+/* ---------------- enemy special projectiles ---------------- */
+// The flying projectile itself (drawn over the fighters), with a glow + trail
+// and a kind-specific shape so every fighter's power reads at a glance.
+function drawProjectileB(ctx, cw, ch, p, t) {
+  const isShot = p.behavior === 'shot';
+  const wx = isShot ? p.x : p.cx, wz = isShot ? p.z : p.cz;
+  const P = projB(wx, FLOOR_DEPTH, wz, cw, ch), s = P.scale;
+  const x = P.x, y = P.y, R = 11 * s, dir = isShot ? (p.vx >= 0 ? 1 : -1) : 1, spin = p.spin || t / 120, k = p.kind;
+  ctx.save();
+  // soft glow halo
+  ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createRadialGradient(x, y, 0, x, y, R * 2.3);
+  g.addColorStop(0, p.color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(x, y, R * 2.3, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  // trailing ghosts for shots (sense of speed)
+  if (isShot) { for (let i = 1; i <= 3; i++) { ctx.globalAlpha = 0.16 * (3 - i); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x - dir * i * 7 * s, y, R * (1 - i * 0.16), 0, 7); ctx.fill(); } ctx.globalAlpha = 1; }
+
+  if (k === 'bone') {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(spin); ctx.fillStyle = p.color;
+    ctx.fillRect(-R, -2.4 * s, 2 * R, 4.8 * s);
+    [[-R, 0], [R, 0]].forEach(([bx]) => { ctx.beginPath(); ctx.arc(bx, -2.2 * s, 2.6 * s, 0, 7); ctx.arc(bx, 2.2 * s, 2.6 * s, 0, 7); ctx.fill(); });
+    ctx.restore();
+  } else if (k === 'axe' || k === 'sword') {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(spin * (k === 'axe' ? 1 : 0.4));
+    ctx.fillStyle = '#5a4632'; ctx.fillRect(-1.4 * s, -R, 2.8 * s, 2 * R);          // haft
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.moveTo(0, -R); ctx.lineTo(R, -R * 0.4); ctx.lineTo(R * 0.5, R * 0.2); ctx.lineTo(0, -2 * s); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else if (k === 'water' || k === 'beam' || k === 'stinger' || k === 'ice') {
+    ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1); ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.moveTo(-R * 1.7, 0); ctx.lineTo(R, -4.5 * s); ctx.lineTo(R * 1.5, 0); ctx.lineTo(R, 4.5 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(R * 0.2, 0, R * 0.5, 1.6 * s, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  } else if (k === 'crow') {
+    ctx.strokeStyle = p.color; ctx.lineWidth = 2.6 * s; ctx.lineCap = 'round';
+    const fl = Math.sin(t / 60) * 3 * s;
+    ctx.beginPath(); ctx.moveTo(x - 8 * s, y + fl); ctx.quadraticCurveTo(x - 2 * s, y - 6 * s, x, y); ctx.quadraticCurveTo(x + 2 * s, y - 6 * s, x + 8 * s, y + fl); ctx.stroke();
+  } else if (k === 'shadow') {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(spin * 0.6); ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.moveTo(-R * 1.2, 0); ctx.lineTo(0, -3.2 * s); ctx.lineTo(R * 1.2, 0); ctx.lineTo(0, 3.2 * s); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else {
+    // orb-type powers: fire, venom, ghost, bubble, snow, shock, blood, sand, ink, goo, skull, rock, cannon
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill();
+    if (k === 'bubble') { ctx.globalAlpha = 0.45; ctx.fillStyle = '#eafcff'; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = p.color; ctx.lineWidth = 1.6 * s; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.stroke(); }
+    if (k === 'goo' || k === 'ink' || k === 'venom') { ctx.fillStyle = shade(p.color, -40); for (let i = 0; i < 3; i++) { const a = spin + i * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * R * 0.7, y + Math.sin(a) * R * 0.7, 2.2 * s, 0, 7); ctx.fill(); } }
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.arc(x - R * 0.34, y - R * 0.34, R * 0.32, 0, 7); ctx.fill();
+    if (k === 'skull') { ctx.fillStyle = '#1a2410'; ctx.beginPath(); ctx.arc(x - R * 0.35, y - 1 * s, 1.7 * s, 0, 7); ctx.arc(x + R * 0.35, y - 1 * s, 1.7 * s, 0, 7); ctx.fill(); }
+    if (k === 'fire') { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.arc(x, y, R * 0.5, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
+  }
+  ctx.restore();
+}
+
+// The pulsing marker showing where a lobbed blast will land — read it and step off.
+function drawLandMarkerB(ctx, cw, ch, p, t) {
+  const G = projB(p.target, FLOOR_DEPTH, 0, cw, ch), s = G.scale;
+  const age = clampB((t - p.t0) / p.dur, 0, 1), rx = p.radius * cw * 0.42;
+  ctx.save(); ctx.strokeStyle = p.color; ctx.lineWidth = 3 * s;
+  ctx.globalAlpha = 0.35 + 0.4 * age;
+  ctx.beginPath(); ctx.ellipse(G.x, G.y, rx * (0.55 + 0.45 * age), rx * 0.34, 0, 0, 7); ctx.stroke();
+  ctx.globalAlpha = 0.4 + 0.4 * Math.sin(t / 60);
+  ctx.beginPath(); ctx.ellipse(G.x, G.y, 6 * s, 3 * s, 0, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+
+// A lingering ground hazard puddle (slime / ink / venom): avoid standing in it.
+function drawHazardB(ctx, cw, ch, hz, t) {
+  const G = projB(hz.x, FLOOR_DEPTH, 0, cw, ch), s = G.scale;
+  const age = (t - hz.born) / hz.life, fade = age > 0.8 ? (1 - age) / 0.2 : 1;
+  const rx = hz.r * cw * 0.42, ry = rx * 0.34;
+  ctx.save();
+  ctx.globalAlpha = 0.55 * fade; ctx.fillStyle = hz.color;
+  ctx.beginPath(); ctx.ellipse(G.x, G.y, rx, ry, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = 0.8 * fade; ctx.fillStyle = shade(hz.color, 40);
+  for (let i = 0; i < 3; i++) { const a = t / 320 + i * 2.1; ctx.beginPath(); ctx.arc(G.x + Math.cos(a) * rx * 0.4, G.y + Math.sin(a * 1.3) * ry * 0.4, (1.5 + Math.sin(t / 200 + i)) * s, 0, 7); ctx.fill(); }
+  ctx.restore();
 }
 
 /* ============================================================
