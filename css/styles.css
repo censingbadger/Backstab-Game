@@ -402,6 +402,7 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .tbtn.attack{ width:80px; height:80px; font-size:32px; border-color:var(--gold); background:rgba(90,60,10,.6); }
 .tbtn.dodge{ border-color:var(--green); }
 .tbtn.heal{ border-color:var(--red); }
+.tbtn.jump{ border-color:var(--blue); }
 .tbtn:active{ transform:scale(.92); }
 @media (hover:hover) and (pointer:fine){ .dun-touch{ display:none; } }
 
