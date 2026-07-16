@@ -36,7 +36,7 @@ const RARITY = {
 const ENEMIES = {
   zombie:        { id:'zombie',        name:'Zombie',         hearts:1.5, attack:1, reward:1,  art:'zombie',   palette:{ skin:'#7bb26a', cloth:'#5a4a3a' }, blurb:'A slow, shambling corpse. Every hero\'s first fight.' },
   skeleton:      { id:'skeleton',      name:'Skeleton',       hearts:1,   attack:1, reward:1,  art:'skeleton', palette:{ skin:'#e9e4d4', cloth:'#3a3a44' }, blurb:'Rattling bones held together by pure spite.' },
-  giant_tick:    { id:'giant_tick',    name:'Giant Tick',     hearts:1,   attack:2, reward:2,  art:'bug',      palette:{ skin:'#7a4b2a', cloth:'#4a2c18' }, blurb:'A blood-swollen pest the size of a dog.' },
+  giant_tick:    { id:'giant_tick',    name:'Giant Tick',     hearts:1,   attack:2, reward:2,  art:'tick',     palette:{ skin:'#7a4b2a', cloth:'#4a2c18' }, blurb:'A blood-swollen pest the size of a dog.' },
   mosquito:      { id:'mosquito',      name:'Mosquito',       hearts:0.5, attack:1, reward:0,  art:'bug',      palette:{ skin:'#556b5a', cloth:'#33443a' }, blurb:'Tiny, fast and extremely annoying.' },
   angry_peasant: { id:'angry_peasant', name:'Angry Peasant',  hearts:2,   attack:2, reward:3,  art:'peasant',  palette:{ skin:'#e2b48c', cloth:'#8a5a3a' }, blurb:'He is having a very bad day and it is your fault.' },
   baby_werewolf: { id:'baby_werewolf', name:'Baby Werewolf',  hearts:3,   attack:3, reward:5,  art:'wolf',     palette:{ skin:'#9a8f80', cloth:'#5a5148' }, blurb:'Cute until the fangs come out.' },
@@ -107,7 +107,7 @@ const SHIELDS = {
 */
 const REGIONS = [
   { id:'dead_cliffs',      name:'Dead Cliffs',       x:14, y:82, enemies:['zombie','skeleton','angry_peasant','mosquito','giant_tick'], boss:'bread_boi',   color:'#6b7a8f' },
-  { id:'barren_grasslands',name:'Barren Grasslands', x:32, y:78, enemies:['angry_peasant','lumberjack','giant_tick','baby_werewolf'],    boss:null,          color:'#8a9a5a' },
+  { id:'barren_grasslands',name:'Barren Grasslands', x:32, y:78, enemies:['skeleton','zombie','angry_peasant','lumberjack','giant_tick'], boss:null,          color:'#8a9a5a' },
   { id:'dark_forest',      name:'Dark Forest',       x:24, y:52, enemies:['baby_werewolf','bear','lumberjack','werewolf'],               boss:'dragok',      color:'#3a5a3a' },
   { id:'toxic_temple',     name:'Toxic Temple',      x:22, y:30, enemies:['mummy','gooster','phantom'],                                  boss:null,          color:'#6a8a4a' },
   { id:'shatter_coast',    name:'Shatter Coast',     x:48, y:30, enemies:['pirate','swordfish','colossal_squid'],                        boss:null,          color:'#4a7a9a' },

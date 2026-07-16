@@ -301,6 +301,27 @@ function charBody(art, p) {
         <ellipse cx="44" cy="47" rx="3" ry="2.6" fill="#ff3b5c"/>
         <ellipse cx="56" cy="47" rx="3" ry="2.6" fill="#ff3b5c"/>`;
 
+    case 'tick':
+      return `${shadow}
+        <g stroke="${p.cloth}" stroke-width="3.4" stroke-linecap="round" fill="none">
+          <path d="M42 74 L22 64 L12 68"/>
+          <path d="M40 80 L16 78 L6 84"/>
+          <path d="M40 86 L18 90 L9 100"/>
+          <path d="M44 92 L30 100 L26 111"/>
+          <path d="M58 74 L78 64 L88 68"/>
+          <path d="M60 80 L84 78 L94 84"/>
+          <path d="M60 86 L82 90 L91 100"/>
+          <path d="M56 92 L70 100 L74 111"/>
+        </g>
+        <ellipse cx="50" cy="82" rx="25" ry="21" fill="${p.skin}"/>
+        <ellipse cx="50" cy="77" rx="25" ry="18" fill="rgba(255,255,255,0.10)"/>
+        <path d="M50 63 Q58 82 50 102" stroke="rgba(0,0,0,0.15)" stroke-width="3" fill="none"/>
+        <path d="M34 78 Q50 70 66 78" stroke="rgba(0,0,0,0.12)" stroke-width="2.5" fill="none"/>
+        <circle cx="50" cy="58" r="10" fill="${p.cloth}"/>
+        <path d="M45 49 l-4 -6 M55 49 l4 -6" stroke="${p.cloth}" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="46" cy="57" r="2" fill="#ffce3f"/>
+        <circle cx="54" cy="57" r="2" fill="#ffce3f"/>`;
+
     case 'scarecrow':
       return `${shadow}
         <rect x="46" y="58" width="8" height="44" fill="#6a4a2a"/>
