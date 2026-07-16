@@ -175,7 +175,7 @@ function getSprite(key, fighter, facing) {
    ============================================================ */
 function startDungeon(regionId) {
   Audio2.resume();
-  Audio2.playMusic('battle');
+  Audio2.playMusic(regionId);   // each region has its own song
 
   const theme = dungeonTheme(regionId) || DUNGEON_THEMES.dead_cliffs;
   if (theme.chambers) return startTempleDungeon(regionId, theme);   // chamber-clear level
@@ -512,6 +512,7 @@ function summonBossChamber() {
   const bd = BOSSES[d.theme.boss];
   d.bossIntro = true; d.bossId = d.theme.boss;
   banner(bd.name.toUpperCase() + ' — THE ROTKING AWAKENS...', 2400);
+  Audio2.playMusic('boss');
   Audio2.sfx.lose();
   setTimeout(() => {
     if (!DUNGEON) return;
@@ -877,6 +878,7 @@ function summonBoss() {
   d.bossIntro = true;
   d.bossId = d.theme.boss;
   banner(bd.name.toUpperCase() + ' APPROACHES...', 2200);
+  Audio2.playMusic('boss');
   Audio2.sfx.lose(); // ominous
   setTimeout(() => {
     if (!DUNGEON) return;
