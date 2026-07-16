@@ -322,7 +322,8 @@ function heroAttack() {
 
   // Aim toward mouse (desktop) or facing (touch)
   updateHeroFacing();
-  const reach = 1.7, arc = Math.PI * 0.7;
+  // Wide, forgiving sweep: a broad arc across the path so it's easy to connect.
+  const reach = 2.4, arc = Math.PI * 1.15;
   let hitAny = false;
   d.enemies.forEach(e => {
     if (e.dead) return;
@@ -911,11 +912,11 @@ function drawHeroWeapon(ctx, h, hx, hy, aimScreen) {
   let ang;
   if (swinging) {
     const p = 1 - (h.swingUntil - now) / SWING_DUR;   // 0..1 through the swing
-    ang = aimScreen - 1.15 + p * 2.3;                  // sweep across the aim
-    // motion-blur arc
+    ang = aimScreen - 1.6 + p * 3.2;                   // broad sweep across the aim
+    // motion-blur arc (wider + a touch larger to match the hit arc)
     ctx.strokeStyle = `rgba(255,255,255,${0.55 * (1 - p)})`;
-    ctx.lineWidth = 8; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(hx, hy, 32, aimScreen - 1.15, ang); ctx.stroke();
+    ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(hx, hy, 37, aimScreen - 1.6, ang); ctx.stroke();
   } else {
     ang = aimScreen + 0.55;                            // resting pose, held ready
   }
