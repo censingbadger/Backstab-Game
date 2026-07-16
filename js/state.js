@@ -29,6 +29,8 @@ function newGame() {
     // roguelike progression: weapon upgrade levels, and which regions already
     // handed out their one-time reward modifier
     weaponUpgrades: {}, rewardedRegions: [],
+    // permanent poison artifacts earned in the Toxic Temple
+    artifacts: [],
     // which map regions are unlocked / cleared
     unlocked: ['dead_cliffs'],
     cleared: [],
@@ -121,6 +123,7 @@ function regionById(id) { return REGIONS.find(r => r.id === id); }
 
 function isUnlocked(id) { return STATE.unlocked.includes(id); }
 function isCleared(id) { return STATE.cleared.includes(id); }
+function hasArtifact(id) { return !!(STATE.artifacts && STATE.artifacts.includes(id)); }
 
 function clearRegion(id) {
   if (!STATE.cleared.includes(id)) STATE.cleared.push(id);
