@@ -18,7 +18,7 @@ function distB(ax, ad, bx, bd) { return Math.hypot((ax - bx), (ad - bd) * 1.3); 
 function startBattle(fighterId, regionId, isBoss) {
   const f = getFighter(fighterId);
   if (!f) return;
-  Audio2.resume(); Audio2.playMusic('battle');
+  Audio2.resume(); Audio2.playMusic(isBoss ? 'boss' : (regionId || 'battle'));
   const pmax = STATE.maxHearts * HP_PER_HEART;
   const emax = f.hearts * HP_PER_HEART;
 
