@@ -207,6 +207,7 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .si-art svg{ width:100%; height:100%; }
 .si-info{ flex:1; min-width:0; }
 .si-name{ font-weight:800; font-size:13px; }
+.broken-tag{ font-size:10px; color:#fff; background:var(--red); padding:1px 5px; border-radius:5px; margin-left:4px; vertical-align:middle; }
 .rar{ font-weight:900; }
 .si-sub{ font-size:11px; color:var(--muted); }
 .buy-btn{ display:inline-flex; align-items:center; gap:3px; padding:7px 10px; border-radius:10px; font-weight:800; font-size:13px;

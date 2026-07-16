@@ -330,7 +330,8 @@ function renderInventory() {
     cell.addEventListener('click', () => {
       const { type, id } = cell.dataset;
       if (type === 'weapon') {
-        if (STATE.weapons[id] <= 0) { alert('This weapon is broken — repair it in the Shop first!'); return; }
+        // A broken weapon CAN be equipped again — that's how you switch back to
+        // it. It can also be repaired from the Shop whether equipped or not.
         STATE.equippedWeapon = id;
       } else if (type === 'shield') {
         STATE.equippedShield = id;
@@ -345,20 +346,24 @@ function renderShop() {
   if (!list) return;
   let html = '';
 
-  // Repair current weapon if damaged
+  // Repair weapons — the equipped one if worn, plus ANY owned weapon that is
+  // fully broken (so a weapon you switched away from can always be repaired).
+  const repairIds = [];
   const eqId = STATE.equippedWeapon;
-  const eqW = WEAPONS[eqId];
-  const eqDur = STATE.weapons[eqId] || 0;
-  if (eqDur < eqW.durability) {
-    const cost = eqW.repairCost;
+  if ((STATE.weapons[eqId] || 0) < WEAPONS[eqId].durability) repairIds.push(eqId);
+  Object.keys(STATE.weapons).forEach(id => {
+    if (id !== eqId && (STATE.weapons[id] || 0) <= 0) repairIds.push(id);
+  });
+  repairIds.forEach(id => {
+    const w = WEAPONS[id], cost = w.repairCost, broken = (STATE.weapons[id] || 0) <= 0;
     html += `<div class="shop-item repair">
       <div class="si-art">🔧</div>
-      <div class="si-info"><div class="si-name">Repair ${eqW.name}</div>
-        <div class="si-sub">restore to ${eqW.durability} durability</div></div>
-      <button class="buy-btn ${canAfford(cost) ? '' : 'disabled'}" data-repair="${eqId}" data-cost="${cost}">
+      <div class="si-info"><div class="si-name">Repair ${w.name}${broken ? ' <b class="broken-tag">BROKEN</b>' : ''}</div>
+        <div class="si-sub">restore to ${w.durability} durability</div></div>
+      <button class="buy-btn ${canAfford(cost) ? '' : 'disabled'}" data-repair="${id}" data-cost="${cost}">
         ${cost} ${coinSVG()}</button>
     </div>`;
-  }
+  });
 
   // Repair equipped shield if worn
   const eqSId = STATE.equippedShield;
