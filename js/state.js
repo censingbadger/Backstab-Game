@@ -7,11 +7,13 @@ const SAVE_KEY = 'backstab_save_v1';
 function currentSaveKey() { return (typeof Auth !== 'undefined' && Auth.saveKey) ? Auth.saveKey() : SAVE_KEY; }
 
 /* A brand-new hero starts HUMBLE:
-   ~3 hearts, a basic weapon, and a little money. */
+   5 hearts, a basic weapon, and a little money. Hearts no longer grow just by
+   levelling up — extra max hearts are a rare, hard-won reward for clearing a
+   level, so every heart matters. */
 function newGame() {
   return {
     money: 15,
-    maxHearts: 3,
+    maxHearts: 5,
     level: 1,
     xp: 0,
     wins: 0,
@@ -36,6 +38,8 @@ function newGame() {
     // which map regions are unlocked / cleared
     unlocked: ['dead_cliffs'],
     cleared: [],
+    // marks that this save is on the 5-heart rebalance (see loadGame migration)
+    heartsRebalanced: true,
     // per-fighter defeat count (for the bestiary + progression)
     defeated: {},
     muted: false,
@@ -70,6 +74,13 @@ function loadGame() {
     Object.keys(merged.shields || {}).forEach(id => {
       if (merged.shields[id] === true) merged.shields[id] = (SHIELDS[id] ? SHIELDS[id].durability : 0);
     });
+    // One-time heart rebalance: old saves grew max hearts by levelling up. Bring
+    // them down to the new 5-heart baseline once, then let rare end-of-level
+    // rewards raise the cap normally from there.
+    if (!data.heartsRebalanced) {
+      merged.maxHearts = Math.min(merged.maxHearts || 5, 5);
+      merged.heartsRebalanced = true;
+    }
     return merged;
   } catch (e) {
     return null;
@@ -82,8 +93,8 @@ function resetGame() {
 }
 
 /* ---------- XP / levelling ----------
-   Each level needs a bit more XP. Levelling up grants +½ heart of max
-   health and a full heal, so winning fights makes the hero feel stronger. */
+   Each level needs a bit more XP. Levelling up no longer grants hearts (those
+   are a rare end-of-level reward now) — it still tracks progress and score. */
 function xpForLevel(level) {
   return 5 + level * 5; // lvl1->10, lvl2->15, lvl3->20 ...
 }
@@ -94,7 +105,6 @@ function gainXp(amount) {
   while (STATE.xp >= xpForLevel(STATE.level)) {
     STATE.xp -= xpForLevel(STATE.level);
     STATE.level++;
-    STATE.maxHearts += 0.5;
     leveled = true;
   }
   return leveled;

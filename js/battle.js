@@ -20,7 +20,7 @@ function startBattle(fighterId, regionId, isBoss) {
   if (!f) return;
   Audio2.resume(); Audio2.playMusic(isBoss ? 'boss' : (regionId || 'battle'));
   const pmax = STATE.maxHearts * HP_PER_HEART;
-  const emax = f.hearts * HP_PER_HEART;
+  const emax = Math.round(f.hearts * HP_PER_HEART * 1.15);   // arena foes are a little hardier now
 
   BATTLE = {
     fighter: f, regionId, isBoss: !!isBoss,
@@ -434,7 +434,7 @@ function enemyStrikeB() {
   if (!inRange(e, h, 0.02)) return;              // player spaced out of range
   if (h.z > 30) { flashB('Jumped over!'); bumpFavor(3); return; }   // jump-in dodges the strike
   if (now < h.hurtInvuln) return;
-  let dmg = b.fighter.attack * 7 + 3, blocked = false;
+  let dmg = b.fighter.attack * 9 + 5, blocked = false;   // foes hit harder now
   if (h.blocking) {
     const block = absorbWithShield();
     dmg *= (1 - (block || 0.15));                // even a raw guard chips the damage
