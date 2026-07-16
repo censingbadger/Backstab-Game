@@ -191,7 +191,7 @@ function doPlayerAttack(mult, isSpecial) {
     dmg = 2; // bare-handed if the weapon is broken
     flash('Weapon broken! Repair it at the shop.');
   } else {
-    dmg = w.damage;
+    dmg = w.damage + (STATE.dmgBonus || 0);   // + Power modifier
     if (!isSpecial) { // specials don't wear the weapon as fast
       STATE.weapons[wId] = dur - 1;
     }
@@ -276,6 +276,7 @@ function enemyStrike() {
     animate('hero', 'hurt');
     bumpCrowd(-3);
   }
+  dmg *= (1 - (STATE.armorBonus || 0));   // Iron Skin modifier
   dmg = Math.round(dmg);
   b.playerHP = Math.max(0, b.playerHP - dmg);
   popDamage('hero', dmg);
