@@ -14,6 +14,12 @@ function app() {
   return Game.screenEl;
 }
 
+/* Escape user-entered text (player names, etc.) before putting it in HTML. */
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function authMsg(m) { const el = document.getElementById('auth-msg'); if (el) el.textContent = m || ''; }
+
 /* Small shared top bar showing money + a home + mute button */
 function topBar(title, opts) {
   opts = opts || {};
@@ -34,13 +40,116 @@ function topBar(title, opts) {
 function showScreen(name, param) {
   Audio2.resume();
   switch (name) {
-    case 'title':   return renderTitle();
-    case 'map':     return renderMap();
-    case 'arena':   return renderArena(param);
-    case 'stats':   return renderStats();
-    case 'enemies': return renderEnemies();
-    default:        return renderTitle();
+    case 'auth':     return renderAuth();
+    case 'register': return renderRegister();
+    case 'forgot':   return renderForgot();
+    case 'title':    return renderTitle();
+    case 'map':      return renderMap();
+    case 'arena':    return renderArena(param);
+    case 'stats':    return renderStats();
+    case 'enemies':  return renderEnemies();
+    default:         return renderTitle();
   }
+}
+
+/* ================= LOGIN / PROFILES ================= */
+function renderAuth() {
+  Audio2.playMusic('menu');
+  const el = app(); el.className = 'screen screen-auth';
+  const profiles = Auth.list();
+  el.innerHTML = `
+    <div class="auth-wrap">
+      <div class="studio">By Jing &amp; Ash Games</div>
+      <h1 class="auth-logo">BACK STAB</h1>
+      <div class="auth-card">
+        <h2>Log in</h2>
+        ${profiles.length
+          ? `<div class="who">Who's playing?</div>
+             <div class="profile-chips">${profiles.map(n => `<button class="profile-chip" data-name="${escapeHtml(n)}">👤 ${escapeHtml(n)}</button>`).join('')}</div>`
+          : `<p class="auth-hint">Create a player to save your character across visits.</p>`}
+        <input id="auth-user" class="auth-input" placeholder="Player name" maxlength="16" autocomplete="off">
+        <input id="auth-pass" class="auth-input" type="password" placeholder="Password" autocomplete="off">
+        <div id="auth-msg" class="auth-msg"></div>
+        <button id="auth-login" class="wide-btn">Log In</button>
+        <div class="auth-links">
+          <button class="link-btn" data-nav="register">✨ Create new player</button>
+          <button class="link-btn" data-nav="forgot">Forgot password?</button>
+        </div>
+      </div>
+      <div class="auth-note">A local lock so everyone on this device keeps their own character. Saves stay in this browser.</div>
+    </div>`;
+  wireCommon(el);
+  const userIn = el.querySelector('#auth-user'), passIn = el.querySelector('#auth-pass');
+  el.querySelectorAll('.profile-chip').forEach(c => c.addEventListener('click', () => { userIn.value = c.dataset.name; passIn.focus(); authMsg(''); }));
+  async function doLogin() {
+    const r = await Auth.login(userIn.value, passIn.value);
+    if (!r.ok) { authMsg(r.error); Audio2.sfx.lose(); return; }
+    loadUserState(); Audio2.sfx.click(); showScreen('title');
+  }
+  el.querySelector('#auth-login').addEventListener('click', doLogin);
+  passIn.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+}
+
+function renderRegister() {
+  const el = app(); el.className = 'screen screen-auth';
+  el.innerHTML = `
+    <div class="auth-wrap">
+      <h1 class="auth-logo">BACK STAB</h1>
+      <div class="auth-card">
+        <h2>Create player</h2>
+        <input id="reg-user" class="auth-input" placeholder="Choose a player name" maxlength="16" autocomplete="off">
+        <input id="reg-pass" class="auth-input" type="password" placeholder="Choose a password" autocomplete="off">
+        <input id="reg-pass2" class="auth-input" type="password" placeholder="Type the password again" autocomplete="off">
+        <label class="auth-label">Secret question (to reset your password)</label>
+        <select id="reg-q" class="auth-input">${Auth.SECRET_QUESTIONS.map(q => `<option>${escapeHtml(q)}</option>`).join('')}</select>
+        <input id="reg-ans" class="auth-input" placeholder="Your secret answer" maxlength="40" autocomplete="off">
+        <div id="auth-msg" class="auth-msg"></div>
+        <button id="reg-go" class="wide-btn">Create &amp; Play</button>
+        <div class="auth-links"><button class="link-btn" data-nav="auth">‹ Back to log in</button></div>
+      </div>
+    </div>`;
+  wireCommon(el);
+  el.querySelector('#reg-go').addEventListener('click', async () => {
+    const u = el.querySelector('#reg-user').value, p = el.querySelector('#reg-pass').value, p2 = el.querySelector('#reg-pass2').value;
+    const q = el.querySelector('#reg-q').value, ans = el.querySelector('#reg-ans').value;
+    if (p !== p2) { authMsg('The two passwords do not match.'); return; }
+    const r = await Auth.register(u, p, q, ans);
+    if (!r.ok) { authMsg(r.error); Audio2.sfx.lose(); return; }
+    loadUserState(); Audio2.sfx.win(); showScreen('title');
+  });
+}
+
+function renderForgot() {
+  const el = app(); el.className = 'screen screen-auth';
+  el.innerHTML = `
+    <div class="auth-wrap">
+      <h1 class="auth-logo">BACK STAB</h1>
+      <div class="auth-card">
+        <h2>Reset password</h2>
+        <input id="fg-user" class="auth-input" placeholder="Your player name" maxlength="16" autocomplete="off">
+        <button id="fg-find" class="wide-btn ghost">Next ›</button>
+        <div id="fg-step2" class="hidden">
+          <div class="fg-q" id="fg-q"></div>
+          <input id="fg-ans" class="auth-input" placeholder="Your secret answer" maxlength="40" autocomplete="off">
+          <input id="fg-new" class="auth-input" type="password" placeholder="New password" autocomplete="off">
+          <button id="fg-reset" class="wide-btn">Reset &amp; Play</button>
+        </div>
+        <div id="auth-msg" class="auth-msg"></div>
+        <div class="auth-links"><button class="link-btn" data-nav="auth">‹ Back to log in</button></div>
+      </div>
+    </div>`;
+  wireCommon(el);
+  const userIn = el.querySelector('#fg-user'), step2 = el.querySelector('#fg-step2');
+  el.querySelector('#fg-find').addEventListener('click', () => {
+    const q = Auth.secretQuestion(userIn.value);
+    if (!q) { authMsg('No player with that name.'); return; }
+    el.querySelector('#fg-q').textContent = q; step2.classList.remove('hidden'); authMsg('');
+  });
+  el.querySelector('#fg-reset').addEventListener('click', async () => {
+    const r = await Auth.resetPassword(userIn.value, el.querySelector('#fg-ans').value, el.querySelector('#fg-new').value);
+    if (!r.ok) { authMsg(r.error); Audio2.sfx.lose(); return; }
+    loadUserState(); Audio2.sfx.win(); showScreen('title');
+  });
 }
 
 /* Wire up any element with data-nav / data-action after render */
@@ -87,16 +196,19 @@ function renderTitle() {
         <button class="hexbtn" data-nav="arena"><span>⚔️</span>Arena</button>
         <button class="hexbtn" data-nav="stats"><span>📊</span>Stats</button>
       </div>
+      <div class="who-bar">${Auth.currentName() ? `<span class="who-name">👤 ${escapeHtml(Auth.currentName())}</span><button class="link-btn" data-action="logout">Log out</button>` : ''}</div>
       <button class="link-reset" data-action="reset">New Game</button>
       <button class="btn-icon mute title-mute" data-action="mute">${STATE.muted ? '🔇' : '🔊'}</button>
       <div class="copyright">© Asher and Ren, 2026</div>
     </div>`;
   wireCommon(el);
   el.querySelector('[data-action="reset"]').addEventListener('click', () => {
-    if (confirm('Start a brand-new game? Your progress will be erased.')) {
+    if (confirm('Start a brand-new game for this player? This character\'s progress will be erased.')) {
       resetGame(); Audio2.sfx.click(); renderTitle();
     }
   });
+  const out = el.querySelector('[data-action="logout"]');
+  if (out) out.addEventListener('click', () => { Auth.logout(); Audio2.sfx.click(); showScreen('auth'); });
 }
 
 /* ================= MAP ================= */
