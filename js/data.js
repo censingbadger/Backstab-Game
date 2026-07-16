@@ -71,15 +71,33 @@ const BOSSES = {
    damage      = HP removed per landed hit
    durability  = swings before it needs repair
    repairCost  = money to fully repair
+   power       = optional special ability:
+                 reach    - longer swing range (spears/bow)
+                 sweep    - very wide arc, hits everything in front (scythes)
+                 double   - strikes twice (daggers)
+                 lifesteal- heals you for part of the damage dealt
+                 poison   - enemies keep taking damage over time
+                 stun     - briefly stuns enemies (maces)
+   Weapons can be UPGRADED at the shop Forge (+2 damage per level).
 */
-// durability = swings before it needs repair. Sized so a weapon lasts about
-// one full (minute-long) fight before you visit the shop to repair it.
 const WEAPONS = {
   old_knife:      { id:'old_knife',      name:'Old Knife',      damage:5,  durability:190, rarity:'C', price:0,   repairCost:18, art:'knife'  },
-  aluminum_sword: { id:'aluminum_sword', name:'Aluminum Sword', damage:8,  durability:180, rarity:'C', price:50,  repairCost:28, art:'sword'  },
-  wood_spear:     { id:'wood_spear',     name:'Spear',          damage:12, durability:110, rarity:'U', price:90,  repairCost:30, art:'spear'  },
-  reinforced_bow: { id:'reinforced_bow', name:'Reinforced Bow', damage:14, durability:145, rarity:'R', price:180, repairCost:50, art:'bow'    },
-  steel_katana:   { id:'steel_katana',   name:'Steel Katana',   damage:18, durability:240, rarity:'R', price:230, repairCost:70, art:'katana' },
+  knife:          { id:'knife',          name:'Knife',          damage:7,  durability:180, rarity:'C', price:40,  repairCost:22, art:'knife'  },
+  aluminum_sword: { id:'aluminum_sword', name:'Aluminum Sword', damage:9,  durability:180, rarity:'C', price:60,  repairCost:28, art:'sword'  },
+  cracked_dagger: { id:'cracked_dagger', name:'Cracked Dagger', damage:11, durability:90,  rarity:'U', price:80,  repairCost:26, art:'knife',  power:'double' },
+  rusty_katana:   { id:'rusty_katana',   name:'Rusty Katana',   damage:11, durability:150, rarity:'U', price:95,  repairCost:30, art:'katana' },
+  wood_spear:     { id:'wood_spear',     name:'Spear',          damage:12, durability:130, rarity:'U', price:90,  repairCost:30, art:'spear',  power:'reach' },
+  wooden_mace:    { id:'wooden_mace',    name:'Wooden Mace',    damage:15, durability:170, rarity:'U', price:120, repairCost:35, art:'sword',  power:'stun' },
+  metal_sword:    { id:'metal_sword',    name:'Metal Sword',    damage:14, durability:200, rarity:'U', price:140, repairCost:40, art:'sword'  },
+  reinforced_bow: { id:'reinforced_bow', name:'Reinforced Bow', damage:14, durability:145, rarity:'R', price:180, repairCost:50, art:'bow',    power:'reach' },
+  spiked_spear:   { id:'spiked_spear',   name:'Spiked Spear',   damage:18, durability:150, rarity:'R', price:210, repairCost:45, art:'spear',  power:'reach' },
+  steel_mace:     { id:'steel_mace',     name:'Steel Mace',     damage:19, durability:160, rarity:'R', price:230, repairCost:50, art:'sword',  power:'stun' },
+  steel_katana:   { id:'steel_katana',   name:'Steel Katana',   damage:18, durability:240, rarity:'R', price:250, repairCost:70, art:'katana' },
+  scythe:         { id:'scythe',         name:'Scythe',         damage:20, durability:160, rarity:'R', price:290, repairCost:60, art:'spear',  power:'sweep' },
+  reinforced_mace:{ id:'reinforced_mace',name:'Reinforced Mace',damage:23, durability:200, rarity:'E', price:360, repairCost:70, art:'sword',  power:'stun' },
+  double_dagger:  { id:'double_dagger',  name:'Double Dagger',  damage:13, durability:200, rarity:'E', price:420, repairCost:55, art:'knife',  power:'double' },
+  emerald_scythe: { id:'emerald_scythe', name:'Emerald Scythe', damage:26, durability:220, rarity:'E', price:560, repairCost:80, art:'spear',  power:'poison' },
+  pastors_blade:  { id:'pastors_blade',  name:"Pastor's Blade", damage:30, durability:240, rarity:'L', price:720, repairCost:100,art:'katana', power:'lifesteal' },
 };
 
 /* ---------- Items (used in battle) ----------

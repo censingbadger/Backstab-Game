@@ -382,47 +382,62 @@ function heroAttack() {
   const now = performance.now();
   const h = d.hero;
   if (now < h.attackReadyAt) return;
-  const w = WEAPONS[STATE.equippedWeapon];
-  let durab = STATE.weapons[STATE.equippedWeapon] || 0;
+  const wid = STATE.equippedWeapon;
+  let durab = STATE.weapons[wid] || 0;
   const bare = durab <= 0;
-  const speed = 480;
-  h.attackReadyAt = now + speed;
+  h.attackReadyAt = now + 480;
   h.swingUntil = now + 200;
-  if (!bare) { STATE.weapons[STATE.equippedWeapon] = durab - 1; }
-  const dmg = bare ? 2 : (w.damage + (STATE.dmgBonus || 0));   // + Power modifier
+  if (!bare) { STATE.weapons[wid] = durab - 1; }
+  const power = bare ? null : weaponPower(wid);
+  const dmg = bare ? 2 : (weaponDamage(wid) + (STATE.dmgBonus || 0));   // upgrades + Power modifier
+  const hits = power === 'double' ? 2 : 1;
+  let reach = 2.4, arc = Math.PI * 1.15;
+  if (power === 'reach') reach += 1.2;                 // spears/bow strike from further
+  if (power === 'sweep') { arc = Math.PI * 1.9; reach += 0.5; }   // scythes clear a wide arc
   Audio2.sfx.hit();
-
-  // Aim toward mouse (desktop) or facing (touch)
   updateHeroFacing();
-  // Wide, forgiving sweep: a broad arc across the path so it's easy to connect.
-  const reach = 2.4, arc = Math.PI * 1.15;
-  let hitAny = false;
+
+  let dealt = 0;
+  const applyPowerTo = e => { if (power === 'poison') poisonEnemy(e, now); if (power === 'stun') stunEnemy(e, now); };
+  const inArc = e => {
+    const a = Math.atan2(e.fy - h.fy, e.fx - h.fx);
+    let da = Math.abs(a - h.faceAngle); if (da > Math.PI) da = Math.PI * 2 - da;
+    return dist(h.fx, h.fy, e.fx, e.fy) <= reach + (e.r || 0.4) && da <= arc / 2;
+  };
   d.enemies.forEach(e => {
     if (e.dead) return;
-    const a = Math.atan2(e.fy - h.fy, e.fx - h.fx);
-    let da = Math.abs(a - h.faceAngle);
-    if (da > Math.PI) da = Math.PI * 2 - da;
-    if (dist(h.fx, h.fy, e.fx, e.fy) <= reach + e.r && da <= arc / 2) {
-      damageEnemy(e, dmg);
-      hitAny = true;
-    }
+    if (inArc(e)) { for (let k = 0; k < hits && !e.dead; k++) { damageEnemy(e, dmg); dealt += dmg; } applyPowerTo(e); }
   });
-  // hit boss too
   if (d.boss && !d.boss.dead) {
     const b = d.boss;
-    if (dist(h.fx, h.fy, b.fx, b.fy) <= reach + b.r) { damageEnemy(b, dmg); hitAny = true; }
+    if (dist(h.fx, h.fy, b.fx, b.fy) <= reach + b.r) { for (let k = 0; k < hits && !b.dead; k++) { damageEnemy(b, dmg); dealt += dmg; } applyPowerTo(b); }
   }
-  // chop grabber trees
   if (d.grabbers) d.grabbers.forEach(g => {
     if (g.dead) return;
     if (dist(h.fx, h.fy, g.x, g.y) <= reach + 0.6) {
-      g.hp -= dmg; g.hurtUntil = performance.now() + 160;
-      spawnFloatText(g.x, g.y - 0.3, '-' + dmg, '#8ff0a0');
+      g.hp -= dmg * hits; g.hurtUntil = now + 160;
+      spawnFloatText(g.x, g.y - 0.3, '-' + dmg * hits, '#8ff0a0');
       if (g.hp <= 0) { g.dead = true; Audio2.sfx.bighit(); spawnPuff(g.x, g.y); }
     }
   });
+  // lifesteal heals a little for the damage dealt
+  if (power === 'lifesteal' && dealt > 0) {
+    h.hp = Math.min(h.maxhp, h.hp + Math.min(0.5, dealt * 0.012));
+    spawnFloatText(h.fx, h.fy, '+life', '#8ff0a0'); updateDungeonHUD();
+  }
   spawnSwingFx(h);
   updateWeaponHUD();
+}
+
+/* weapon power helpers */
+function poisonEnemy(e, now) { e.poisonUntil = now + 3200; e.poisonNext = now + 400; e.poisonDmg = 2; }
+function stunEnemy(e, now) { e.stunUntil = now + 950; e.attackReadyAt = Math.max(e.attackReadyAt || 0, now + 1300); }
+function tickPoison(e, t) {
+  if (!e.poisonUntil || t >= e.poisonUntil) return;
+  if (t >= (e.poisonNext || 0)) {
+    e.poisonNext = t + 400;
+    if (!e.dead) { damageEnemy(e, e.poisonDmg || 2); spawnFloatText(e.fx, e.fy - 0.2, '-' + (e.poisonDmg || 2), '#57cc66'); }
+  }
 }
 
 function heroJump() {
@@ -693,7 +708,10 @@ function updateDungeon(dt, t) {
   /* --- enemies --- */
   d.enemies.forEach(e => {
     if (e.dead) return;
+    tickPoison(e, t);
+    if (e.dead) return;
     e.animT = (e.animT || 0) + dt * 8;
+    if (e.stunUntil && t < e.stunUntil) return;         // stunned: can't move or attack
     const dd = dist(e.fx, e.fy, h.fx, h.fy);
     e.facing = h.fx >= e.fx ? 1 : -1;
     if (t < e.windUntil) { /* winding up to strike, hold still */ }
@@ -710,9 +728,11 @@ function updateDungeon(dt, t) {
   /* --- boss --- */
   if (d.boss && !d.boss.dead) {
     const b = d.boss;
+    tickPoison(b, t);
     const dd = dist(b.fx, b.fy, h.fx, h.fy);
     b.facing = h.fx >= b.fx ? 1 : -1;
-    if (t < b.windUntil) {}
+    if (b.stunUntil && t < b.stunUntil) { /* stunned */ }
+    else if (t < b.windUntil) {}
     else if (dd > 1.5) { const ux = (h.fx - b.fx) / dd, uy = (h.fy - b.fy) / dd; moveEntity(b, ux * b.speed * dt, uy * b.speed * dt); }
     else if (t >= b.attackReadyAt) {
       b.windUntil = t + 520; b.attackReadyAt = t + 1700;
@@ -1300,9 +1320,14 @@ function winDungeon() {
   recordDefeat(bd.id);
   gainXp(25);
   clearRegion(d.regionId);              // unlock the next region
+  // the reward modifier is only offered the FIRST time you clear a region
+  if (!STATE.rewardedRegions) STATE.rewardedRegions = [];
+  const firstClear = !STATE.rewardedRegions.includes(d.regionId);
+  let mods = null;
+  if (firstClear) { STATE.rewardedRegions.push(d.regionId); mods = rollModifiers(3); }
   saveGame();
   Audio2.sfx.win();
-  showDungeonResult(true, bonus, rollModifiers(3));
+  showDungeonResult(true, bonus, mods);
 }
 function loseDungeon() {
   const d = DUNGEON; if (d.over) return;
@@ -1326,16 +1351,16 @@ function showDungeonResult(won, bonus, mods) {
       ${won ? `
         <p>You reached the end of the ${d.theme.name} and felled <b>${BOSSES[d.bossId || d.theme.boss].name}</b>!</p>
         <p class="reward">+${bonus} ${coinSVG()}</p>
-        <p class="unlock">🗺️ New region unlocked!</p>
-        <div class="mod-pick">
+        <p class="unlock">🗺️ Region cleared!</p>
+        ${(mods && mods.length) ? `<div class="mod-pick">
           <div class="mod-title">✨ Choose a reward:</div>
-          <div class="mod-row">${(mods || []).map(m => `<button class="mod-btn" data-mod="${m.id}"><span class="mod-ico">${m.icon}</span><b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div>
-        </div>
+          <div class="mod-row">${mods.map(m => `<button class="mod-btn" data-mod="${m.id}"><span class="mod-ico">${m.icon}</span><b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div>
+        </div>` : `<p class="tip">You've already claimed this region's reward.</p>`}
       ` : `
         <p>You didn't reach the end this time.</p>
         <p class="tip">Tip: keep moving, dodge, jump over traps, grab hearts, and bring healing food.</p>
       `}
-      <div class="result-btns ${won ? 'hidden' : ''}" id="dun-navbtns">
+      <div class="result-btns ${(won && mods && mods.length) ? 'hidden' : ''}" id="dun-navbtns">
         <button class="wide-btn" id="dun-retry">↻ Try again</button>
         <button class="wide-btn ghost" id="dun-home">⌂ Map</button>
       </div>
