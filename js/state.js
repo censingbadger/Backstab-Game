@@ -24,6 +24,8 @@ function newGame() {
     items: { apple: 2 },
     // enemies captured with the Cage
     captured: [],
+    // permanent reward modifiers earned by clearing dungeons
+    dmgBonus: 0, armorBonus: 0, speedBonus: 0, modifiers: [],
     // which map regions are unlocked / cleared
     unlocked: ['dead_cliffs'],
     cleared: [],

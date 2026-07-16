@@ -7,6 +7,21 @@
 
 const ISO = { TW: 64, TH: 32 };          // tile width / height (screen px)
 const JUMP_DUR = 520;                     // hop duration (ms)
+
+/* Permanent reward modifiers — a random one is offered at the end of a level. */
+const MODIFIERS = [
+  { id: 'vitality', name: 'Vitality', icon: '❤️', desc: '+1 max heart', apply: () => { STATE.maxHearts += 1; } },
+  { id: 'power', name: 'Power', icon: '💪', desc: '+3 weapon damage', apply: () => { STATE.dmgBonus = (STATE.dmgBonus || 0) + 3; } },
+  { id: 'ironskin', name: 'Iron Skin', icon: '🛡️', desc: 'take 12% less damage', apply: () => { STATE.armorBonus = Math.min(0.5, (STATE.armorBonus || 0) + 0.12); } },
+  { id: 'riches', name: 'Riches', icon: '💰', desc: '+75 coins', apply: () => { earn(75); } },
+  { id: 'swift', name: 'Swiftness', icon: '🏃', desc: 'move faster', apply: () => { STATE.speedBonus = (STATE.speedBonus || 0) + 0.7; } },
+  { id: 'vigor', name: 'Vigor', icon: '✨', desc: '+½ max heart', apply: () => { STATE.maxHearts += 0.5; } },
+];
+function rollModifiers(n) {
+  const pool = MODIFIERS.slice(), out = [];
+  while (out.length < n && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  return out;
+}
 const DUN = {
   KILLS_TARGET: 50,
   MAX_ENEMIES: 9,                         // concurrent swarm size
@@ -177,7 +192,7 @@ function startDungeon(regionId) {
     hard: !!theme.hard,
     hero,
     enemies: [], drops: [], fx: [],
-    kills: 0, spawned: 0, target: DUN.KILLS_TARGET,
+    kills: 0, spawned: 0, target: DUN.KILLS_TARGET, progress: 0,
     boss: null, bossIntro: false,
     over: false, outcome: null,
     cam: { x: 0, y: 0 },
@@ -245,9 +260,9 @@ function buildDungeonDOM() {
         <button class="btn-icon" id="dun-quit" title="Leave">‹</button>
         <div id="dun-hearts" class="dun-hearts"></div>
         <div class="dun-obj">
-          <span class="obj-label">Enemies defeated</span>
+          <span class="obj-label">Journey to the boss</span>
           <div class="obj-bar"><div id="obj-fill" class="obj-fill"></div></div>
-          <span id="obj-count" class="obj-count">0 / ${DUN.KILLS_TARGET}</span>
+          <span id="obj-count" class="obj-count">Checkpoint 0 / 4</span>
         </div>
       </div>
       <div id="boss-bar" class="boss-bar hidden">
@@ -374,7 +389,7 @@ function heroAttack() {
   h.attackReadyAt = now + speed;
   h.swingUntil = now + 200;
   if (!bare) { STATE.weapons[STATE.equippedWeapon] = durab - 1; }
-  const dmg = bare ? 2 : w.damage;
+  const dmg = bare ? 2 : (w.damage + (STATE.dmgBonus || 0));   // + Power modifier
   Audio2.sfx.hit();
 
   // Aim toward mouse (desktop) or facing (touch)
@@ -491,7 +506,7 @@ function killEnemy(e) {
   if (rand(d.kills * 5.3) < 0.24) d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
   spawnPuff(e.fx, e.fy);
   updateDungeonHUD();
-  if (d.kills >= d.target && !d.boss && !d.bossIntro) summonBoss();
+  // boss is triggered by reaching the end of the path (see updateDungeon), not kills
 }
 
 function summonBoss() {
@@ -551,8 +566,8 @@ function spawnEnemy() {
 function makeDungeonEnemy(id, fx, fy, seed) {
   const d = DUNGEON;
   const f = ENEMIES[id] || ENEMIES.zombie;
-  // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 across a hard run
-  const ramp = d.hard ? 1.35 + Math.min(0.65, d.kills / d.target * 0.65) : 1;
+  // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
+  const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
   const hp = Math.max(4, Math.round(f.hearts * 6 * ramp));
   const speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
   return {
@@ -620,7 +635,7 @@ function updateDungeon(dt, t) {
   } else h.sinking = false;
 
   const dodging = t < h.dodgeUntil;
-  let spd = (dodging ? 8.5 : 4.2) * (inQuick ? 0.3 : 1);
+  let spd = (dodging ? 8.5 : (4.2 + (STATE.speedBonus || 0))) * (inQuick ? 0.3 : 1);   // + Swift modifier
   h.moving = !!(mvx || mvy) && !rooted;
   if (h.moving) {
     h.animT += dt * 10;
@@ -645,22 +660,32 @@ function updateDungeon(dt, t) {
   /* --- attack while moving: holding attack keeps swinging (cooldown-gated) --- */
   if (d.attackHeld || d.mouse.down || d.keys['k']) heroAttack();
 
-  /* --- checkpoints along the trail --- */
+  /* --- checkpoints along the trail: +10 coins, small heal --- */
   d.checkpoints.forEach(cp => {
     if (!cp.reached && dist(cp.x, cp.y, h.fx, h.fy) < 2.6) {
       cp.reached = true;
-      banner('CHECKPOINT ' + cp.idx + ' / ' + d.checkpoints.length, 1300);
-      Audio2.sfx.win();
+      earn(10);
+      banner('CHECKPOINT ' + cp.idx + ' / ' + d.checkpoints.length + '  +10 💰', 1400);
+      Audio2.sfx.coin();
+      spawnFloatText(h.fx, h.fy, '+10 💰', '#ffcf3f');
       h.hp = Math.min(h.maxhp, h.hp + 1);   // small reward heal
       updateDungeonHUD();
     }
   });
 
+  /* --- geographic progression: reaching the end summons the boss --- */
+  {
+    const pi = nearestSampleIndex(h.fx, h.fy);
+    d.progress = clamp(d.path.samples[pi].cum / d.path.length, 0, 1);
+    if (!d.bossIntro && !d.boss && d.progress >= 0.955) summonBoss();
+  }
+
   /* --- keep the swarm populated (until boss), ramping up with kills --- */
+  // difficulty scales with geographic progress (harder the further you go)
   const capMax = d.hard ? 13 : DUN.MAX_ENEMIES;
-  const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.floor(d.kills / (d.hard ? 5 : 7)));
-  const spawnGap = Math.max(d.hard ? 0.34 : 0.55, (d.hard ? 0.9 : 1.1) - d.kills * 0.012);
-  if (!d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap && d.spawned < d.target + 6) {
+  const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.round((d.progress || 0) * (d.hard ? 8 : 5)));
+  const spawnGap = Math.max(d.hard ? 0.34 : 0.55, (d.hard ? 0.95 : 1.15) - (d.progress || 0) * 0.6);
+  if (!d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap) {
     d.spawnTimer -= dt;
     if (d.spawnTimer <= 0) { spawnEnemy(); d.spawnTimer = spawnGap; }
   }
@@ -735,6 +760,7 @@ function bossSlam(b) {
 
 function hurtHero(amount) {
   const d = DUNGEON, h = d.hero;
+  amount *= (1 - (STATE.armorBonus || 0));   // Iron Skin modifier
   // The shield soaks up part of the hit and loses durability each time.
   const block = absorbWithShield();
   if (block > 0) { amount = amount * (1 - block); h.shieldFlash = performance.now() + 220; }
@@ -1225,8 +1251,9 @@ function updateDungeonHUD() {
   if (hearts) hearts.innerHTML = renderHearts(d.hero.hp, d.hero.maxhp);
   const fill = document.getElementById('obj-fill');
   const cnt = document.getElementById('obj-count');
-  if (fill) fill.style.width = clamp(d.kills / d.target * 100, 0, 100) + '%';
-  if (cnt) cnt.textContent = Math.min(d.kills, d.target) + ' / ' + d.target;
+  const reached = d.checkpoints.filter(c => c.reached).length;
+  if (fill) fill.style.width = clamp((d.progress || 0) * 100, 0, 100) + '%';
+  if (cnt) cnt.textContent = 'Checkpoint ' + reached + ' / ' + d.checkpoints.length;
   updateWeaponHUD();
 }
 function updateWeaponHUD() {
@@ -1275,7 +1302,7 @@ function winDungeon() {
   clearRegion(d.regionId);              // unlock the next region
   saveGame();
   Audio2.sfx.win();
-  showDungeonResult(true, bonus);
+  showDungeonResult(true, bonus, rollModifiers(3));
 }
 function loseDungeon() {
   const d = DUNGEON; if (d.over) return;
@@ -1289,7 +1316,7 @@ function exitDungeon() {
   stopDungeon();
   showScreen('map');
 }
-function showDungeonResult(won, bonus) {
+function showDungeonResult(won, bonus, mods) {
   const d = DUNGEON;
   const overlay = document.createElement('div');
   overlay.className = 'result-overlay';
@@ -1297,14 +1324,18 @@ function showDungeonResult(won, bonus) {
     <div class="result-card ${won ? 'win' : 'lose'}">
       <h2>${won ? (d.theme.name + ' CLEARED!').toUpperCase() : 'YOU FELL'}</h2>
       ${won ? `
-        <p>You battled through the ${d.theme.name} and felled <b>${BOSSES[d.bossId || d.theme.boss].name}</b>!</p>
+        <p>You reached the end of the ${d.theme.name} and felled <b>${BOSSES[d.bossId || d.theme.boss].name}</b>!</p>
         <p class="reward">+${bonus} ${coinSVG()}</p>
         <p class="unlock">🗺️ New region unlocked!</p>
+        <div class="mod-pick">
+          <div class="mod-title">✨ Choose a reward:</div>
+          <div class="mod-row">${(mods || []).map(m => `<button class="mod-btn" data-mod="${m.id}"><span class="mod-ico">${m.icon}</span><b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div>
+        </div>
       ` : `
-        <p>You were overwhelmed after <b>${d.kills}</b> kills.</p>
-        <p class="tip">Tip: keep moving, dodge the swarm, grab hearts, and bring healing food.</p>
+        <p>You didn't reach the end this time.</p>
+        <p class="tip">Tip: keep moving, dodge, jump over traps, grab hearts, and bring healing food.</p>
       `}
-      <div class="result-btns">
+      <div class="result-btns ${won ? 'hidden' : ''}" id="dun-navbtns">
         <button class="wide-btn" id="dun-retry">↻ Try again</button>
         <button class="wide-btn ghost" id="dun-home">⌂ Map</button>
       </div>
@@ -1314,4 +1345,18 @@ function showDungeonResult(won, bonus) {
   const region = d.regionId;
   overlay.querySelector('#dun-retry').addEventListener('click', () => { Audio2.sfx.click(); stopDungeon(); startDungeon(region); });
   overlay.querySelector('#dun-home').addEventListener('click', () => { Audio2.sfx.click(); stopDungeon(); showScreen('map'); });
+  if (won && mods && mods.length) {
+    overlay.querySelectorAll('.mod-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const m = MODIFIERS.find(x => x.id === btn.dataset.mod);
+        m.apply();
+        if (!STATE.modifiers) STATE.modifiers = [];
+        STATE.modifiers.push(m.id);
+        saveGame();
+        Audio2.sfx.win();
+        overlay.querySelector('.mod-pick').innerHTML = `<div class="mod-gained">✨ Gained <b>${m.name}</b> — ${m.desc}!</div>`;
+        overlay.querySelector('#dun-navbtns').classList.remove('hidden');
+      });
+    });
+  }
 }

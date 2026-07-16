@@ -345,7 +345,21 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .unlock{ color:var(--green); font-weight:800; }
 .tip{ color:var(--muted); font-size:13px; }
 .result-btns{ display:flex; gap:10px; margin-top:16px; }
+.result-btns.hidden{ display:none; }
 .result-btns .wide-btn{ margin-top:0; }
+
+/* end-of-level reward modifier picker */
+.mod-pick{ margin-top:14px; }
+.mod-title{ font-weight:800; color:var(--gold); margin-bottom:8px; }
+.mod-row{ display:flex; gap:8px; justify-content:center; }
+.mod-btn{ flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:12px 6px; border-radius:14px;
+  background:linear-gradient(180deg,var(--panel-2),var(--panel)); border:2px solid var(--panel-line); transition:transform .1s, border-color .1s; }
+.mod-btn:hover{ transform:translateY(-3px); border-color:var(--gold); }
+.mod-btn:active{ transform:scale(.96); }
+.mod-ico{ font-size:26px; }
+.mod-btn b{ font-size:13px; }
+.mod-btn small{ font-size:11px; color:var(--muted); line-height:1.2; }
+.mod-gained{ margin-top:6px; font-weight:800; color:var(--green); }
 
 /* ---------------- Dead Cliffs Dungeon (isometric crawler) ---------------- */
 .screen-dungeon{ position:fixed; inset:0; width:100vw; height:100vh; overflow:hidden; background:#0c0818; }
