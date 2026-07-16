@@ -13,13 +13,14 @@ const JUMP_DUR = 520;                     // hop duration (ms)
    see in the roll. */
 const MODIFIERS = [
   { id: 'riches',    name: 'Riches',      icon: '💰', rarity: 'C', desc: '+75 coins',            apply: () => { earn(75); } },
-  { id: 'vigor',     name: 'Vigor',       icon: '✨', rarity: 'C', desc: '+½ max heart',         apply: () => { STATE.maxHearts += 0.5; } },
-  { id: 'vitality',  name: 'Vitality',    icon: '❤️', rarity: 'U', desc: '+1 max heart',         apply: () => { STATE.maxHearts += 1; } },
   { id: 'power',     name: 'Power',       icon: '💪', rarity: 'U', desc: '+3 weapon damage',     apply: () => { STATE.dmgBonus = (STATE.dmgBonus || 0) + 3; } },
   { id: 'swift',     name: 'Swiftness',   icon: '🏃', rarity: 'U', desc: 'move faster',          apply: () => { STATE.speedBonus = (STATE.speedBonus || 0) + 0.7; } },
   { id: 'fortune',   name: 'Fortune',     icon: '🍀', rarity: 'U', desc: '+140 coins',           apply: () => { earn(140); } },
   { id: 'ironskin',  name: 'Iron Skin',   icon: '🛡️', rarity: 'R', desc: 'take 12% less damage',  apply: () => { STATE.armorBonus = Math.min(0.5, (STATE.armorBonus || 0) + 0.12); } },
   { id: 'berserk',   name: 'Berserker',   icon: '🔥', rarity: 'R', desc: '+5 weapon damage',     apply: () => { STATE.dmgBonus = (STATE.dmgBonus || 0) + 5; } },
+  // Max-heart upgrades are the rarest, hard-won prizes — you can only grow your
+  // health by claiming one of these at the end of a level.
+  { id: 'vitality',  name: 'Vitality',    icon: '❤️', rarity: 'R', desc: '+1 max heart',         apply: () => { STATE.maxHearts += 1; } },
   { id: 'bulwark',   name: 'Bulwark',     icon: '🧱', rarity: 'E', desc: 'take 18% less damage',  apply: () => { STATE.armorBonus = Math.min(0.55, (STATE.armorBonus || 0) + 0.18); } },
   { id: 'giantheart',name: 'Giant Heart', icon: '💖', rarity: 'L', desc: '+2 max hearts',        apply: () => { STATE.maxHearts += 2; } },
 ];
@@ -313,9 +314,9 @@ function startDungeon(regionId) {
   const hero = {
     fx: WP[0][0], fy: WP[0][1], r: 0.42,
     facing: 1, faceAngle: Math.PI / 2,      // faceAngle in world radians
-    // A dungeon gauntlet needs a big health bar (Minecraft-Dungeons style),
-    // so the hero gets a much larger pool than a 1-on-1 arena fight.
-    hp: STATE.maxHearts + 5, maxhp: STATE.maxHearts + 5, hurtInvulnUntil: 0,
+    // The hero fights on exactly their max hearts — every heart counts, so the
+    // gauntlets stay tense. Extra hearts are earned as rare end-of-level rewards.
+    hp: STATE.maxHearts, maxhp: STATE.maxHearts, hurtInvulnUntil: 0,
     attackReadyAt: 0, dodgeUntil: 0, dodgeReadyAt: 0,
     hurtUntil: 0, swingUntil: 0, moving: false, animT: 0,
     jumpUntil: 0, jumpReadyAt: 0, jumpZ: 0, rootedUntil: 0, sinkUntil: 0, sinkLevel: 0, submerged: false,
@@ -412,7 +413,7 @@ function startTempleDungeon(regionId, theme) {
   const hero = {
     fx: start.cx - start.hw * 0.5, fy: start.cy, r: 0.42,
     facing: 1, faceAngle: 0,
-    hp: STATE.maxHearts + 5, maxhp: STATE.maxHearts + 5, hurtInvulnUntil: 0,
+    hp: STATE.maxHearts, maxhp: STATE.maxHearts, hurtInvulnUntil: 0,
     attackReadyAt: 0, dodgeUntil: 0, dodgeReadyAt: 0,
     hurtUntil: 0, swingUntil: 0, moving: false, animT: 0,
     jumpUntil: 0, jumpReadyAt: 0, jumpZ: 0, rootedUntil: 0, sinkUntil: 0,
@@ -467,10 +468,10 @@ function activateChamber(c, t) {
   const d = DUNGEON;
   d.activeIndex = c.index; c.active = true;
   if (c.boss) { summonBossChamber(); return; }
-  const count = 3 + c.index * 2;
+  const count = 5 + c.index * 3;   // a denser horde guards every chamber gate
   for (let k = 0; k < count; k++) spawnInChamber(c, k);
   c.spawned = true;
-  if (c.index > 0) banner('CHAMBER ' + (c.index + 1) + ' — defeat the enemies!', 1500);
+  if (c.index > 0) banner('⚔️ CHAMBER GATE ' + (c.index + 1) + ' — defeat the horde!', 1600);
 }
 
 function spawnInChamber(c, k) {
@@ -924,6 +925,32 @@ function spawnEnemy() {
   return false;
 }
 
+/* A checkpoint GATE: dump a whole horde of enemies around the checkpoint at once
+   (bypassing the normal trickle cap) so each gate is an intense stand-and-fight
+   gauntlet. Later gates are bigger; hard regions pile on even more. */
+function spawnGauntlet(cp) {
+  const d = DUNGEON;
+  const n = (d.hard ? 9 : 6) + cp.idx * 2;
+  let placed = 0;
+  for (let k = 0; k < n; k++) {
+    for (let tries = 0; tries < 26; tries++) {
+      const ang = rand(cp.idx * 13.7 + k * 2.9 + tries) * Math.PI * 2;
+      const rr = 2.4 + rand(cp.idx + k + tries * 1.3) * 3.6;
+      const fx = clamp(cp.x + Math.cos(ang) * rr, 3.5, d.W - 3.5);
+      const fy = clamp(cp.y + Math.sin(ang) * rr, 3.5, d.H - 3.5);
+      if (d.tiles[Math.floor(fy)][Math.floor(fx)] !== 'ground') continue;
+      if (dist(fx, fy, d.hero.fx, d.hero.fy) < 1.7) continue;   // never spawn on top of the hero
+      const pool = d.theme.enemies;
+      const id = pool[Math.floor(rand(cp.idx * 7.1 + k * 3.3 + tries) * pool.length)];
+      const e = makeDungeonEnemy(id, fx, fy, d.spawned + k * 2 + tries);
+      e.gate = true;
+      d.enemies.push(e); d.spawned++; placed++;
+      break;
+    }
+  }
+  if (placed) Audio2.sfx.crowd();
+}
+
 /* Build a swarm enemy from a roster id, scaling its card stats for melee.
    On "hard" themes enemies are tougher and keep getting tougher the further
    along you are (by kill count). */
@@ -932,10 +959,10 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   const f = ENEMIES[id] || ENEMIES.zombie;
   // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
   const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
-  let hp = Math.max(4, Math.round(f.hearts * 6 * ramp));
+  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp));           // tougher to cut down
   let speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
   let attack = f.attack, reward = f.reward || 1, r = 0.4;
-  let contact = (f.attack >= 3 ? 0.75 : 0.5) * (d.hard ? 1.4 : 1);   // heavier hitters do more
+  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1);  // heavier hitters do more, and every hit stings on 5 hearts
   // Elite (Minecraft-Dungeons "enchanted") — an occasional tougher, glowing
   // variant worth a lot more loot. Never on the opening spawns.
   const elite = (d.spawned > 2) && rand(seed * 3.7 + 11) < (d.hard ? 0.15 : 0.09);
@@ -1040,17 +1067,27 @@ function updateDungeon(dt, t) {
       if (h.hp <= 0) return loseDungeon();
     }
   }
-  // secret portal: touch it to open a gauntlet corridor to the Key
+  // secret portal: touch it and you're PULLED DOWN into an underground corridor —
+  // a long, dense gauntlet you must cut through to reach the Key to the Sandcastle
   if (d.secret && !d.secret.found && submerged && dist(d.secret.x, d.secret.y, h.fx, h.fy) < 1.5) {
     d.secret.found = true;
-    banner('✨ The portal opens — fight through to the Key!', 2800);
+    banner('⬇️ You are pulled into an underground corridor — cut through the gauntlet to the Key!', 3200);
     Audio2.sfx.lose();   // ominous
+    h.fx = d.secret.x; h.fy = d.secret.y;                 // transported to the corridor mouth
+    h.hp = Math.min(h.maxhp, h.hp + 1);                   // a breath before the onslaught
+    // pack the whole corridor with a tough, layered horde (a couple per station)
     if (d.corridor) d.corridor.spawns.forEach((sp, i) => {
-      const pool = d.theme.enemies, id = pool[Math.floor(rand(sp.x * 3.1 + i * 7.7) * pool.length)];
-      const e = makeDungeonEnemy(id, sp.x, sp.y, 500 + i * 3);
-      e.hp = e.maxhp = Math.round(e.maxhp * 1.35);   // a tougher gauntlet
-      d.enemies.push(e);
+      const pool = d.theme.enemies;
+      for (let j = 0; j < 2; j++) {
+        const id = pool[Math.floor(rand(sp.x * 3.1 + i * 7.7 + j * 2.9) * pool.length)];
+        const ox = (rand(i * 4.1 + j) - 0.5) * 1.1, oy = (rand(i * 2.7 + j * 1.9) - 0.5) * 1.1;
+        const e = makeDungeonEnemy(id, sp.x + ox, sp.y + oy, 500 + i * 5 + j);
+        e.hp = e.maxhp = Math.round(e.maxhp * 1.5);        // an underground gauntlet is brutal
+        e.gate = true;
+        d.enemies.push(e);
+      }
     });
+    updateDungeonHUD();
   }
   // reach the Key at the far end of the corridor to unlock the Sandcastle
   if (d.key && !d.key.taken && d.secret && d.secret.found && dist(d.key.x, d.key.y, h.fx, h.fy) < 1.3) {
@@ -1091,15 +1128,17 @@ function updateDungeon(dt, t) {
   /* --- Toxic Temple: chamber-clear progression (gates, artifacts, boss) --- */
   if (d.chamberMode) updateChambers(dt, t);
 
-  /* --- checkpoints along the trail: +10 coins, small heal --- */
+  /* --- checkpoint GATES along the trail: reaching one heals & pays a little,
+     then throws a horde of enemies at you to fight through before you press on --- */
   if (!d.chamberMode) d.checkpoints.forEach(cp => {
     if (!cp.reached && dist(cp.x, cp.y, h.fx, h.fy) < 2.6) {
       cp.reached = true;
       earn(10);
-      banner('CHECKPOINT ' + cp.idx + ' / ' + d.checkpoints.length + '  +10 💰', 1400);
+      banner('⚔️ GATE ' + cp.idx + ' / ' + d.checkpoints.length + ' — fight through the horde!', 1900);
       Audio2.sfx.coin();
       spawnFloatText(h.fx, h.fy, '+10 💰', '#ffcf3f');
-      h.hp = Math.min(h.maxhp, h.hp + 1);   // small reward heal
+      h.hp = Math.min(h.maxhp, h.hp + 1);   // small reward heal before the fight
+      spawnGauntlet(cp);
       updateDungeonHUD();
     }
   });
