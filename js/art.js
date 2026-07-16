@@ -301,6 +301,22 @@ function charBody(art, p) {
         <ellipse cx="44" cy="47" rx="3" ry="2.6" fill="#ff3b5c"/>
         <ellipse cx="56" cy="47" rx="3" ry="2.6" fill="#ff3b5c"/>`;
 
+    case 'scarecrow':
+      return `${shadow}
+        <rect x="46" y="58" width="8" height="44" fill="#6a4a2a"/>
+        <rect x="26" y="62" width="48" height="6" rx="3" fill="#6a4a2a"/>
+        <path d="M28 66 l-9 5 M28 70 l-9 1 M72 66 l9 5 M72 70 l9 1" stroke="#d9b24a" stroke-width="2.4"/>
+        <rect x="38" y="54" width="24" height="34" rx="8" fill="${p.cloth}"/>
+        <path d="M42 88 l-4 10 M50 90 l0 10 M58 88 l4 10" stroke="#d9b24a" stroke-width="2.4"/>
+        <path d="M40 60 h20 M40 66 h20" stroke="#5a3a1a" stroke-width="1.4" opacity="0.5"/>
+        <circle cx="50" cy="40" r="16" fill="${p.skin}"/>
+        <path d="M40 44 h20" stroke="#5a3a1a" stroke-width="1.6" stroke-dasharray="2 2"/>
+        <path d="M42 38 l6 5 M48 38 l-6 5" stroke="#2a1a08" stroke-width="2.6"/>
+        <path d="M58 38 l-6 5 M52 38 l6 5" stroke="#2a1a08" stroke-width="2.6"/>
+        <path d="M40 30 l-6 -5 M60 30 l6 -5 M50 26 l0 -7 M45 27 l-3 -6 M55 27 l3 -6" stroke="#d9b24a" stroke-width="2.4"/>
+        <path d="M32 30 q18 -12 36 0 q-4 -4 -18 -4 q-14 0 -18 4Z" fill="#5a4020"/>
+        <path d="M40 30 q10 -20 20 0Z" fill="#4a3418"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>
