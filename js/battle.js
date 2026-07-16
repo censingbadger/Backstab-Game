@@ -116,7 +116,7 @@ function buildBattleDOM() {
     <div class="bat-hud">
       <div class="bat-top">
         <div class="fighter-hud left">
-          <div class="hud-name">YOU <span class="lvl">Lv ${STATE.level}</span></div>
+          <div class="hud-name">YOU <span class="lvl">Lv ${STATE.level}</span> <span class="lives" id="hlives">${(STATE.extraLives || 0) > 0 ? '🌟×' + STATE.extraLives : ''}</span></div>
           <div id="php" class="hud-hearts">${renderHearts(b.hero.hp / HP_PER_HEART, STATE.maxHearts)}</div>
         </div>
         <div id="combo" class="combo-text"></div>
@@ -953,6 +953,7 @@ function drawHazardB(ctx, cw, ch, hz, t) {
 function updateBattleHUD() {
   const b = BATTLE; if (!b) return;
   const php = document.getElementById('php'), ehp = document.getElementById('ehp');
+  const hl = document.getElementById('hlives'); if (hl) hl.textContent = (STATE.extraLives || 0) > 0 ? '🌟×' + STATE.extraLives : '';
   if (php) php.innerHTML = renderHearts(b.hero.hp / HP_PER_HEART, STATE.maxHearts);
   if (ehp) ehp.innerHTML = renderHearts(b.enemy.hp / HP_PER_HEART, b.fighter.hearts);
   const sp = document.getElementById('spfill'); if (sp) sp.style.width = b.hero.special + '%';
@@ -977,14 +978,24 @@ function winBattle(captured) {
   const reward = Math.max(1, Math.round(f.reward * mult));
   earn(reward); STATE.wins++; recordDefeat(f.id);
   const leveled = gainXp(b.isBoss ? 15 : 5 + Math.round(f.reward / 3));
+  const gotLife = (b.isBoss && !captured) ? maybeGrantExtraLife() : false;   // rare Legendary boss boon
   saveGame(); Audio2.sfx.win(); Audio2.sfx.crowd();
-  showBattleResult(true, { name: f.name, reward, leveled, captured, favor: Math.round(b.favor) });
+  showBattleResult(true, { name: f.name, reward, leveled, captured, favor: Math.round(b.favor), gotLife });
 }
+// 0 hearts = death. An Extra Life cheats it; otherwise GAME OVER, back to start.
 function loseBattle() {
   const b = BATTLE; if (b.over) return;
+  if ((STATE.extraLives || 0) > 0) return reviveBattle();
   b.over = true; b.outcome = 'lose'; endBattleCleanup();
   STATE.losses++; saveGame(); Audio2.sfx.lose();
-  showBattleResult(false, { name: b.fighter.name });
+  showGameOverOverlay(() => { BATTLE = null; showScreen('title'); });
+}
+function reviveBattle() {
+  const b = BATTLE, h = b.hero, now = performance.now();
+  STATE.extraLives = Math.max(0, (STATE.extraLives || 0) - 1); saveGame();
+  h.hp = h.maxhp; h.hurtInvuln = now + 2000; h.hurtUntil = now;
+  flashB('🌟 1-UP! An Extra Life saved you!');
+  Audio2.sfx.win(); updateBattleHUD();
 }
 function exitBattle() { endBattleCleanup(); BATTLE = null; showScreen('arena'); }
 function showBattleResult(won, data) {
@@ -998,6 +1009,7 @@ function showBattleResult(won, data) {
         <p>You beat <b>${data.name}</b>!</p>
         <p class="reward">+${data.reward} ${coinSVG()} <span class="crowd-bonus">(crowd ${data.favor}%)</span></p>
         ${data.leveled ? `<p class="levelup">⭐ LEVEL UP! Now level ${STATE.level}</p>` : ''}
+        ${data.gotLife ? `<p class="extralife">🌟 LEGENDARY BOON — <b>EXTRA LIFE!</b> (you now have ${STATE.extraLives})</p>` : ''}
       ` : `
         <p>${data.name} got the better of you.</p>
         <p class="tip">Tip: move, jump over strikes, block, and chain attacks into combos!</p>

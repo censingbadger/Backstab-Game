@@ -52,6 +52,35 @@ function showScreen(name, param) {
   }
 }
 
+/* ================= DEATH & EXTRA LIVES ================= */
+// A dramatic full-screen GAME OVER. There is no retry — you go back to the start.
+// `onBack` cleans up the current mode and returns to the title screen.
+function showGameOverOverlay(onBack) {
+  const overlay = document.createElement('div');
+  overlay.className = 'result-overlay';
+  overlay.innerHTML = `
+    <div class="result-card lose gameover">
+      <h2>💀 GAME OVER</h2>
+      <p>You ran out of hearts.</p>
+      <p class="tip">Only a rare Legendary Extra Life — sometimes won at the end of a boss fight — can save you from death. Back to the start you go.</p>
+      <div class="result-btns"><button class="wide-btn" id="go-start">⌂ Back to Start</button></div>
+    </div>`;
+  app().appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('show'));
+  overlay.querySelector('#go-start').addEventListener('click', () => { Audio2.sfx.click(); onBack(); });
+}
+
+// Extra lives are the rarest prize in the game: a small chance at the END of a
+// boss fight to win a Legendary Extra Life. Deliberately transcendently rare.
+function maybeGrantExtraLife() {
+  if (Math.random() < 0.035) {
+    STATE.extraLives = (STATE.extraLives || 0) + 1;
+    saveGame();
+    return true;
+  }
+  return false;
+}
+
 /* ================= LOGIN / PROFILES ================= */
 function renderAuth() {
   Audio2.playMusic('menu');
