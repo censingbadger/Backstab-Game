@@ -277,7 +277,7 @@ function renderInventory() {
     const broken = dur <= 0;
     cells += `<button class="inv-cell ${equipped ? 'equipped' : ''} ${broken ? 'broken' : ''}"
         data-type="weapon" data-id="${id}" style="--rc:${RARITY[w.rarity].color}">
-      <div class="cell-art">${weaponSVG(w.art)}</div>
+      <div class="cell-art">${weaponSVG(w)}</div>
       <div class="cell-name">${w.name}</div>
       <div class="cell-sub">${weaponDamage(id)}→${dur}${weaponUpgradeLevel(id) ? ' ·L' + weaponUpgradeLevel(id) : ''}</div>
       ${w.power ? `<div class="cell-power">${powerLabel(w.power)}</div>` : ''}
@@ -393,7 +393,7 @@ function renderShop() {
     const w = WEAPONS[id];
     const owned = STATE.weapons[id] !== undefined;
     const sub = `${w.damage} dmg · ${w.durability} dur${w.power ? ' · ' + powerLabel(w.power) : ''}`;
-    html += shopRow('weapon', id, w.name, sub, w.rarity, w.price, owned, weaponSVG(w.art));
+    html += shopRow('weapon', id, w.name, sub, w.rarity, w.price, owned, weaponSVG(w));
   });
   ['aluminum_shield'].forEach(id => {
     const s = SHIELDS[id];
@@ -415,7 +415,7 @@ function renderShop() {
       const val = sellValue(w);
       const equipped = STATE.equippedWeapon === id;
       html += `<div class="shop-item sell" style="--rc:${RARITY[w.rarity].color}">
-        <div class="si-art">${weaponSVG(w.art)}</div>
+        <div class="si-art">${weaponSVG(w)}</div>
         <div class="si-info">
           <div class="si-name">${w.name}${equipped ? ' <span class="eq-tag">equipped</span>' : ''}</div>
           <div class="si-sub">${canSell ? 'trash for coins' : 'your only weapon'}</div>

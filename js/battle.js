@@ -497,10 +497,10 @@ function drawHeroWeaponB(ctx, h, x, y, scale, t) {
   const base = h.facing >= 0 ? 0 : Math.PI;
   let ang = base + (h.facing >= 0 ? 0.5 : -0.5);
   if (swinging) { const pr = 1 - (h.swingUntil - t) / 190; ang = base + h.facing * (-1.1 + pr * 2.2); }
-  const art = (WEAPONS[STATE.equippedWeapon] || {}).art || 'knife';
+  const wpn = WEAPONS[STATE.equippedWeapon] || { id: 'knife', art: 'knife' };
   if (swinging) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 6 * scale; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(x, y, 34 * scale, base + h.facing * -1.1, ang); ctx.stroke(); }
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(scale, scale);
-  if (typeof drawBladeShape === 'function') drawBladeShape(ctx, art);
+  if (typeof drawBladeShape === 'function') drawBladeShape(ctx, wpn);
   ctx.restore();
 }
 

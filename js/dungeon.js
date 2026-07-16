@@ -1198,32 +1198,129 @@ function drawHeroWeapon(ctx, h, hx, hy, aimScreen) {
   } else {
     ang = aimScreen + 0.55;                            // resting pose, held ready
   }
-  const art = (WEAPONS[STATE.equippedWeapon] || {}).art || 'knife';
+  const wpn = WEAPONS[STATE.equippedWeapon] || { id: 'knife', art: 'knife' };
   ctx.save();
   ctx.translate(hx, hy);
   ctx.rotate(ang);
-  drawBladeShape(ctx, art);
+  drawBladeShape(ctx, wpn);
   ctx.restore();
 }
-function drawBladeShape(ctx, art) {
-  ctx.lineCap = 'round';
-  if (art === 'bow') {
-    ctx.strokeStyle = '#8a5a2a'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(14, 0, 12, -1.5, 1.5); ctx.stroke();
-    ctx.strokeStyle = '#eee'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(14, -12); ctx.lineTo(14, 12); ctx.stroke();
-    return;
+/* Draw the equipped weapon as a DISTINCT in-hand silhouette (hand at origin,
+   blade extends toward +x). Accepts a weapon object; each family is unique and
+   the blade is tinted by rarity with a glow for upgraded / high-rarity gear. */
+function drawBladeShape(ctx, w) {
+  if (typeof w === 'string') w = (WEAPONS && WEAPONS[w]) || { id: w, art: w };
+  w = w || { id: 'knife', art: 'knife' };
+  const fam = weaponFamily(w);
+  const metal = weaponMetal(w);
+  const glow = weaponGlowColor(w);
+  const dark = '#2a3038', wood = '#6a4a2a', grip = '#4a3016', gold = '#c9962f';
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 8; }
+
+  // outlined filled polygon from a list of [x,y] points
+  function poly(pts, fill) {
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
   }
-  // handle
-  ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(10, 0); ctx.stroke();
-  // cross-guard
-  ctx.strokeStyle = '#b98a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(10, -5); ctx.lineTo(10, 5); ctx.stroke();
-  // blade
-  const len = art === 'spear' ? 36 : art === 'katana' ? 32 : art === 'sword' ? 27 : 20;
-  ctx.strokeStyle = '#e6eef6'; ctx.lineWidth = art === 'spear' ? 4 : 6;
-  ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(10 + len, 0); ctx.stroke();
-  // tip
-  ctx.fillStyle = '#eef4fb'; ctx.beginPath();
-  ctx.moveTo(10 + len, -4); ctx.lineTo(10 + len + 8, 0); ctx.lineTo(10 + len, 4); ctx.closePath(); ctx.fill();
+  function bar(x0, y0, x1, y1, wid, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = wid;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+
+  switch (fam) {
+    case 'bow': {
+      ctx.shadowBlur = glow ? 8 : 0;
+      bar(0, 0, 8, 0, 4, wood);
+      ctx.strokeStyle = wood; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(16, 0, 14, -1.6, 1.6); ctx.stroke();
+      ctx.strokeStyle = '#eee'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(16 + 14 * Math.cos(-1.6), 14 * Math.sin(-1.6)); ctx.lineTo(16 + 14 * Math.cos(1.6), 14 * Math.sin(1.6)); ctx.stroke();
+      // nocked arrow
+      bar(2, 0, 40, 0, 2.4, mixHex('#8a5a2a', metal, 0.3));
+      poly([[40, -3], [47, 0], [40, 3]], metal);
+      break;
+    }
+    case 'knife':
+      bar(-6, 0, 4, 0, 6, grip);
+      poly([[3, -3], [7, -4], [26, -2], [31, 0], [26, 3], [7, 4]], metal);
+      break;
+    case 'dagger':
+      bar(-8, 0, 3, 0, 6, grip);
+      ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(-9, 0, 3, 0, 7); ctx.fill();
+      bar(3, -6, 3, 6, 3, gold);                       // crossguard
+      poly([[4, -2], [16, -7], [30, 0], [16, 7], [4, 2]], metal); // leaf blade
+      break;
+    case 'twindagger':
+      bar(-8, 0, 3, 0, 6, grip);
+      bar(3, -6, 3, 6, 3, gold);
+      poly([[4, -1], [14, -10], [30, -6], [26, -2], [12, 2]], metal);  // upper blade
+      poly([[4, 1], [14, 10], [30, 6], [26, 2], [12, -2]], metal);     // lower blade
+      break;
+    case 'sword':
+      bar(-9, 0, 6, 0, 6, grip);
+      ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(-10, 0, 3, 0, 7); ctx.fill();
+      bar(6, -9, 6, 9, 4, gold);                       // crossguard
+      poly([[7, -4], [42, -3], [50, 0], [42, 3], [7, 4]], metal);  // broad blade
+      bar(9, 0, 46, 0, 1.4, mixHex(metal, '#ffffff', 0.5));        // fuller
+      break;
+    case 'mace':
+      bar(-9, 0, 30, 0, 7, wood);                      // haft
+      ctx.fillStyle = metal;                           // spikes
+      [-1.6, -1.05, -0.5, 0, 0.5, 1.05, 1.6].forEach(a => {
+        const cx = 36 + Math.cos(a) * 9, cy = Math.sin(a) * 9;
+        poly([[36, 0], [cx + Math.cos(a) * 7, cy + Math.sin(a) * 7], [cx, cy]], metal);
+      });
+      ctx.beginPath(); ctx.arc(36, 0, 9, 0, 7); ctx.fillStyle = metal; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
+      ctx.beginPath(); ctx.arc(33, -3, 2.6, 0, 7); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
+      break;
+    case 'katana':
+      ctx.strokeStyle = '#2b2b2b'; ctx.lineWidth = 6;   // wrapped grip
+      ctx.beginPath(); ctx.moveTo(-10, 1); ctx.lineTo(2, 0); ctx.stroke();
+      ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(3, 0, 3.4, 0, 7); ctx.fill();
+      ctx.beginPath();                                  // curved single-edge blade
+      ctx.moveTo(4, 2); ctx.quadraticCurveTo(30, -6, 52, -14);
+      ctx.quadraticCurveTo(34, -2, 6, -1); ctx.closePath();
+      ctx.fillStyle = metal; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
+      break;
+    case 'masterblade':
+      if (glow) { ctx.shadowColor = '#ffd23f'; ctx.shadowBlur = 12; }
+      ctx.strokeStyle = '#4a2e12'; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(-11, 1); ctx.lineTo(3, 0); ctx.stroke();
+      ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(4, 0, 4, 0, 7); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(5, 2); ctx.quadraticCurveTo(34, -7, 60, -17);
+      ctx.quadraticCurveTo(38, -2, 7, -1); ctx.closePath();
+      ctx.fillStyle = metal; ctx.fill(); ctx.lineWidth = 2.4; ctx.strokeStyle = gold; ctx.stroke();
+      bar(10, -1, 50, -11, 1.6, 'rgba(255,255,255,0.8)');
+      break;
+    case 'spear':
+      bar(-10, 0, 40, 0, 4, wood);
+      bar(40, -3, 40, 3, 4, gold);                     // binding
+      poly([[40, -3], [52, -4], [60, 0], [52, 4], [40, 3]], metal); // leaf head
+      break;
+    case 'spikespear':
+      bar(-10, 0, 38, 0, 4, wood);
+      poly([[38, -2], [60, 0], [38, 2]], metal);       // long spike
+      poly([[42, -2], [50, -9], [52, -4]], metal);     // back-swept barbs
+      poly([[42, 2], [50, 9], [52, 4]], metal);
+      break;
+    case 'scythe':
+      bar(-10, 0, 34, 0, 5, wood);
+      bar(32, -3, 32, 3, 4, gold);                     // collar
+      ctx.beginPath();                                  // big forward crescent
+      ctx.moveTo(34, 2); ctx.quadraticCurveTo(40, -26, 64, -32);
+      ctx.quadraticCurveTo(46, -14, 40, -1); ctx.closePath();
+      ctx.fillStyle = metal; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
+      break;
+    default:
+      bar(-6, 0, 6, 0, 6, grip);
+      poly([[7, -4], [40, -3], [48, 0], [40, 3], [7, 4]], metal);
+  }
+  ctx.shadowBlur = 0;
 }
 
 function isoDirToScreenAngle(worldAngle) {
@@ -1372,7 +1469,7 @@ function renderGearLists() {
     wg.innerHTML = Object.keys(STATE.weapons).map(id => {
       const w = WEAPONS[id], dur = STATE.weapons[id], eq = STATE.equippedWeapon === id, broken = dur <= 0;
       return `<button class="gear-item ${eq ? 'on' : ''} ${broken ? 'broken' : ''}" data-w="${id}" style="--rc:${RARITY[w.rarity].color}">
-        <div class="gi-art">${weaponSVG(w.art)}</div>
+        <div class="gi-art">${weaponSVG(w)}</div>
         <div class="gi-name">${w.name}</div>
         <div class="gi-sub">${weaponDamage(id)}→${dur}${w.power ? ' · ' + powerLabel(w.power) : ''}</div>
         ${eq ? '<span class="gi-badge">Equipped</span>' : ''}${broken ? '<span class="gi-badge broken">Broken</span>' : ''}
