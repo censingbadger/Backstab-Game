@@ -33,7 +33,7 @@ const DUNGEON_THEMES = {
     edge: ['#3a3320', '#2a2618'],
     props: ['grass', 'grass', 'bush', 'fence', 'hay', 'tree', 'rock'],
     trail: '255,240,150',
-    enemies: ['angry_peasant', 'giant_tick', 'lumberjack', 'baby_werewolf', 'bear'],
+    enemies: ['skeleton', 'zombie', 'angry_peasant', 'giant_tick', 'lumberjack', 'mosquito'],
     boss: 'hexstraw',
     waypoints: [[10, 10], [26, 10], [26, 24], [12, 28], [14, 44], [34, 44], [36, 28], [50, 30], [54, 50]],
   },
