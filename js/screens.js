@@ -322,6 +322,10 @@ function continentSVG() {
   const land = 'M6 24 C 8 13 20 8 32 11 C 41 13 43 21 49 19 C 55 14 59 9 67 9 C 75 8 81 13 85 18 C 91 23 96 31 94 41 C 93 53 96 61 90 69 C 85 79 78 87 66 90 C 52 94 40 94 30 91 C 20 89 10 86 7 76 C 4 66 6 56 6 46 C 6 36 3 31 6 24 Z';
   // terrain back-to-front (north first) so nearer landforms overlap correctly
   const terrain = REGIONS.slice().sort((a, b) => a.y - b.y).map(r => landform(BIOME[r.id] || 'grass', r.x, r.y)).join('');
+  // biome colour field: the whole continent tinted by its nearest region, so
+  // each part of the land is the colour of that region (green forest, tan
+  // desert, grey mountains…) instead of uniform sand.
+  const field = REGIONS.map(r => `<circle cx="${r.x}" cy="${r.y}" r="${r.id === 'sandcastle' ? 13 : 22}" fill="${r.color}"/>`).join('');
   const chain = REGIONS.filter(r => !r.passageOnly);
   const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
   let waves = '';
@@ -333,6 +337,7 @@ function continentSVG() {
   return `<svg viewBox="0 0 100 100" class="map-svg" preserveAspectRatio="none" aria-hidden="true">
     <defs>
       <filter id="mapSoft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter>
+      <filter id="mapBlob" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6.5"/></filter>
       <filter id="mapNoise" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.14" numOctaves="3" seed="11" stitchTiles="stitch" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0"/></filter>
       <clipPath id="mapLandClip"><path d="${land}"/></clipPath>
       <radialGradient id="mapOcean" cx="50%" cy="40%" r="82%"><stop offset="0" stop-color="#3aa0cc"/><stop offset="0.6" stop-color="#1e6ea0"/><stop offset="1" stop-color="#123f66"/></radialGradient>
@@ -345,6 +350,7 @@ function continentSVG() {
     <path d="${land}" fill="none" stroke="#7fd8e6" stroke-width="3.4" opacity="0.4"/>
     <path d="${land}" fill="none" stroke="#eaf6ff" stroke-width="1.1" opacity="0.6"/>
     <path d="${land}" fill="url(#mapLand)" stroke="#6a5c32" stroke-width="0.4"/>
+    <g clip-path="url(#mapLandClip)" filter="url(#mapBlob)" opacity="0.9">${field}</g>
     <g clip-path="url(#mapLandClip)">
       ${terrain}
       ${rivers}
