@@ -136,13 +136,19 @@ function hasArtifact(id) { return !!(STATE.artifacts && STATE.artifacts.includes
 
 function clearRegion(id) {
   if (!STATE.cleared.includes(id)) STATE.cleared.push(id);
-  // Unlock the next region on the path.
-  const idx = REGIONS.findIndex(r => r.id === id);
-  const next = REGIONS[idx + 1];
-  if (next && !STATE.unlocked.includes(next.id)) {
-    STATE.unlocked.push(next.id);
-  }
+  // Unlock the next region on the path — skipping any that are reachable only
+  // through a hidden passage (e.g. the Sandcastle).
+  let ni = REGIONS.findIndex(r => r.id === id) + 1;
+  while (REGIONS[ni] && REGIONS[ni].passageOnly) ni++;
+  const next = REGIONS[ni];
+  if (next && !STATE.unlocked.includes(next.id)) STATE.unlocked.push(next.id);
   saveGame();
+}
+
+// Unlock a region directly (used by secret passages).
+function unlockRegion(id) {
+  if (!STATE.unlocked.includes(id)) { STATE.unlocked.push(id); saveGame(); return true; }
+  return false;
 }
 
 /* Record a defeat of a fighter (enemy or boss) */

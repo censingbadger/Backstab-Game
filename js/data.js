@@ -54,6 +54,7 @@ const ENEMIES = {
   sandworm:      { id:'sandworm',      name:'Sandworm',       hearts:5,   attack:4, reward:25, art:'worm',     palette:{ skin:'#d9a441', cloth:'#a8791f' }, blurb:'Erupts from the dunes with a gaping maw.' },
   sandy_skeleton:{ id:'sandy_skeleton',name:'Sandy Skeleton', hearts:3.5, attack:3, reward:12, art:'skeleton', palette:{ skin:'#d9c48f', cloth:'#8a6f3a' }, blurb:'A skeleton that got lost in the desert.' },
   werewolf:      { id:'werewolf',      name:'Werewolf',       hearts:4.5, attack:5, reward:29, art:'wolf',     palette:{ skin:'#6a6258', cloth:'#3a352e' }, blurb:'The full-grown beast. Sharp claws, sharper temper.' },
+  crab:          { id:'crab',          name:'Crab',           hearts:2,   attack:2, reward:4,  art:'crab',     palette:{ skin:'#e0532f', cloth:'#a8331a' }, blurb:'A snappy shore crab with two pinching claws. Scuttles sideways.' },
 };
 
 /* ---------- Named bosses (tougher, unique, bigger rewards) ---------- */
@@ -62,6 +63,8 @@ const BOSSES = {
   hexstraw:   { id:'hexstraw',   name:'Hexstraw',         hearts:11, attack:4, reward:80,  art:'scarecrow', palette:{ skin:'#d9b24a', cloth:'#7a4a2a' }, boss:true, dungeon:true, blurb:'A towering scarecrow come alive — the Barren Grasslands mini-boss. Flails with a scything swipe.' },
   alpha_werewolf:{ id:'alpha_werewolf', name:'Alpha Werewolf', hearts:14, attack:5, reward:120, art:'wolf', palette:{ skin:'#3f3730', cloth:'#211d18' }, boss:true, dungeon:true, blurb:'The pack leader — a massive, savage werewolf lurking deep in the Dark Forest. The hardest fight yet.' },
   venombane:  { id:'venombane',  name:'Venombane',        hearts:16, attack:5, reward:200, art:'skeleton', palette:{ skin:'#c6e88a', cloth:'#31532a' }, boss:true, dungeon:true, poison:true, blurb:'A colossal skeleton oozing green venom — the Rotking who wardens the final chamber of the Toxic Temple. Its every slam splashes poison.' },
+  great_white:{ id:'great_white',name:'The Great White',  hearts:16, attack:6, reward:230, art:'shark',    palette:{ skin:'#8a99a6', cloth:'#e8eef2' }, boss:true, dungeon:true, aquatic:true, blurb:'A monstrous great white shark that rules the deep water off Shatter Coast. Swim down and face it in its own element.' },
+  crab_king:  { id:'crab_king',  name:'King Crab',        hearts:12, attack:5, reward:170, art:'crab',     palette:{ skin:'#ff6a2a', cloth:'#b83a12' }, boss:true, dungeon:true, blurb:'The armoured monarch of the Sandcastle — a giant crab with crushing claws.' },
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },
@@ -130,7 +133,8 @@ const REGIONS = [
   { id:'barren_grasslands',name:'Barren Grasslands', x:32, y:78, enemies:['skeleton','zombie','angry_peasant','lumberjack','giant_tick'], boss:null,          color:'#8a9a5a' },
   { id:'dark_forest',      name:'Dark Forest',       x:24, y:52, enemies:['baby_werewolf','bear','lumberjack','werewolf'],               boss:'dragok',      color:'#3a5a3a' },
   { id:'toxic_temple',     name:'Toxic Temple',      x:22, y:30, enemies:['mummy','gooster','phantom'],                                  boss:null,          color:'#6a8a4a' },
-  { id:'shatter_coast',    name:'Shatter Coast',     x:48, y:30, enemies:['pirate','swordfish','colossal_squid'],                        boss:null,          color:'#4a7a9a' },
+  { id:'shatter_coast',    name:'Shatter Coast',     x:48, y:30, enemies:['sandy_skeleton','pirate','colossal_squid','swordfish','crab'], boss:'great_white', color:'#4a7a9a' },
+  { id:'sandcastle',       name:'Sandcastle',        x:62, y:16, enemies:['crab','sandy_skeleton','pirate'],                            boss:'crab_king',   color:'#e0c060', secret:true, passageOnly:true },
   { id:'knife_mountain',   name:'Knife Mountain',    x:52, y:62, enemies:['bear','yeti','polar_bear'],                                   boss:null,          color:'#8a8f9a' },
   { id:'desolate_dunes',   name:'Desolate Dunes',    x:78, y:40, enemies:['sandy_skeleton','sandworm','icius','mummy'],                  boss:'gorton',      color:'#d9a441' },
   { id:'secret',           name:'???',               x:62, y:12, enemies:['phantom','werewolf','icius'],                                 boss:'backstabber', color:'#7a1030', secret:true },

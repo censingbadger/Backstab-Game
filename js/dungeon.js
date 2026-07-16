@@ -78,6 +78,32 @@ const DUNGEON_THEMES = {
     boss: 'venombane',
     chambers: true, hard: true, poison: true,      // chamber-clear progression + poison hazards
   },
+  shatter_coast: {
+    name: 'Shatter Coast',
+    sky: ['#9fe0f5', '#5fb8e0', '#3a90c0'],        // bright sky over the sea (beach bg draws the ocean)
+    ground: ['#e8d49a', '#ddc689'],                // warm sand
+    speckle: 'rgba(255,246,205,0.35)',
+    edge: ['#b89a5a', '#9a7f45'],                  // wet-sand shore
+    props: ['palm', 'shell', 'driftwood', 'starfish', 'rock', 'coral', 'palm'],
+    trail: '120,215,255',
+    enemies: ['sandy_skeleton', 'pirate', 'colossal_squid', 'swordfish', 'crab'],
+    boss: 'great_white',
+    waypoints: [[10, 12], [24, 12], [24, 28], [10, 32], [14, 46], [34, 46], [36, 30], [50, 32], [54, 52]],
+    beach: true, tide: true, hard: true, wider: true,
+  },
+  sandcastle: {
+    name: 'Sandcastle',
+    sky: ['#ffcf8a', '#f2a25a', '#c76a4a'],        // warm sunset over the fort
+    ground: ['#ecd79c', '#e1cb8b'],
+    speckle: 'rgba(255,246,205,0.4)',
+    edge: ['#c0a25a', '#a0824a'],
+    props: ['sandtower', 'flag', 'shell', 'starfish', 'palm', 'rock'],
+    trail: '255,220,150',
+    enemies: ['crab', 'sandy_skeleton', 'pirate'],
+    boss: 'crab_king',
+    waypoints: [[10, 14], [26, 14], [26, 30], [42, 30], [44, 46], [54, 50]],
+    beach: true, hard: true,
+  },
   barren_grasslands: {
     name: 'Barren Grasslands',
     sky: ['#4a4826', '#33341c', '#181a0e'],   // dusky field
@@ -229,6 +255,41 @@ function startDungeon(regionId) {
     }
   }
 
+  /* Beach levels (Shatter Coast, Sandcastle): tidal water you swim through,
+     rolling wave traps, sucking quicksand, an underwater boss arena, and a
+     hidden passage. */
+  const water = [], waves = [];
+  let secret = null;
+  if (theme.beach) {
+    // tidal pools in the middle sections (flood when the tide is high)
+    [0.34, 0.5, 0.64].forEach((f, i) => {
+      const s = sampleAtCum(path, f * path.length);
+      water.push({ x: s.x, y: s.y, r: 3.2 + i * 0.5, deep: false });
+    });
+    if (theme.tide) {
+      // deep water at the end = the underwater boss arena (always submerged)
+      const bx = WP[WP.length - 1][0], by = WP[WP.length - 1][1];
+      water.push({ x: bx, y: by, r: 8.5, deep: true });
+      // a hidden passage off to the side of the deep arena → unlocks the Sandcastle
+      for (const off of [[5, 3], [-5, 3], [4, -4], [-4, -4], [6, 0]]) {
+        const sx = clamp(bx + off[0], 4, W - 4), sy = clamp(by + off[1], 4, H - 4);
+        if (tiles[Math.floor(sy)][Math.floor(sx)] === 'ground') { secret = { x: sx, y: sy, found: false }; break; }
+      }
+    }
+    // rolling wave traps along the shore
+    for (let i = 0; i < 9; i++) {
+      const s = sampleAtCum(path, (6 + rand(i * 3.7 + 2) * (path.length - 12)));
+      waves.push({ x: s.x, y: s.y, phase: rand(i) * 3.2, seed: i });
+    }
+    // sucking quicksand pits
+    for (let i = 0; i < 6; i++) {
+      const s = sampleAtCum(path, (8 + rand(i * 5.1 + 1) * (path.length - 16)));
+      const off = (rand(i * 6.1) - 0.5) * (HALF * 1.2);
+      const tx = clamp(s.x + off, 4, W - 4), ty = clamp(s.y, 4, H - 4);
+      if (tiles[Math.floor(ty)][Math.floor(tx)] === 'ground') traps.push({ x: tx, y: ty, kind: 'quicksand', strong: true, sprung: false, seed: i });
+    }
+  }
+
   const hero = {
     fx: WP[0][0], fy: WP[0][1], r: 0.42,
     facing: 1, faceAngle: Math.PI / 2,      // faceAngle in world radians
@@ -237,12 +298,13 @@ function startDungeon(regionId) {
     hp: STATE.maxHearts + 5, maxhp: STATE.maxHearts + 5, hurtInvulnUntil: 0,
     attackReadyAt: 0, dodgeUntil: 0, dodgeReadyAt: 0,
     hurtUntil: 0, swingUntil: 0, moving: false, animT: 0,
-    jumpUntil: 0, jumpReadyAt: 0, jumpZ: 0, rootedUntil: 0, sinkUntil: 0,
+    jumpUntil: 0, jumpReadyAt: 0, jumpZ: 0, rootedUntil: 0, sinkUntil: 0, sinkLevel: 0, submerged: false,
   };
 
   DUNGEON = {
     regionId, theme, W, H, tiles, props, path, checkpoints, canopy, traps, grabbers,
     hard: !!theme.hard,
+    beach: !!theme.beach, water, waves, secret, tide: 0,
     hero,
     enemies: [], drops: [], fx: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET, progress: 0,
@@ -898,12 +960,17 @@ function updateDungeon(dt, t) {
   // rooted by a grab or trap door => can't move
   const rooted = t < h.rootedUntil;
 
-  // floor hazards: quicksand (Forest), poison pools + spike traps (Temple), trap doors
-  let inQuick = false, inPoison = false;
+  // tide rises and falls on beach levels; you swim when submerged (a jump lifts you out)
+  d.tide = d.theme.tide ? (0.5 + 0.5 * Math.sin(t / 4200)) : 0;
+  const submerged = d.beach && isSubmerged(h.fx, h.fy) && h.jumpZ < 18;
+  h.submerged = submerged;
+
+  // floor hazards: quicksand, poison pools + spikes (Temple), trap doors, waves (beach)
+  let inQuick = false, inPoison = false, quickPull = null;
   if (d.traps && !jumping) {
     for (const tr of d.traps) {
       const dd = dist(tr.x, tr.y, h.fx, h.fy);
-      if (tr.kind === 'quicksand' && dd < 1.15) inQuick = true;
+      if (tr.kind === 'quicksand' && dd < (tr.strong ? 1.4 : 1.15)) { inQuick = true; if (tr.strong) quickPull = tr; }
       if (tr.kind === 'poison_pool' && dd < 1.2) inPoison = true;
       if (tr.kind === 'spikes') {
         const extended = ((t / 1000 + tr.phase) % 1.8) < 0.7;     // spikes pop up ~0.7s each cycle
@@ -918,12 +985,29 @@ function updateDungeon(dt, t) {
       }
     }
   }
+  // rolling waves shove you landward + splash (jump, or reach deep water, to avoid)
+  if (d.waves && !jumping && !submerged) for (const wv of d.waves) {
+    const cyc = (t / 1000 + wv.phase) % 3.2;
+    if (cyc < 0.5 && dist(wv.x, wv.y, h.fx, h.fy) < 2.2 && t > (h.waveHitAt || 0)) {
+      h.waveHitAt = t + 1100; knockbackHeroFrom(wv.x, wv.y, 1.1); shake();
+      banner('WAVE!', 500); spawnFloatText(h.fx, h.fy, 'splash!', '#bfe9ff'); hurtHero(0.5);
+      if (d.over) return;
+    }
+  }
+  // sucking quicksand: dragged toward the pit, pulled under, hurts more the deeper
+  if (quickPull && !jumping) {
+    const dx = quickPull.x - h.fx, dy = quickPull.y - h.fy, m = Math.hypot(dx, dy) || 1;
+    moveEntity(h, dx / m * 1.1 * dt, dy / m * 1.1 * dt);
+    h.sinkLevel = Math.min(1, (h.sinkLevel || 0) + dt * 0.55);
+  } else h.sinkLevel = Math.max(0, (h.sinkLevel || 0) - dt * 1.6);
   if (inQuick) {
     h.sinking = true;
+    const interval = quickPull ? (720 - h.sinkLevel * 320) : 800;
+    const dmg = quickPull ? (0.5 + h.sinkLevel * 0.5) : 0.5;
     if (t > (h.quickDmgAt || 0)) {
-      h.quickDmgAt = t + 800; h.hp = Math.max(0, h.hp - 0.5); h.hurtUntil = t + 200;
-      Audio2.sfx.hurt(); spawnFloatText(h.fx, h.fy, '-½ sink', '#caa15a'); updateDungeonHUD();
-      if (h.hp <= 0) return loseDungeon();
+      h.quickDmgAt = t + interval; h.hurtUntil = t + 200;
+      spawnFloatText(h.fx, h.fy, quickPull ? 'sinking!' : '-½ sink', '#caa15a');
+      hurtHero(dmg); if (d.over) return;
     }
   } else h.sinking = false;
   // poison pools tick damage over time — unless you've earned the Plague Ward
@@ -934,9 +1018,18 @@ function updateDungeon(dt, t) {
       if (h.hp <= 0) return loseDungeon();
     }
   }
+  // secret underwater passage → unlocks the Sandcastle
+  if (d.secret && !d.secret.found && submerged && dist(d.secret.x, d.secret.y, h.fx, h.fy) < 1.5) {
+    d.secret.found = true;
+    if (typeof unlockRegion === 'function') unlockRegion('sandcastle');
+    banner('✨ SECRET PASSAGE — the Sandcastle is unlocked!', 2800);
+    Audio2.sfx.win(); spawnFloatText(h.fx, h.fy, '🏰 Sandcastle!', '#ffd23f');
+  }
 
   const dodging = t < h.dodgeUntil;
-  let spd = (dodging ? 8.5 : (4.2 + (STATE.speedBonus || 0))) * (inQuick ? 0.3 : 1);   // + Swift modifier
+  let spd = (dodging ? 8.5 : (4.2 + (STATE.speedBonus || 0)));   // + Swift modifier
+  if (inQuick) spd *= (quickPull ? Math.max(0.12, 0.32 - h.sinkLevel * 0.2) : 0.3);
+  if (submerged) spd *= 0.62;                                    // swimming is slower
   h.moving = !!(mvx || mvy) && !rooted;
   if (h.moving) {
     h.animT += dt * 10;
@@ -1104,6 +1197,20 @@ function isWalkable(fx, fy) {
   }
   return true;
 }
+// Is this point underwater right now? Deep zones are always water; tidal zones
+// flood as the tide rises.
+function isSubmerged(x, y) {
+  const d = DUNGEON; if (!d.water || !d.water.length) return false;
+  for (const w of d.water) {
+    const effR = w.deep ? w.r : w.r * (0.28 + 0.72 * (d.tide || 0));
+    if (dist(x, y, w.x, w.y) < effR) return true;
+  }
+  return false;
+}
+function knockbackHeroFrom(fx, fy, amt) {
+  const h = DUNGEON.hero, dx = h.fx - fx, dy = h.fy - fy, m = Math.hypot(dx, dy) || 1;
+  moveEntity(h, dx / m * amt, dy / m * amt);
+}
 
 /* ============================================================
    RENDER
@@ -1118,11 +1225,12 @@ function renderDungeon() {
   const cw = W / dpr, ch = H / dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // sky / background (theme-specific)
+  // sky / background (theme-specific; beach levels paint an ocean horizon)
   const sk = d.theme.sky;
   const sky = ctx.createLinearGradient(0, 0, 0, ch);
   sky.addColorStop(0, sk[0]); sky.addColorStop(0.55, sk[1]); sky.addColorStop(1, sk[2]);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, cw, ch);
+  if (d.beach) drawOceanBackdrop(ctx, cw, ch);
 
   // camera transform: hero centred
   const shakeAmt = d.shakeUntil && performance.now() < d.shakeUntil ? (rand(performance.now()) - 0.5) * 6 : 0;
@@ -1151,8 +1259,15 @@ function renderDungeon() {
   // ---- temple stairs sit flat in the corridors ----
   if (d.stairs) d.stairs.forEach(st => { if (Math.abs(st.x - d.hero.fx) < RANGE && Math.abs(st.y - d.hero.fy) < RANGE) drawStairs(ctx, st, ox, oy); });
 
+  // ---- tidal water pools (drawn over the sand, under everything else) ----
+  if (d.water) d.water.forEach(w => { if (Math.abs(w.x - d.hero.fx) < RANGE + w.r && Math.abs(w.y - d.hero.fy) < RANGE + w.r) drawWaterZone(ctx, w, ox, oy); });
+  // ---- the hidden underwater passage (a shimmer you have to find) ----
+  if (d.secret && !d.secret.found) drawSecret(ctx, d.secret, ox, oy);
+
   // ---- floor traps (quicksand, poison pools, spikes, trap doors) sit on the ground ----
   if (d.traps) d.traps.forEach(tr => { if (Math.abs(tr.x - d.hero.fx) < RANGE && Math.abs(tr.y - d.hero.fy) < RANGE) drawTrap(ctx, tr, ox, oy); });
+  // ---- rolling wave traps ----
+  if (d.waves) d.waves.forEach(wv => { if (Math.abs(wv.x - d.hero.fx) < RANGE && Math.abs(wv.y - d.hero.fy) < RANGE) drawWave(ctx, wv, ox, oy); });
 
   // ---- collect depth-sorted sprites (props + entities + drops + checkpoints + grabbers) ----
   const draws = [];
@@ -1180,6 +1295,19 @@ function renderDungeon() {
 
   // floating texts / swing fx
   d.fx.forEach(f => drawFx(ctx, f, ox, oy));
+
+  // ---- underwater blue overlay while the hero is swimming ----
+  if (d.hero.submerged) {
+    const uw = ctx.createLinearGradient(0, 0, 0, ch);
+    uw.addColorStop(0, 'rgba(20,90,140,0.34)'); uw.addColorStop(1, 'rgba(10,50,90,0.5)');
+    ctx.fillStyle = uw; ctx.fillRect(0, 0, cw, ch);
+    // drifting light rays + bubbles
+    const t2 = performance.now() / 1000;
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = 'rgba(150,220,255,0.05)'; ctx.beginPath(); ctx.moveTo((i * 0.27 + 0.1) * cw, 0); ctx.lineTo((i * 0.27 + 0.16) * cw, 0); ctx.lineTo((i * 0.27 + 0.02) * cw, ch); ctx.lineTo((i * 0.27 - 0.06) * cw, ch); ctx.fill(); }
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 8; i++) { const bx = (Math.sin(i * 12.9) * 0.5 + 0.5) * cw, by = ch - ((t2 * 40 + i * 60) % ch); ctx.fillStyle = 'rgba(200,240,255,0.25)'; ctx.beginPath(); ctx.arc(bx, by, 2 + (i % 3), 0, 7); ctx.fill(); }
+  }
 
   // ---- drifting poison haze for the Toxic Temple ----
   if (d.poison) drawPoisonHaze(ctx, cw, ch);
@@ -1256,6 +1384,72 @@ function drawTrap(ctx, tr, ox, oy) {
       ctx.beginPath(); ctx.moveTo(x - 18, y - 10); ctx.lineTo(x - 22, y - 22); ctx.moveTo(x + 18, y - 10); ctx.lineTo(x + 22, y - 22); ctx.stroke();
     }
   }
+}
+
+/* ---- Beach / ocean visuals (Shatter Coast, Sandcastle) ---- */
+function drawOceanBackdrop(ctx, cw, ch) {
+  const t = performance.now() / 1000;
+  const horizon = ch * 0.30, oceanBot = ch * 0.52;
+  const g = ctx.createLinearGradient(0, horizon, 0, oceanBot);
+  g.addColorStop(0, '#2f9fc9'); g.addColorStop(1, '#1c6f9a');
+  ctx.fillStyle = g; ctx.fillRect(0, horizon, cw, oceanBot - horizon);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(0, horizon - 1, cw, 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const y = horizon + 6 + i * ((oceanBot - horizon) / 6);
+    ctx.beginPath();
+    for (let x = 0; x <= cw; x += 14) { const yy = y + Math.sin(x * 0.05 + t * 1.5 + i) * 2; x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); }
+    ctx.stroke();
+  }
+  const sg = ctx.createRadialGradient(cw * 0.72, horizon + 6, 2, cw * 0.72, horizon + 6, 60);
+  sg.addColorStop(0, 'rgba(255,240,190,0.5)'); sg.addColorStop(1, 'rgba(255,240,190,0)');
+  ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(cw * 0.72, horizon + 6, 60, 0, 7); ctx.fill();
+  const bh = ctx.createLinearGradient(0, oceanBot, 0, ch);
+  bh.addColorStop(0, 'rgba(230,210,150,0.25)'); bh.addColorStop(1, 'rgba(230,210,150,0)');
+  ctx.fillStyle = bh; ctx.fillRect(0, oceanBot, cw, ch - oceanBot);
+}
+function drawWaterZone(ctx, w, ox, oy) {
+  const d = DUNGEON, t = performance.now() / 1000;
+  const effR = w.deep ? w.r : w.r * (0.28 + 0.72 * (d.tide || 0));
+  if (effR < 0.4) return;
+  const s = isoToScreen(w.x, w.y), x = s.x + ox, y = s.y + oy;
+  const rx = effR * ISO.TW / 2, ry = effR * ISO.TH / 2;
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7);
+  const g = ctx.createRadialGradient(x, y, ry * 0.2, x, y, rx);
+  g.addColorStop(0, w.deep ? 'rgba(20,80,120,0.85)' : 'rgba(40,140,180,0.6)');
+  g.addColorStop(1, w.deep ? 'rgba(10,45,85,0.92)' : 'rgba(30,110,150,0.45)');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) { const rr = ((t * 0.4 + i / 3) % 1); ctx.beginPath(); ctx.ellipse(x, y, rx * rr, ry * rr, 0, 0, 7); ctx.stroke(); }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.stroke();
+}
+function drawWave(ctx, wv, ox, oy) {
+  const t = performance.now() / 1000, cyc = (t + wv.phase) % 3.2;
+  const s = isoToScreen(wv.x, wv.y), x = s.x + ox, y = s.y + oy;
+  const roll = cyc < 1.2 ? cyc / 1.2 : 1, alpha = cyc < 0.9 ? 1 : Math.max(0, 1 - (cyc - 0.9) / 1.2);
+  if (alpha <= 0) return;
+  const off = (1 - roll) * 40;
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(40,140,190,0.4)'; ctx.beginPath(); ctx.ellipse(x, y + off, 34, 12, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.ellipse(x, y + off, 32, 11, 0, Math.PI * 0.12, Math.PI * 0.88); ctx.stroke();
+  if (cyc < 0.5) for (let i = 0; i < 5; i++) { const a = Math.PI * (0.2 + i * 0.15); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 30, y + off - Math.sin(a) * 10 - cyc * 20, 2.5, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+function drawSecret(ctx, secret, ox, oy) {
+  const d = DUNGEON, h = d.hero, t = performance.now() / 1000;
+  if (dist(secret.x, secret.y, h.fx, h.fy) > 5) return;   // only shimmers when you're close
+  const s = isoToScreen(secret.x, secret.y), x = s.x + ox, y = s.y + oy;
+  const pulse = 0.4 + 0.35 * Math.sin(t * 3);
+  ctx.fillStyle = 'rgba(6,20,34,0.8)'; ctx.beginPath(); ctx.ellipse(x, y - 6, 16, 12, 0, 0, 7); ctx.fill();
+  const g = ctx.createRadialGradient(x, y - 6, 2, x, y - 6, 22);
+  g.addColorStop(0, `rgba(120,230,255,${0.5 * pulse})`); g.addColorStop(1, 'rgba(120,230,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - 6, 22, 0, 7); ctx.fill();
+  for (let i = 0; i < 4; i++) { const ph = (t * 0.7 + i / 4) % 1; ctx.fillStyle = `rgba(200,245,255,${1 - ph})`; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + t) * 12, y - 6 - ph * 16, 1.6, 0, 7); ctx.fill(); }
 }
 
 /* Temple stairs in a corridor — a stack of stone steps + an up/down arrow. */
@@ -1546,6 +1740,49 @@ function drawProp(ctx, p, ox, oy) {
       ctx.beginPath(); ctx.moveTo(x - 6, y + 2); ctx.lineTo(x + 12, y - 3); ctx.stroke();
       ctx.fillStyle = '#8fce5a'; ctx.beginPath(); ctx.ellipse(x - 2, y, 6, 3, 0, 0, 7); ctx.fill();   // sludge pooling on the bones
       break;
+
+    /* ---- Beach / coast props ---- */
+    case 'palm': {
+      const sway = Math.sin(performance.now() / 900 + r) * 4;
+      ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 4 + sway * 0.4, y - 26, x + sway, y - 50); ctx.stroke();
+      ctx.fillStyle = '#3fae5a';
+      for (let k = 0; k < 6; k++) { const a = Math.PI + k * (Math.PI / 5); const fx = x + sway, fy = y - 50; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.quadraticCurveTo(fx + Math.cos(a) * 16, fy + Math.sin(a) * 10 - 6, fx + Math.cos(a) * 30, fy + Math.sin(a) * 16); ctx.quadraticCurveTo(fx + Math.cos(a) * 16, fy + Math.sin(a) * 10, fx, fy); ctx.fill(); }
+      ctx.fillStyle = '#7a4a2a'; ctx.beginPath(); ctx.arc(x + sway - 3, y - 47, 2.5, 0, 7); ctx.arc(x + sway + 3, y - 46, 2.5, 0, 7); ctx.fill();   // coconuts
+      break;
+    }
+    case 'shell':
+      ctx.fillStyle = '#f6d3c0'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y - 8, 11, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#d98f7a'; ctx.lineWidth = 1.6;
+      for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + k * 5, y - 18); ctx.stroke(); }
+      break;
+    case 'driftwood':
+      ctx.strokeStyle = '#cbb48c'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 16, y - 2); ctx.lineTo(x + 16, y - 6); ctx.stroke();
+      ctx.strokeStyle = '#a88f66'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x - 12, y - 3); ctx.lineTo(x + 12, y - 6); ctx.stroke();
+      break;
+    case 'starfish':
+      ctx.fillStyle = '#e8823a';
+      ctx.beginPath(); for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + k * (Math.PI * 2 / 5); const a2 = a + Math.PI / 5; ctx.lineTo(x + Math.cos(a) * 12, y - 6 + Math.sin(a) * 8); ctx.lineTo(x + Math.cos(a2) * 5, y - 6 + Math.sin(a2) * 3); } ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(x, y - 6, 2, 0, 7); ctx.fill();
+      break;
+    case 'coral':
+      ctx.strokeStyle = '#ff7a9a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 14); ctx.moveTo(x, y - 8); ctx.lineTo(x - 8, y - 18); ctx.moveTo(x, y - 10); ctx.lineTo(x + 8, y - 20); ctx.stroke();
+      ctx.fillStyle = '#ff9db4'; [[0, -14], [-8, -18], [8, -20]].forEach(p => { ctx.beginPath(); ctx.arc(x + p[0], y + p[1], 3, 0, 7); ctx.fill(); });
+      break;
+    case 'sandtower': {
+      ctx.fillStyle = '#d9c084'; roundRectPath(ctx, x - 12, y - 30, 24, 30, 3); ctx.fill();
+      ctx.fillStyle = '#c9ad6a'; ctx.fillRect(x - 12, y - 30, 8, 30);   // shaded side
+      ctx.fillStyle = '#e6d29a'; for (let k = -1; k <= 1; k++) ctx.fillRect(x - 12 + (k + 1) * 8, y - 34, 6, 5);   // crenellations
+      ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x - 4, y - 14, 8, 14);   // door
+      break;
+    }
+    case 'flag':
+      ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 34); ctx.stroke();
+      { const fl = Math.sin(performance.now() / 300 + r) * 3; ctx.fillStyle = '#e0453a'; ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.lineTo(x + 18, y - 30 + fl); ctx.lineTo(x, y - 24); ctx.closePath(); ctx.fill(); }
+      break;
   }
 }
 
@@ -1613,12 +1850,13 @@ function drawHero(ctx, h, ox, oy) {
   const s = isoToScreen(h.fx, h.fy);
   const x = s.x + ox, y = s.y + oy;
   const jz = h.jumpZ || 0;                 // hop height
-  const sink = h.sinking ? 10 : 0;         // sunk into quicksand
+  const sink = h.sinking ? (10 + (h.sinkLevel || 0) * 26) : 0;   // dragged under by sucking quicksand
+  const submerged = h.submerged && !h.sinking && jz < 18;        // swimming
   const yb = y - jz + sink;                // body base y
   // shadow stays on the ground, shrinks while airborne
   shadowOval(ctx, x, y + sink, 20 * (1 - jz / 90), 8 * (1 - jz / 90));
   const img = getSprite('hero', { art: 'hero', palette: {} }, h.facing);
-  const bob = h.moving ? Math.sin(h.animT) * 3 : 0;
+  const bob = (h.moving ? Math.sin(h.animT) * 3 : 0) + (submerged ? Math.sin(performance.now() / 400) * 2 : 0);
   const dodging = performance.now() < h.dodgeUntil;
   const hurt = performance.now() < h.hurtUntil;
   const rooted = performance.now() < h.rootedUntil;
@@ -1628,10 +1866,19 @@ function drawHero(ctx, h, ox, oy) {
   ctx.save();
   if (dodging) ctx.globalAlpha = 0.5;
   if (hurt) ctx.globalAlpha = 0.6;
-  // clip the body when sunk in quicksand
+  // clip the lower body when sunk in quicksand OR swimming (waterline at the waist)
   if (sink) { ctx.beginPath(); ctx.rect(x - 40, y - 80, 80, 60 + sink); ctx.clip(); }
+  else if (submerged) { ctx.beginPath(); ctx.rect(x - 40, yb - 80, 80, 46); ctx.clip(); }
   if (img.complete && img.naturalWidth) ctx.drawImage(img, x - 33, yb - 70 - bob, 66, 80);
   ctx.restore();
+  // swimming waterline: ripple ring at the waist
+  if (submerged) {
+    const wl = yb - 32 - bob;
+    ctx.fillStyle = 'rgba(60,160,200,0.4)'; ctx.beginPath(); ctx.ellipse(x, wl, 22, 8, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, wl, 22, 8, 0, 0, 7); ctx.stroke();
+    const rp = (performance.now() / 700) % 1; ctx.strokeStyle = `rgba(255,255,255,${0.4 * (1 - rp)})`;
+    ctx.beginPath(); ctx.ellipse(x, wl, 22 + rp * 16, 8 + rp * 5, 0, 0, 7); ctx.stroke();
+  }
   if (rooted) { // vines wrapping the hero
     ctx.strokeStyle = '#3a5a2a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
     for (let i = 0; i < 3; i++) { const yy = yb - 20 - i * 14; ctx.beginPath(); ctx.moveTo(x - 16, yy); ctx.quadraticCurveTo(x, yy - 6, x + 16, yy); ctx.stroke(); }
