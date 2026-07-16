@@ -202,6 +202,7 @@ function buildDungeonDOM() {
         <div class="boss-track"><div id="boss-fill" class="boss-fill"></div></div>
       </div>
       <div id="dun-weapon" class="dun-weapon"></div>
+      <div id="dun-shield" class="dun-shield"></div>
     </div>
     <div class="dun-touch">
       <div id="joy" class="joy"><div id="joy-knob" class="joy-knob"></div></div>
@@ -619,6 +620,9 @@ function bossSlam(b) {
 
 function hurtHero(amount) {
   const d = DUNGEON, h = d.hero;
+  // The shield soaks up part of the hit and loses durability each time.
+  const block = absorbWithShield();
+  if (block > 0) { amount = amount * (1 - block); h.shieldFlash = performance.now() + 220; }
   h.hp = Math.max(0, h.hp - amount);
   const now = performance.now();
   h.hurtUntil = now + 260;
@@ -901,7 +905,28 @@ function drawHero(ctx, h, ox, oy) {
   if (hurt) ctx.globalAlpha = 0.6;
   if (img.complete && img.naturalWidth) ctx.drawImage(img, x - 33, y - 70 - bob, 66, 80);
   ctx.restore();
+  drawHeroShield(ctx, h, x, y - 30 - bob);
   if (!behind) drawHeroWeapon(ctx, h, x, y - 34 - bob, aimScreen);
+}
+
+/* The equipped shield on the hero's off-hand (prominent, shows wear). */
+function drawHeroShield(ctx, h, x, y) {
+  const id = STATE.equippedShield, s = SHIELDS[id];
+  if (!s) return;
+  const broken = (STATE.shields[id] || 0) <= 0;
+  const flash = performance.now() < (h.shieldFlash || 0);
+  const w = 20, ht = 26, sx = x - 20, sy = y;
+  ctx.save(); ctx.translate(sx, sy);
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, -ht / 2); ctx.lineTo(w / 2, -ht / 2); ctx.lineTo(w / 2, 3);
+  ctx.quadraticCurveTo(w / 2, ht / 2, 0, ht / 2 + 4); ctx.quadraticCurveTo(-w / 2, ht / 2, -w / 2, 3); ctx.closePath();
+  ctx.fillStyle = broken ? '#5a5560' : (flash ? '#ffe08a' : '#b98a3a');
+  ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = broken ? '#3a3540' : '#6a4a1a'; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, -ht / 2 + 2); ctx.lineTo(0, ht / 2); ctx.stroke();
+  if (broken) { ctx.strokeStyle = '#20141a'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-4, -7); ctx.lineTo(3, 1); ctx.lineTo(-2, 9); ctx.stroke(); }
+  ctx.restore();
 }
 
 /* Draw (and animate) the equipped weapon swinging from the hero's hand. */
@@ -1003,11 +1028,23 @@ function updateDungeonHUD() {
 }
 function updateWeaponHUD() {
   const d = DUNGEON; if (!d) return;
-  const el = document.getElementById('dun-weapon'); if (!el) return;
-  const w = WEAPONS[STATE.equippedWeapon];
-  const dur = STATE.weapons[STATE.equippedWeapon] || 0;
-  el.innerHTML = `<span class="dw-name">${w.name}</span>
-    <div class="dw-bar"><div class="dw-fill" style="width:${clamp(dur / w.durability * 100, 0, 100)}%"></div></div>`;
+  const el = document.getElementById('dun-weapon');
+  if (el) {
+    const w = WEAPONS[STATE.equippedWeapon];
+    const dur = STATE.weapons[STATE.equippedWeapon] || 0;
+    el.innerHTML = `<span class="dw-name">🗡️ ${w.name}</span>
+      <div class="dw-bar"><div class="dw-fill" style="width:${clamp(dur / w.durability * 100, 0, 100)}%"></div></div>`;
+  }
+  const sel = document.getElementById('dun-shield');
+  if (sel) {
+    const id = STATE.equippedShield, s = SHIELDS[id];
+    if (s) {
+      const sdur = STATE.shields[id] || 0;
+      const broken = sdur <= 0;
+      sel.innerHTML = `<span class="dw-name">🛡️ ${s.name} ${broken ? '<b class="sh-broken">BROKEN</b>' : sdur + '/' + s.durability}</span>
+        <div class="dw-bar"><div class="dw-fill shield ${broken ? 'broken' : ''}" style="width:${clamp(sdur / s.durability * 100, 0, 100)}%"></div></div>`;
+    } else sel.innerHTML = '';
+  }
 }
 function updateBossHUD() {
   const d = DUNGEON; if (!d || !d.boss) return;

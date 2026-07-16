@@ -74,11 +74,11 @@ const BOSSES = {
 // durability = swings before it needs repair. Sized so a weapon lasts about
 // one full (minute-long) fight before you visit the shop to repair it.
 const WEAPONS = {
-  old_knife:      { id:'old_knife',      name:'Old Knife',      damage:5,  durability:160, rarity:'C', price:0,   repairCost:18, art:'knife'  },
-  aluminum_sword: { id:'aluminum_sword', name:'Aluminum Sword', damage:8,  durability:150, rarity:'C', price:50,  repairCost:28, art:'sword'  },
-  wood_spear:     { id:'wood_spear',     name:'Spear',          damage:12, durability:90,  rarity:'U', price:90,  repairCost:30, art:'spear'  },
-  reinforced_bow: { id:'reinforced_bow', name:'Reinforced Bow', damage:14, durability:120, rarity:'R', price:180, repairCost:50, art:'bow'    },
-  steel_katana:   { id:'steel_katana',   name:'Steel Katana',   damage:18, durability:200, rarity:'R', price:230, repairCost:70, art:'katana' },
+  old_knife:      { id:'old_knife',      name:'Old Knife',      damage:5,  durability:190, rarity:'C', price:0,   repairCost:18, art:'knife'  },
+  aluminum_sword: { id:'aluminum_sword', name:'Aluminum Sword', damage:8,  durability:180, rarity:'C', price:50,  repairCost:28, art:'sword'  },
+  wood_spear:     { id:'wood_spear',     name:'Spear',          damage:12, durability:110, rarity:'U', price:90,  repairCost:30, art:'spear'  },
+  reinforced_bow: { id:'reinforced_bow', name:'Reinforced Bow', damage:14, durability:145, rarity:'R', price:180, repairCost:50, art:'bow'    },
+  steel_katana:   { id:'steel_katana',   name:'Steel Katana',   damage:18, durability:240, rarity:'R', price:230, repairCost:70, art:'katana' },
 };
 
 /* ---------- Items (used in battle) ----------
@@ -94,9 +94,11 @@ const ITEMS = {
 };
 
 /* ---------- Shields (equippable, reduce damage when blocking) ---------- */
+// Shields reduce damage when you get hit and lose durability each time.
+// At 0 durability the shield is broken (no protection) until repaired.
 const SHIELDS = {
-  wood_shield:    { id:'wood_shield',    name:'Wood Shield',    block:0.5, rarity:'C', price:0,  art:'shield_wood' },
-  aluminum_shield:{ id:'aluminum_shield',name:'Aluminum Shield',block:0.7, rarity:'C', price:55, art:'shield_alu'  },
+  wood_shield:    { id:'wood_shield',    name:'Wood Shield',    block:0.5, durability:50, repairCost:12, rarity:'C', price:0,  art:'shield_wood' },
+  aluminum_shield:{ id:'aluminum_shield',name:'Aluminum Shield',block:0.7, durability:75, repairCost:22, rarity:'C', price:55, art:'shield_alu'  },
 };
 
 /* ---------- Map regions ----------

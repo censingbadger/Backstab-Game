@@ -37,6 +37,7 @@ function startBattle(fighterId, regionId, isBoss) {
   };
 
   renderBattle();
+  updateShieldHUD();
   // enemy first move after a short grace period
   BATTLE.enemyNextAt = performance.now() + 1400;
   BATTLE.tickTimer = setInterval(battleTick, 60);
@@ -53,6 +54,7 @@ function renderBattle() {
       <div class="fighter-hud left">
         <div class="hud-name">YOU <span class="lvl">Lv ${STATE.level}</span></div>
         <div id="php" class="hud-hearts">${renderHearts(b.playerHP / HP_PER_HEART, STATE.maxHearts)}</div>
+        <div id="pshield" class="hud-shield">${shieldBadge()}</div>
       </div>
       <div class="vs">VS</div>
       <div class="fighter-hud right">
@@ -72,6 +74,7 @@ function renderBattle() {
       <div class="stage-floor">
         <div id="hero" class="combatant hero-side">
           <div class="cb-art">${characterSVG({ art: 'hero', palette: {} }, { facing: 1 })}</div>
+          <div id="hero-shield" class="hero-shield">${shieldIcon(shieldColor())}</div>
         </div>
         <div id="enemy" class="combatant enemy-side">
           <div id="enemy-tell" class="telegraph"></div>
@@ -83,7 +86,9 @@ function renderBattle() {
 
     <div class="battle-controls">
       <button class="cbtn attack" data-act="attack"><span>🗡️</span>Attack</button>
-      <button class="cbtn block" data-act="block"><span>🛡️</span>Block</button>
+      <button class="cbtn block" data-act="block"><span>🛡️</span>Block
+        <div class="sp-meter"><div id="shieldfill" class="sp-fill shield"></div></div>
+      </button>
       <button class="cbtn dodge" data-act="dodge"><span>💨</span>Dodge</button>
       <button class="cbtn special" data-act="special"><span>⚡</span>Special
         <div class="sp-meter"><div id="spfill" class="sp-fill"></div></div>
@@ -97,6 +102,30 @@ function renderBattle() {
   el.querySelectorAll('.cbtn').forEach(btn => {
     btn.addEventListener('click', () => onAction(btn.dataset.act));
   });
+}
+
+function shieldColor() {
+  const s = SHIELDS[STATE.equippedShield];
+  return s && (STATE.shields[STATE.equippedShield] || 0) > 0 ? '#b98a3a' : '#555';
+}
+function shieldPct() {
+  const id = STATE.equippedShield, s = SHIELDS[id];
+  if (!s) return 0;
+  return Math.max(0, Math.min(100, (STATE.shields[id] || 0) / s.durability * 100));
+}
+function shieldBadge() {
+  const id = STATE.equippedShield, s = SHIELDS[id];
+  if (!s) return '';
+  const dur = STATE.shields[id] || 0;
+  return `${shieldIcon(shieldColor())}<span class="sh-dur ${dur <= 0 ? 'broken' : ''}">${dur}/${s.durability}</span>`;
+}
+function updateShieldHUD() {
+  const badge = document.getElementById('pshield');
+  if (badge) badge.innerHTML = shieldBadge();
+  const fill = document.getElementById('shieldfill');
+  if (fill) fill.style.width = shieldPct() + '%';
+  const hs = document.getElementById('hero-shield');
+  if (hs) hs.innerHTML = shieldIcon(shieldColor());
 }
 
 function crowdSigns(name) {
@@ -123,9 +152,12 @@ function onAction(act) {
     animate('hero', 'lunge');
   } else if (act === 'block') {
     if (now < b.blockUntil) return;
+    if (shieldDurability() <= 0) { flash('Shield broken — repair it at the shop!'); }
     b.blocking = true;
     b.blockUntil = now + 900;
     animate('hero', 'guard');
+    const hs = document.getElementById('hero-shield');
+    if (hs) { hs.classList.add('raised'); setTimeout(() => hs && hs.classList.remove('raised'), 900); }
     Audio2.sfx.block();
     setTimeout(() => { if (BATTLE) BATTLE.blocking = false; }, 900);
   } else if (act === 'dodge') {
@@ -228,10 +260,17 @@ function enemyStrike() {
   let dmg = b.fighter.attack * 7 + 3;
   if (b.crowd < 30) dmg *= 1.15; // hostile crowd hurts you
   if (b.blocking) {
-    const shield = SHIELDS[STATE.equippedShield] || { block: 0 };
-    dmg *= (1 - shield.block);
-    Audio2.sfx.block();
-    flash('Blocked!');
+    const block = absorbWithShield();   // consumes 1 shield durability if it works
+    if (block > 0) {
+      dmg *= (1 - block);
+      Audio2.sfx.block();
+      flash(shieldDurability() <= 0 ? 'Shield broke!' : 'Blocked!');
+    } else {
+      Audio2.sfx.hurt();
+      animate('hero', 'hurt');
+      flash('Shield broken — repair it!');
+    }
+    updateShieldHUD();
   } else {
     Audio2.sfx.hurt();
     animate('hero', 'hurt');

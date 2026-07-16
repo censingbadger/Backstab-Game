@@ -18,7 +18,8 @@ function newGame() {
     equippedShield: 'wood_shield',
     // weapons the player owns -> current durability remaining
     weapons: { old_knife: WEAPONS.old_knife.durability },
-    shields: { wood_shield: true },
+    // shields the player owns -> current durability remaining
+    shields: { wood_shield: SHIELDS.wood_shield.durability },
     // consumable items -> quantity
     items: { apple: 2 },
     // enemies captured with the Cage
@@ -48,7 +49,12 @@ function loadGame() {
     if (!raw) return null;
     const data = JSON.parse(raw);
     // Merge with a fresh template so older saves gain any new fields.
-    return Object.assign(newGame(), data);
+    const merged = Object.assign(newGame(), data);
+    // Migrate older saves where owned shields were stored as `true`.
+    Object.keys(merged.shields || {}).forEach(id => {
+      if (merged.shields[id] === true) merged.shields[id] = (SHIELDS[id] ? SHIELDS[id].durability : 0);
+    });
+    return merged;
   } catch (e) {
     return null;
   }
@@ -125,4 +131,21 @@ function clearRegion(id) {
 /* Record a defeat of a fighter (enemy or boss) */
 function recordDefeat(fighterId) {
   STATE.defeated[fighterId] = (STATE.defeated[fighterId] || 0) + 1;
+}
+
+/* ---------- Shield helpers ----------
+   The equipped shield reduces damage when you get hit, losing 1 durability
+   each time until it breaks (0). Returns the fraction of damage blocked and
+   consumes durability; returns 0 when there is no working shield. */
+function shieldDurability() {
+  const id = STATE.equippedShield;
+  if (!id || STATE.shields[id] === undefined) return 0;
+  return STATE.shields[id];
+}
+function absorbWithShield() {
+  const id = STATE.equippedShield;
+  const s = SHIELDS[id];
+  if (!s || (STATE.shields[id] || 0) <= 0) return 0;
+  STATE.shields[id] = Math.max(0, STATE.shields[id] - 1);
+  return s.block;
 }
