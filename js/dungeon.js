@@ -66,6 +66,18 @@ const DUNGEON_THEMES = {
     waypoints: [[10, 10], [10, 28], [26, 34], [26, 16], [44, 14], [46, 34], [30, 46], [46, 52], [56, 54]],
     hard: true, canopy: true, traps: true, wider: true,
   },
+  toxic_temple: {
+    name: 'Toxic Temple',
+    sky: ['#12220e', '#0a1408', '#050a04'],       // sickly green temple gloom
+    ground: ['#3c4a32', '#33422b'],               // mossy temple flagstone
+    speckle: 'rgba(130,210,90,0.28)',
+    edge: ['#22301a', '#16220f'],
+    props: ['pillar', 'toxbarrel', 'bone', 'skull', 'greentorch', 'spore', 'pillar', 'poisonbones'],
+    trail: '150,240,120',
+    enemies: ['skeleton', 'zombie', 'mummy', 'gooster', 'skeleton', 'giant_tick'],
+    boss: 'venombane',
+    chambers: true, hard: true, poison: true,      // chamber-clear progression + poison hazards
+  },
   barren_grasslands: {
     name: 'Barren Grasslands',
     sky: ['#4a4826', '#33341c', '#181a0e'],   // dusky field
@@ -80,6 +92,33 @@ const DUNGEON_THEMES = {
   },
 };
 function dungeonTheme(regionId) { return DUNGEON_THEMES[regionId]; }
+
+/* Poison artifacts earned in the Toxic Temple — permanent powers for your weapon. */
+const ARTIFACTS = {
+  venom_fang:  { id: 'venom_fang',  name: 'Venom Fang',  icon: '🐍', desc: 'Your strikes poison enemies.' },
+  toxic_vigor: { id: 'toxic_vigor', name: 'Toxic Vigor', icon: '☠️', desc: 'Your poison hits harder and lasts longer.' },
+  plague_ward: { id: 'plague_ward', name: 'Plague Ward', icon: '🧪', desc: 'You are immune to poison pools.' },
+};
+
+/* The Toxic Temple layout: designed chambers linked by stair corridors with
+   gates that only open once a chamber is cleared. The last chamber is the boss
+   arena. (Deterministic — a hand-built temple, not a random trail.) */
+const TEMPLE = {
+  chambers: [
+    { cx: 12, cy: 12, hw: 6, hh: 5 },
+    { cx: 30, cy: 12, hw: 6, hh: 5 },
+    { cx: 30, cy: 30, hw: 6, hh: 5 },
+    { cx: 14, cy: 30, hw: 6, hh: 5 },
+    { cx: 14, cy: 49, hw: 7, hh: 6, boss: true },
+  ],
+  // each corridor connects chamber `from`->`to`; its gate opens when `from` is cleared
+  corridors: [
+    { from: 0, to: 1, ax: 18, ay: 12, bx: 24, by: 12, gate: { x: 21, y: 12, hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 1, to: 2, ax: 30, ay: 17, bx: 30, by: 25, gate: { x: 30, y: 21, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 2, to: 3, ax: 20, ay: 30, bx: 24, by: 30, gate: { x: 22, y: 30, hw: 1.4, hh: 2.2 }, stair: 'up' },
+    { from: 3, to: 4, ax: 14, ay: 35, bx: 14, by: 43, gate: { x: 14, y: 39, hw: 2.2, hh: 1.4 }, stair: 'down' },
+  ],
+};
 
 let DUNGEON = null;
 
@@ -113,6 +152,8 @@ function startDungeon(regionId) {
   Audio2.playMusic('battle');
 
   const theme = dungeonTheme(regionId) || DUNGEON_THEMES.dead_cliffs;
+  if (theme.chambers) return startTempleDungeon(regionId, theme);   // chamber-clear level
+
   const W = 62, H = 62;                    // map size in tiles
   const HALF = theme.wider ? 4.6 : 3.1;    // wider = a canyon valley floor
 
@@ -217,6 +258,194 @@ function startDungeon(regionId) {
   buildDungeonDOM();
   bindDungeonInput();
   DUNGEON.raf = requestAnimationFrame(dungeonLoop);
+}
+
+/* ============================================================
+   TOXIC TEMPLE — chamber-clear level with gates, stairs, poison
+   ============================================================ */
+function startTempleDungeon(regionId, theme) {
+  const W = 62, H = 62;
+  const tiles = [];
+  for (let y = 0; y < H; y++) { const row = []; for (let x = 0; x < W; x++) row.push('void'); tiles.push(row); }
+  const carve = (x0, y0, x1, y1) => {
+    for (let y = Math.floor(Math.min(y0, y1)); y <= Math.ceil(Math.max(y0, y1)); y++)
+      for (let x = Math.floor(Math.min(x0, x1)); x <= Math.ceil(Math.max(x0, x1)); x++)
+        if (y >= 0 && y < H && x >= 0 && x < W) tiles[y][x] = 'ground';
+  };
+  // carve each chamber room
+  const chambers = TEMPLE.chambers.map((c, i) => {
+    carve(c.cx - c.hw, c.cy - c.hh, c.cx + c.hw, c.cy + c.hh);
+    return { cx: c.cx, cy: c.cy, hw: c.hw, hh: c.hh, boss: !!c.boss, index: i, active: false, cleared: false, spawned: false };
+  });
+  // carve corridors (3-wide) and build gates + stairs
+  const doors = [], stairs = [];
+  TEMPLE.corridors.forEach(cor => {
+    if (cor.ax === cor.bx) carve(cor.ax - 1, cor.ay, cor.bx + 1, cor.by);   // vertical passage
+    else carve(cor.ax, cor.ay - 1, cor.bx, cor.by + 1);                     // horizontal passage
+    doors.push({ x: cor.gate.x, y: cor.gate.y, hw: cor.gate.hw, hh: cor.gate.hh, vertical: cor.ax === cor.bx, open: false, opensAfter: cor.from });
+    stairs.push({ x: cor.gate.x, y: cor.gate.y, dir: cor.stair, vertical: cor.ax === cor.bx });
+  });
+
+  // temple props inside chambers (off-centre so they don't clog the fight)
+  const props = [], kinds = theme.props; let pc = 0;
+  chambers.forEach((c, ci) => {
+    const n = 5 + Math.floor(rand(ci * 3.1) * 4);
+    for (let k = 0; k < n; k++) {
+      const ang = rand(ci * 9.7 + k * 2.3) * Math.PI * 2, rr = 0.6 + rand(ci + k) * 0.38;
+      const x = c.cx + Math.cos(ang) * c.hw * rr, y = c.cy + Math.sin(ang) * c.hh * rr;
+      if (isGroundTile(tiles, x, y, W, H)) props.push({ x, y, kind: kinds[(pc++) % kinds.length], seed: pc * 5 + ci });
+    }
+  });
+
+  // poison pools + spike traps in the combat chambers (skip the gentle first room)
+  const traps = [];
+  chambers.forEach((c, ci) => {
+    if (ci === 0 || c.boss) return;
+    const nPools = 1 + Math.floor(rand(ci * 4.2) * 2), nSpikes = 1 + Math.floor(rand(ci * 6.6 + 1) * 2);
+    for (let k = 0; k < nPools; k++) {
+      const x = c.cx + (rand(ci * 2.1 + k) - 0.5) * c.hw * 1.4, y = c.cy + (rand(ci * 3.3 + k) - 0.5) * c.hh * 1.4;
+      if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: 'poison_pool', seed: ci * 10 + k });
+    }
+    for (let k = 0; k < nSpikes; k++) {
+      const x = c.cx + (rand(ci * 5.5 + k + 2) - 0.5) * c.hw * 1.5, y = c.cy + (rand(ci * 7.7 + k) - 0.5) * c.hh * 1.5;
+      if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: 'spikes', phase: rand(ci + k) * 1.8, seed: ci * 20 + k });
+    }
+  });
+  // ring the boss chamber with poison pools for atmosphere + danger
+  const bc = chambers[chambers.length - 1];
+  for (let a = 0; a < 6; a++) {
+    const x = bc.cx + Math.cos(a) * (bc.hw - 1.5), y = bc.cy + Math.sin(a) * (bc.hh - 1.5);
+    if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: 'poison_pool', seed: 90 + a });
+  }
+
+  // one earnable poison artifact in chambers 1, 2 and 3 (skip ones already owned)
+  const artOrder = ['venom_fang', 'toxic_vigor', 'plague_ward'], artifacts = [];
+  [1, 2, 3].forEach((ci, k) => {
+    if (hasArtifact(artOrder[k])) return;
+    const c = chambers[ci];
+    artifacts.push({ id: artOrder[k], x: c.cx + c.hw * 0.5, y: c.cy - c.hh * 0.4, taken: false });
+  });
+
+  const start = chambers[0];
+  const hero = {
+    fx: start.cx - start.hw * 0.5, fy: start.cy, r: 0.42,
+    facing: 1, faceAngle: 0,
+    hp: STATE.maxHearts + 5, maxhp: STATE.maxHearts + 5, hurtInvulnUntil: 0,
+    attackReadyAt: 0, dodgeUntil: 0, dodgeReadyAt: 0,
+    hurtUntil: 0, swingUntil: 0, moving: false, animT: 0,
+    jumpUntil: 0, jumpReadyAt: 0, jumpZ: 0, rootedUntil: 0, sinkUntil: 0,
+  };
+
+  DUNGEON = {
+    regionId, theme, W, H, tiles, props,
+    path: buildPath(TEMPLE.chambers.map(c => [c.cx, c.cy])),   // fallback path; camera follows hero
+    checkpoints: [], canopy: [], traps, grabbers: [],
+    chamberMode: true, chamberList: chambers, doors, stairs, artifacts, activeIndex: -1, chambersCleared: 0,
+    hard: true, poison: true,
+    hero, enemies: [], drops: [], fx: [],
+    kills: 0, spawned: 0, progress: 0,
+    boss: null, bossIntro: false,
+    over: false, outcome: null,
+    cam: { x: 0, y: 0 },
+    keys: {}, mouse: { x: 0, y: 0, down: false }, joy: { active: false, dx: 0, dy: 0 },
+    attackHeld: false, paused: false,
+    lastT: performance.now(), raf: null, spawnTimer: 0,
+  };
+  buildDungeonDOM();
+  bindDungeonInput();
+  banner('CHAMBER 1 — clear it to open the gate!', 1800);
+  DUNGEON.raf = requestAnimationFrame(dungeonLoop);
+}
+
+function isGroundTile(tiles, x, y, W, H) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  return iy >= 0 && iy < H && ix >= 0 && ix < W && tiles[iy][ix] === 'ground';
+}
+function chamberContains(c, fx, fy) {
+  return fx >= c.cx - c.hw && fx <= c.cx + c.hw && fy >= c.cy - c.hh && fy <= c.cy + c.hh;
+}
+
+/* Per-frame chamber logic: activate the room you enter, spawn its wave, and open
+   the onward gate once it's cleared. The final chamber summons the boss. */
+function updateChambers(dt, t) {
+  const d = DUNGEON, h = d.hero;
+  const here = d.chamberList.find(c => chamberContains(c, h.fx, h.fy));
+  if (here && !here.active && !here.cleared) activateChamber(here, t);
+
+  d.artifacts.forEach(a => { if (!a.taken && dist(a.x, a.y, h.fx, h.fy) < 0.9) grantArtifact(a, t); });
+
+  const act = d.chamberList[d.activeIndex];
+  if (act && act.active && !act.cleared && !act.boss && act.spawned && d.enemies.filter(e => !e.dead).length === 0) {
+    clearChamber(act, t);
+  }
+  d.progress = d.chambersCleared / (d.chamberList.length - 1);
+}
+
+function activateChamber(c, t) {
+  const d = DUNGEON;
+  d.activeIndex = c.index; c.active = true;
+  if (c.boss) { summonBossChamber(); return; }
+  const count = 3 + c.index * 2;
+  for (let k = 0; k < count; k++) spawnInChamber(c, k);
+  c.spawned = true;
+  if (c.index > 0) banner('CHAMBER ' + (c.index + 1) + ' — defeat the enemies!', 1500);
+}
+
+function spawnInChamber(c, k) {
+  const d = DUNGEON;
+  for (let tries = 0; tries < 20; tries++) {
+    const ang = rand(c.index * 12.1 + k * 3.7 + tries) * Math.PI * 2, rr = 0.35 + rand(c.index + k + tries) * 0.6;
+    const x = c.cx + Math.cos(ang) * c.hw * rr, y = c.cy + Math.sin(ang) * c.hh * rr;
+    if (!isGroundTile(d.tiles, x, y, d.W, d.H) || dist(x, y, d.hero.fx, d.hero.fy) < 2.4) continue;
+    const pool = d.theme.enemies, id = pool[Math.floor(rand(c.index * 9.1 + k * 2.3 + tries) * pool.length)];
+    d.enemies.push(makeDungeonEnemy(id, x, y, d.spawned + k + tries));
+    d.spawned++;
+    return;
+  }
+}
+
+function clearChamber(c, t) {
+  const d = DUNGEON;
+  c.cleared = true; d.chambersCleared++;
+  d.doors.forEach(door => { if (door.opensAfter === c.index) door.open = true; });
+  banner('CHAMBER CLEARED — the gate opens!', 1700);
+  Audio2.sfx.win(); earn(15);
+  d.hero.hp = Math.min(d.hero.maxhp, d.hero.hp + 1);
+  updateDungeonHUD();
+}
+
+function grantArtifact(a, t) {
+  a.taken = true;
+  if (!STATE.artifacts) STATE.artifacts = [];
+  if (!STATE.artifacts.includes(a.id)) STATE.artifacts.push(a.id);
+  const info = ARTIFACTS[a.id];
+  banner(info.icon + ' ' + info.name.toUpperCase() + ' — ' + info.desc, 2600);
+  Audio2.sfx.win();
+  spawnFloatText(a.x, a.y, info.icon + ' ' + info.name, '#8ff0a0');
+  saveGame();
+}
+
+function summonBossChamber() {
+  const d = DUNGEON;
+  const bd = BOSSES[d.theme.boss];
+  d.bossIntro = true; d.bossId = d.theme.boss;
+  banner(bd.name.toUpperCase() + ' — THE ROTKING AWAKENS...', 2400);
+  Audio2.sfx.lose();
+  setTimeout(() => {
+    if (!DUNGEON) return;
+    const c = d.chamberList[d.chamberList.length - 1];
+    const hp = Math.round(bd.hearts * 24);
+    d.boss = {
+      boss: true, fighter: bd, art: bd.art, palette: bd.palette,
+      fx: c.cx, fy: c.cy - c.hh * 0.5, r: 0.9, scale: 2.3, poison: true,
+      hp, maxhp: hp, attack: bd.attack, reward: bd.reward,
+      speed: 1.4, facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, name: bd.name,
+    };
+    const bar = document.getElementById('boss-bar');
+    bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
+    bar.classList.remove('hidden');
+    updateBossHUD();
+  }, 2400);
 }
 
 // deterministic pseudo-random (no Date/Math.random reliance for layout)
@@ -417,7 +646,9 @@ function heroAttack() {
   updateHeroFacing();
 
   let dealt = 0;
-  const applyPowerTo = e => { if (power === 'poison') poisonEnemy(e, now); if (power === 'stun') stunEnemy(e, now); };
+  // Venom Fang artifact makes EVERY weapon poison; Toxic Vigor makes it stronger.
+  const doesPoison = power === 'poison' || hasArtifact('venom_fang');
+  const applyPowerTo = e => { if (doesPoison) poisonEnemy(e, now, hasArtifact('toxic_vigor')); if (power === 'stun') stunEnemy(e, now); };
   const inArc = e => {
     const a = Math.atan2(e.fy - h.fy, e.fx - h.fx);
     let da = Math.abs(a - h.faceAngle); if (da > Math.PI) da = Math.PI * 2 - da;
@@ -457,7 +688,7 @@ function heroAttack() {
 }
 
 /* weapon power helpers */
-function poisonEnemy(e, now) { e.poisonUntil = now + 3200; e.poisonNext = now + 400; e.poisonDmg = 2; }
+function poisonEnemy(e, now, strong) { e.poisonUntil = now + (strong ? 5200 : 3200); e.poisonNext = now + 400; e.poisonDmg = strong ? 4 : 2; }
 function stunEnemy(e, now) { e.stunUntil = now + 950; e.attackReadyAt = Math.max(e.attackReadyAt || 0, now + 1300); }
 function tickPoison(e, t) {
   if (!e.poisonUntil || t >= e.poisonUntil) return;
@@ -667,12 +898,20 @@ function updateDungeon(dt, t) {
   // rooted by a grab or trap door => can't move
   const rooted = t < h.rootedUntil;
 
-  // floor hazards (Dark Forest): quicksand slows + sinks, trap doors spring
-  let inQuick = false;
+  // floor hazards: quicksand (Forest), poison pools + spike traps (Temple), trap doors
+  let inQuick = false, inPoison = false;
   if (d.traps && !jumping) {
     for (const tr of d.traps) {
       const dd = dist(tr.x, tr.y, h.fx, h.fy);
       if (tr.kind === 'quicksand' && dd < 1.15) inQuick = true;
+      if (tr.kind === 'poison_pool' && dd < 1.2) inPoison = true;
+      if (tr.kind === 'spikes') {
+        const extended = ((t / 1000 + tr.phase) % 1.8) < 0.7;     // spikes pop up ~0.7s each cycle
+        if (extended && dd < 0.85 && t > (h.spikeHurtAt || 0)) {
+          h.spikeHurtAt = t + 800; hurtHero(0.5); shake();
+          spawnFloatText(h.fx, h.fy, 'SPIKES!', '#ff5c7a');
+        }
+      }
       if (tr.kind === 'trapdoor' && !tr.sprung && dd < 0.9) {
         tr.sprung = true; tr.sprungAt = t; h.rootedUntil = t + 650; shake();
         banner('TRAP DOOR!', 700); hurtHero(1);
@@ -687,6 +926,14 @@ function updateDungeon(dt, t) {
       if (h.hp <= 0) return loseDungeon();
     }
   } else h.sinking = false;
+  // poison pools tick damage over time — unless you've earned the Plague Ward
+  if (inPoison && !hasArtifact('plague_ward')) {
+    if (t > (h.poisonDmgAt || 0)) {
+      h.poisonDmgAt = t + 700; h.hp = Math.max(0, h.hp - 0.5); h.hurtUntil = t + 200;
+      Audio2.sfx.hurt(); spawnFloatText(h.fx, h.fy, '-½ ☠', '#8ff0a0'); updateDungeonHUD();
+      if (h.hp <= 0) return loseDungeon();
+    }
+  }
 
   const dodging = t < h.dodgeUntil;
   let spd = (dodging ? 8.5 : (4.2 + (STATE.speedBonus || 0))) * (inQuick ? 0.3 : 1);   // + Swift modifier
@@ -714,8 +961,11 @@ function updateDungeon(dt, t) {
   /* --- attack while moving: holding attack keeps swinging (cooldown-gated) --- */
   if (d.attackHeld || d.mouse.down || d.keys['k']) heroAttack();
 
+  /* --- Toxic Temple: chamber-clear progression (gates, artifacts, boss) --- */
+  if (d.chamberMode) updateChambers(dt, t);
+
   /* --- checkpoints along the trail: +10 coins, small heal --- */
-  d.checkpoints.forEach(cp => {
+  if (!d.chamberMode) d.checkpoints.forEach(cp => {
     if (!cp.reached && dist(cp.x, cp.y, h.fx, h.fy) < 2.6) {
       cp.reached = true;
       earn(10);
@@ -728,18 +978,18 @@ function updateDungeon(dt, t) {
   });
 
   /* --- geographic progression: reaching the end summons the boss --- */
-  {
+  if (!d.chamberMode) {
     const pi = nearestSampleIndex(h.fx, h.fy);
     d.progress = clamp(d.path.samples[pi].cum / d.path.length, 0, 1);
     if (!d.bossIntro && !d.boss && d.progress >= 0.955) summonBoss();
   }
 
-  /* --- keep the swarm populated (until boss), ramping up with kills --- */
+  /* --- keep the swarm populated (path mode only; chambers spawn fixed waves) --- */
   // difficulty scales with geographic progress (harder the further you go)
   const capMax = d.hard ? 13 : DUN.MAX_ENEMIES;
   const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.round((d.progress || 0) * (d.hard ? 8 : 5)));
   const spawnGap = Math.max(d.hard ? 0.34 : 0.55, (d.hard ? 0.95 : 1.15) - (d.progress || 0) * 0.6);
-  if (!d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap) {
+  if (!d.chamberMode && !d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap) {
     d.spawnTimer -= dt;
     if (d.spawnTimer <= 0) { spawnEnemy(); d.spawnTimer = spawnGap; }
   }
@@ -847,7 +1097,12 @@ function moveEntity(ent, dx, dy) {
 function isWalkable(fx, fy) {
   const d = DUNGEON;
   if (fx < 3 || fy < 3 || fx > d.W - 3 || fy > d.H - 3) return false;
-  return d.tiles[Math.floor(fy)][Math.floor(fx)] === 'ground';
+  if (d.tiles[Math.floor(fy)][Math.floor(fx)] !== 'ground') return false;
+  // closed temple gates block their doorway until the chamber is cleared
+  if (d.doors) for (const door of d.doors) {
+    if (!door.open && Math.abs(fx - door.x) < door.hw && Math.abs(fy - door.y) < door.hh) return false;
+  }
+  return true;
 }
 
 /* ============================================================
@@ -891,15 +1146,19 @@ function renderDungeon() {
     }
   }
 
-  // ---- animated trail flowing forward along the path ----
-  drawTrail(ctx, ox, oy);
+  // ---- animated trail flowing forward along the path (path levels only) ----
+  if (!d.chamberMode) drawTrail(ctx, ox, oy);
+  // ---- temple stairs sit flat in the corridors ----
+  if (d.stairs) d.stairs.forEach(st => { if (Math.abs(st.x - d.hero.fx) < RANGE && Math.abs(st.y - d.hero.fy) < RANGE) drawStairs(ctx, st, ox, oy); });
 
-  // ---- floor traps (quicksand + trap doors) sit on the ground ----
+  // ---- floor traps (quicksand, poison pools, spikes, trap doors) sit on the ground ----
   if (d.traps) d.traps.forEach(tr => { if (Math.abs(tr.x - d.hero.fx) < RANGE && Math.abs(tr.y - d.hero.fy) < RANGE) drawTrap(ctx, tr, ox, oy); });
 
   // ---- collect depth-sorted sprites (props + entities + drops + checkpoints + grabbers) ----
   const draws = [];
   d.checkpoints.forEach(cp => draws.push({ z: cp.x + cp.y, kind: 'checkpoint', cp }));
+  if (d.doors) d.doors.forEach(door => draws.push({ z: door.x + door.y, kind: 'door', door }));
+  if (d.artifacts) d.artifacts.forEach(a => { if (!a.taken) draws.push({ z: a.x + a.y, kind: 'artifact', a }); });
   d.props.forEach(p => { if (Math.abs(p.x - d.hero.fx) < RANGE && Math.abs(p.y - d.hero.fy) < RANGE) draws.push({ z: p.x + p.y, kind: 'prop', p }); });
   if (d.grabbers) d.grabbers.forEach(g => { if (!g.dead && Math.abs(g.x - d.hero.fx) < RANGE && Math.abs(g.y - d.hero.fy) < RANGE) draws.push({ z: g.x + g.y, kind: 'grabber', g }); });
   d.drops.forEach(dr => draws.push({ z: dr.fx + dr.fy - 0.01, kind: 'drop', dr }));
@@ -911,6 +1170,8 @@ function renderDungeon() {
   draws.forEach(item => {
     if (item.kind === 'prop') drawProp(ctx, item.p, ox, oy);
     else if (item.kind === 'checkpoint') drawCheckpoint(ctx, item.cp, ox, oy);
+    else if (item.kind === 'door') drawDoor(ctx, item.door, ox, oy);
+    else if (item.kind === 'artifact') drawArtifact(ctx, item.a, ox, oy);
     else if (item.kind === 'grabber') drawGrabber(ctx, item.g, ox, oy);
     else if (item.kind === 'drop') drawDrop(ctx, item.dr, ox, oy);
     else if (item.kind === 'enemy') drawCombatant(ctx, item.e, ox, oy);
@@ -919,6 +1180,9 @@ function renderDungeon() {
 
   // floating texts / swing fx
   d.fx.forEach(f => drawFx(ctx, f, ox, oy));
+
+  // ---- drifting poison haze for the Toxic Temple ----
+  if (d.poison) drawPoisonHaze(ctx, cw, ch);
 
   // ---- canopy: overhead tree-tops that shadow + hide the hero ----
   if (d.canopy && d.canopy.length) {
@@ -933,16 +1197,47 @@ function renderDungeon() {
     });
   }
 
-  // vignette (darker for shadowy forests)
-  const dark = d.theme.canopy ? 0.82 : 0.55;
+  // vignette (darker for shadowy forests / the murky temple)
+  const dark = d.theme.canopy ? 0.82 : d.poison ? 0.7 : 0.55;
   const vg = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.22, cw / 2, ch / 2, ch * 0.72);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${dark})`);
   ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
 }
 
-/* A floor trap: quicksand pit or trap door. */
+/* A floor trap: quicksand, poison pool, spike plate, or trap door. */
 function drawTrap(ctx, tr, ox, oy) {
   const s = isoToScreen(tr.x, tr.y), x = s.x + ox, y = s.y + oy, t = performance.now() / 1000;
+  if (tr.kind === 'poison_pool') {
+    // bubbling toxic sludge
+    ctx.fillStyle = '#1e3a14'; ctx.beginPath(); ctx.ellipse(x, y, 28, 15, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#3f7a26'; ctx.beginPath(); ctx.ellipse(x, y, 24, 12, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#6fc23a'; ctx.beginPath(); ctx.ellipse(x - 4, y - 2, 16, 8, 0, 0, 7); ctx.fill();
+    for (let i = 0; i < 4; i++) {
+      const ph = (t * 0.9 + i * 0.27) % 1;
+      const bx = x + Math.sin(i * 2.1 + t) * 12, by = y - ph * 10;
+      ctx.fillStyle = `rgba(180,255,120,${0.6 * (1 - ph)})`;
+      ctx.beginPath(); ctx.arc(bx, by, 2 + (1 - ph) * 3, 0, 7); ctx.fill();
+    }
+    return;
+  }
+  if (tr.kind === 'spikes') {
+    const extended = ((t + tr.phase) % 1.8) < 0.7;
+    // base plate
+    ctx.strokeStyle = 'rgba(20,30,14,0.7)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x + 16, y); ctx.lineTo(x, y + 9); ctx.lineTo(x - 16, y); ctx.closePath(); ctx.stroke();
+    if (extended) {
+      ctx.fillStyle = '#c8d2dc'; ctx.strokeStyle = '#5a6470'; ctx.lineWidth = 1.4;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const px = x + i * 8, py = y + j * 4;
+        ctx.beginPath(); ctx.moveTo(px - 3, py + 2); ctx.lineTo(px, py - 12); ctx.lineTo(px + 3, py + 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+    } else {
+      // retracted: little holes
+      ctx.fillStyle = 'rgba(10,16,8,0.8)';
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.arc(x + i * 8, y + j * 4, 1.6, 0, 7); ctx.fill(); }
+    }
+    return;
+  }
   if (tr.kind === 'quicksand') {
     ctx.fillStyle = '#5a4a2a'; ctx.beginPath(); ctx.ellipse(x, y, 26, 14, 0, 0, 7); ctx.fill();
     for (let i = 0; i < 3; i++) {
@@ -961,6 +1256,75 @@ function drawTrap(ctx, tr, ox, oy) {
       ctx.beginPath(); ctx.moveTo(x - 18, y - 10); ctx.lineTo(x - 22, y - 22); ctx.moveTo(x + 18, y - 10); ctx.lineTo(x + 22, y - 22); ctx.stroke();
     }
   }
+}
+
+/* Temple stairs in a corridor — a stack of stone steps + an up/down arrow. */
+function drawStairs(ctx, st, ox, oy) {
+  const s = isoToScreen(st.x, st.y), x = s.x + ox, y = s.y + oy, steps = 4;
+  for (let i = 0; i < steps; i++) {
+    const yy = y + (i - steps / 2) * 5, sh = 42 + i * 12;
+    ctx.fillStyle = `rgb(${sh},${sh + 16},${sh})`;
+    ctx.beginPath(); ctx.moveTo(x, yy - 6); ctx.lineTo(x + 18, yy); ctx.lineTo(x, yy + 6); ctx.lineTo(x - 18, yy); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(180,240,150,0.8)'; ctx.font = '900 12px Trebuchet MS, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(st.dir === 'up' ? '▲' : '▼', x, y - steps * 3 - 6); ctx.textAlign = 'left';
+}
+
+/* A temple gate — a closed portcullis blocks the way until the chamber clears. */
+function drawDoor(ctx, door, ox, oy) {
+  const s = isoToScreen(door.x, door.y), x = s.x + ox, y = s.y + oy, t = performance.now();
+  const span = 30;
+  const pillar = px => {
+    ctx.fillStyle = '#3a4a30'; ctx.fillRect(px - 6, y - 54, 12, 60);
+    ctx.fillStyle = '#4a5c3c'; ctx.fillRect(px - 6, y - 54, 5, 60);
+    ctx.fillStyle = '#2a3624'; ctx.fillRect(px - 8, y - 58, 16, 6);
+    ctx.fillStyle = '#2a3624'; ctx.fillRect(px - 8, y + 2, 16, 6);
+  };
+  pillar(x - span); pillar(x + span);
+  ctx.fillStyle = '#33422b'; ctx.fillRect(x - span - 8, y - 62, (span + 8) * 2, 10);
+  if (door.open) {
+    ctx.fillStyle = `rgba(120,240,120,${0.1 + 0.05 * Math.sin(t / 300)})`;
+    ctx.fillRect(x - span + 6, y - 50, (span - 6) * 2, 52);
+    ctx.fillStyle = '#8ff0a0'; ctx.font = '900 11px Trebuchet MS, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('OPEN', x, y - 22); ctx.textAlign = 'left';
+  } else {
+    ctx.fillStyle = `rgba(120,220,90,${0.12 + 0.06 * Math.sin(t / 300)})`;
+    ctx.fillRect(x - span + 8, y - 50, (span - 8) * 2, 52);
+    ctx.strokeStyle = '#6a7a54'; ctx.lineWidth = 3;
+    for (let i = -span + 8; i <= span - 8; i += 9) { ctx.beginPath(); ctx.moveTo(x + i, y - 50); ctx.lineTo(x + i, y + 2); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(x - span + 8, y - 34); ctx.lineTo(x + span - 8, y - 34); ctx.stroke();
+    ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(x, y - 24, 5, 0, 7); ctx.fill();
+  }
+}
+
+/* A floating, glowing poison artifact you can walk over to earn a power. */
+function drawArtifact(ctx, a, ox, oy) {
+  const s = isoToScreen(a.x, a.y), x = s.x + ox, t = performance.now();
+  const y = s.y + oy - 22 + Math.sin(t / 300 + a.x) * 4;
+  const g = ctx.createRadialGradient(x, y, 2, x, y, 26);
+  g.addColorStop(0, 'rgba(140,255,120,0.55)'); g.addColorStop(1, 'rgba(80,200,80,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(120,240,120,0.18)'; ctx.beginPath(); ctx.ellipse(x, s.y + oy, 16, 8, 0, 0, 7); ctx.fill();
+  ctx.font = '900 22px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText((ARTIFACTS[a.id] || {}).icon || '☠️', x, y);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  for (let i = 0; i < 3; i++) { const ph = (t / 600 + i / 3) % 1; ctx.fillStyle = `rgba(200,255,160,${1 - ph})`; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + t / 300) * 14, y - ph * 18, 1.6, 0, 7); ctx.fill(); }
+}
+
+/* Drifting green poison fog over the whole temple. */
+function drawPoisonHaze(ctx, cw, ch) {
+  const t = performance.now() / 1000;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 5; i++) {
+    const px = (Math.sin(i * 2.3 + t * 0.15) * 0.5 + 0.5) * cw;
+    const py = ch * (0.2 + (i / 5) * 0.7) + Math.sin(t * 0.2 + i) * 20, r = 120 + i * 30;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, 'rgba(70,160,50,0.05)'); g.addColorStop(1, 'rgba(70,160,50,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+  ctx.fillStyle = 'rgba(40,90,30,0.07)'; ctx.fillRect(0, 0, cw, ch);
 }
 
 /* A grabber tree — a living tree with a snarling face and reaching branches. */
@@ -1139,6 +1503,49 @@ function drawProp(ctx, p, ox, oy) {
       ctx.fillStyle = '#4a3524'; ctx.beginPath(); ctx.ellipse(x, y - 13, 12, 6, 0, 0, 7); ctx.fill();
       ctx.strokeStyle = '#5a4530'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(x, y - 13, 8, 4, 0, 0, 7); ctx.stroke();
       break;
+
+    /* ---- Toxic Temple props ---- */
+    case 'pillar': {
+      const crk = r % 3 === 0;
+      ctx.fillStyle = '#41513a'; ctx.fillRect(x - 9, y - 60, 18, 62);
+      ctx.fillStyle = '#4e6146'; ctx.fillRect(x - 9, y - 60, 7, 62);           // lit side
+      ctx.fillStyle = '#2c3826'; ctx.fillRect(x - 12, y - 66, 24, 8);          // capital
+      ctx.fillStyle = '#2c3826'; ctx.fillRect(x - 12, y - 2, 24, 8);           // base
+      ctx.strokeStyle = 'rgba(20,30,16,0.5)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(x - 4, y - 58); ctx.lineTo(x - 4, y - 2); ctx.moveTo(x + 4, y - 58); ctx.lineTo(x + 4, y - 2); ctx.stroke();
+      if (crk) { ctx.strokeStyle = '#8fce5a'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - 2, y - 40); ctx.lineTo(x + 3, y - 30); ctx.lineTo(x - 1, y - 20); ctx.stroke(); }  // toxic moss crack
+      break;
+    }
+    case 'toxbarrel':
+      ctx.fillStyle = '#3f5a2a'; roundRectPath(ctx, x - 11, y - 26, 22, 26, 5); ctx.fill();
+      ctx.strokeStyle = '#2a3a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 11, y - 18); ctx.lineTo(x + 11, y - 18); ctx.moveTo(x - 11, y - 8); ctx.lineTo(x + 11, y - 8); ctx.stroke();
+      ctx.fillStyle = '#7fe23a'; ctx.beginPath(); ctx.ellipse(x, y - 26, 9, 4, 0, 0, 7); ctx.fill();        // glowing goo top
+      { const bb = (performance.now() / 500 + r) % 1; ctx.fillStyle = `rgba(160,255,120,${0.7 * (1 - bb)})`; ctx.beginPath(); ctx.arc(x + Math.sin(r) * 4, y - 28 - bb * 8, 2, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#20301a'; ctx.font = '900 10px Trebuchet MS, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('☠', x, y - 12); ctx.textAlign = 'left';
+      break;
+    case 'greentorch': {
+      ctx.strokeStyle = '#3a4a30'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 40); ctx.stroke();
+      const fl = 4 + Math.sin(performance.now() / 140 + r) * 3;
+      const gg = ctx.createRadialGradient(x, y - 46, 1, x, y - 46, 16);
+      gg.addColorStop(0, 'rgba(180,255,120,0.9)'); gg.addColorStop(1, 'rgba(90,200,70,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x, y - 46, 16, 0, 7); ctx.fill();
+      ctx.fillStyle = '#7fe23a'; ctx.beginPath(); ctx.ellipse(x, y - 46, 5, 8 + fl, 0, 0, 7); ctx.fill();
+      break;
+    }
+    case 'spore':
+      for (let i = 0; i < 3; i++) {
+        const sx = x + (i - 1) * 7, sy = y - 6 - (i % 2) * 5;
+        ctx.strokeStyle = '#5a7a3a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, sy); ctx.stroke();
+        ctx.fillStyle = '#8fce5a'; ctx.beginPath(); ctx.ellipse(sx, sy, 5, 3.5, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(200,255,150,0.6)'; ctx.beginPath(); ctx.arc(sx - 1, sy - 1, 1.4, 0, 7); ctx.fill();
+      }
+      break;
+    case 'poisonbones':
+      ctx.strokeStyle = '#c8d0a8'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 12, y - 2); ctx.lineTo(x + 8, y - 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 6, y + 2); ctx.lineTo(x + 12, y - 3); ctx.stroke();
+      ctx.fillStyle = '#8fce5a'; ctx.beginPath(); ctx.ellipse(x - 2, y, 6, 3, 0, 0, 7); ctx.fill();   // sludge pooling on the bones
+      break;
   }
 }
 
@@ -1171,6 +1578,19 @@ function drawCombatant(ctx, e, ox, oy) {
     gr.addColorStop(0, '#b061ff'); gr.addColorStop(1, 'rgba(176,97,255,0)');
     ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y - h * 0.45, 30 * scale, 40 * scale, 0, 0, 7); ctx.fill();
     ctx.restore();
+  }
+  // Poison boss — a sickly green aura and venom dripping off its bones
+  if (e.poison) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 + 0.3 * Math.sin(now / 260);
+    const gr = ctx.createRadialGradient(x, y - h * 0.5, 6, x, y - h * 0.5, 46 * scale);
+    gr.addColorStop(0, 'rgba(140,240,90,0.7)'); gr.addColorStop(1, 'rgba(90,200,70,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y - h * 0.5, 40 * scale, 48 * scale, 0, 0, 7); ctx.fill();
+    ctx.restore();
+    for (let i = 0; i < 5; i++) {                       // dripping venom
+      const ph = (now / 900 + i / 5) % 1, dx = ((i / 5) - 0.5) * w * 0.7;
+      ctx.fillStyle = `rgba(150,240,90,${0.8 * (1 - ph)})`;
+      ctx.beginPath(); ctx.ellipse(x + dx, y - h * 0.5 + ph * h * 0.5, 2.2, 4, 0, 0, 7); ctx.fill();
+    }
   }
   if (img.complete && img.naturalWidth) {
     ctx.globalAlpha = hurt ? 0.6 : 1;
@@ -1430,9 +1850,15 @@ function updateDungeonHUD() {
   if (hearts) hearts.innerHTML = renderHearts(d.hero.hp, d.hero.maxhp);
   const fill = document.getElementById('obj-fill');
   const cnt = document.getElementById('obj-count');
-  const reached = d.checkpoints.filter(c => c.reached).length;
   if (fill) fill.style.width = clamp((d.progress || 0) * 100, 0, 100) + '%';
-  if (cnt) cnt.textContent = 'Checkpoint ' + reached + ' / ' + d.checkpoints.length;
+  if (d.chamberMode) {
+    const label = document.querySelector('.obj-label');
+    if (label) label.textContent = 'Descend the temple';
+    if (cnt) cnt.textContent = 'Chamber ' + Math.min(d.chambersCleared + 1, d.chamberList.length) + ' / ' + d.chamberList.length;
+  } else {
+    const reached = d.checkpoints.filter(c => c.reached).length;
+    if (cnt) cnt.textContent = 'Checkpoint ' + reached + ' / ' + d.checkpoints.length;
+  }
   updateWeaponHUD();
 }
 function updateWeaponHUD() {
