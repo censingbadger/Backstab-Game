@@ -89,33 +89,36 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .title-mute{ position:absolute; top:10px; right:10px; }
 .copyright{ margin-top:24px; color:var(--muted); font-size:12px; letter-spacing:.5px; }
 
-/* ---------------- Map ---------------- */
-.map-canvas{ position:relative; margin:14px; height:min(72vh,560px);
-  background:
-    radial-gradient(80% 60% at 30% 20%, rgba(87,204,102,.08), transparent),
-    radial-gradient(70% 60% at 80% 70%, rgba(58,160,255,.10), transparent),
-    linear-gradient(160deg,#241a44,#1a1236);
-  border:3px solid var(--panel-line); border-radius:20px; overflow:hidden;
-}
-.map-lines{ position:absolute; inset:0; width:100%; height:100%; }
-.map-path{ stroke:var(--gold); stroke-width:.5; stroke-dasharray:1.4 2; opacity:.5; }
+/* ---------------- Map (illustrated continent) ---------------- */
+.map-frame{ display:flex; justify-content:center; padding:12px 12px 4px; }
+.map-canvas{ position:relative; width:min(94vw, 62vh, 560px); aspect-ratio:1;
+  border-radius:18px; overflow:hidden;
+  border:4px solid #3a2f1a; box-shadow:0 0 0 2px #6a5836, 0 12px 30px -8px #000; }
+.map-svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.map-route{ fill:none; stroke:#fff3c8; stroke-width:0.7; stroke-linecap:round;
+  stroke-dasharray:0.2 2.4; opacity:.85; filter:drop-shadow(0 0.3px 0.4px rgba(0,0,0,.6)); }
+.map-compass{ opacity:.9; }
 .map-node{
-  position:absolute; transform:translate(-50%,-50%); width:74px;
-  background:none; display:flex; flex-direction:column; align-items:center; gap:4px;
+  position:absolute; transform:translate(-50%,-60%); width:74px; z-index:2;
+  background:none; display:flex; flex-direction:column; align-items:center; gap:2px;
 }
-.node-hex{
-  width:56px; height:56px; display:flex; align-items:center; justify-content:center; font-size:24px;
-  background:linear-gradient(180deg, color-mix(in srgb, var(--rc) 70%, #fff 0%), color-mix(in srgb, var(--rc) 60%, #000 25%));
-  clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%);
-  border:0; box-shadow:0 4px 10px var(--shadow); transition:transform .12s;
+.node-pin{
+  position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:19px;
+  border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+  background:radial-gradient(circle at 35% 30%, #fff8, transparent 60%), linear-gradient(180deg, color-mix(in srgb, var(--rc) 78%, #fff 12%), color-mix(in srgb, var(--rc) 66%, #000 22%));
+  border:2px solid rgba(255,255,255,.85); box-shadow:0 4px 8px rgba(0,0,0,.45); transition:transform .12s;
 }
-.map-node:not(.locked):hover .node-hex{ transform:scale(1.08); }
-.map-node .node-label{ font-size:12px; font-weight:800; text-shadow:0 2px 4px #000; }
-.map-node.locked{ opacity:.55; }
-.map-node.locked .node-hex{ background:linear-gradient(180deg,#4a4460,#2a2540); filter:grayscale(.6); }
-.map-node.cleared .node-hex{ box-shadow:0 0 0 3px var(--gold), 0 4px 12px var(--shadow); }
-.map-node.secret .node-hex{ box-shadow:0 0 16px var(--red); }
-.map-hint{ text-align:center; color:var(--muted); font-size:13px; padding:0 16px 20px; }
+.node-pin > *{ transform:rotate(45deg); }
+.map-node:not(.locked):hover .node-pin{ transform:rotate(-45deg) scale(1.12); }
+.node-crown{ position:absolute; top:-10px; left:-10px; font-size:15px; filter:drop-shadow(0 1px 1px #000); }
+.node-label{ font-size:11px; font-weight:900; color:#fff; margin-top:3px;
+  background:rgba(30,20,10,.72); padding:1px 7px; border-radius:8px; white-space:nowrap; text-shadow:0 1px 2px #000; }
+.map-node.locked{ }
+.map-node.locked .node-pin{ background:linear-gradient(180deg,#6a6478,#403a52); border-color:rgba(255,255,255,.4); filter:grayscale(.5); }
+.map-node.locked .node-label{ opacity:.65; }
+.map-node.cleared .node-pin{ box-shadow:0 0 0 2px var(--gold), 0 4px 10px rgba(0,0,0,.5); }
+.map-node.secret:not(.locked) .node-pin{ box-shadow:0 0 14px var(--red); }
+.map-hint{ text-align:center; color:var(--muted); font-size:13px; padding:8px 16px 20px; }
 
 /* ---------------- Arena ---------------- */
 .arena-region{ display:flex; justify-content:space-between; align-items:center; gap:8px;

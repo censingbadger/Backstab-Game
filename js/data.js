@@ -134,7 +134,7 @@ const REGIONS = [
   { id:'dark_forest',      name:'Dark Forest',       x:24, y:52, enemies:['baby_werewolf','bear','lumberjack','werewolf'],               boss:'dragok',      color:'#3a5a3a' },
   { id:'toxic_temple',     name:'Toxic Temple',      x:22, y:30, enemies:['mummy','gooster','phantom'],                                  boss:null,          color:'#6a8a4a' },
   { id:'shatter_coast',    name:'Shatter Coast',     x:48, y:30, enemies:['sandy_skeleton','pirate','colossal_squid','swordfish','crab'], boss:'great_white', color:'#4a7a9a' },
-  { id:'sandcastle',       name:'Sandcastle',        x:62, y:16, enemies:['crab','sandy_skeleton','pirate'],                            boss:'crab_king',   color:'#e0c060', secret:true, passageOnly:true },
+  { id:'sandcastle',       name:'Sandcastle',        x:70, y:22, enemies:['crab','sandy_skeleton','pirate'],                            boss:'crab_king',   color:'#e0c060', secret:true, passageOnly:true },
   { id:'knife_mountain',   name:'Knife Mountain',    x:52, y:62, enemies:['bear','yeti','polar_bear'],                                   boss:null,          color:'#8a8f9a' },
   { id:'desolate_dunes',   name:'Desolate Dunes',    x:78, y:40, enemies:['sandy_skeleton','sandworm','icius','mummy'],                  boss:'gorton',      color:'#d9a441' },
   { id:'secret',           name:'???',               x:62, y:12, enemies:['phantom','werewolf','icius'],                                 boss:'backstabber', color:'#7a1030', secret:true },

@@ -211,36 +211,112 @@ function renderTitle() {
   if (out) out.addEventListener('click', () => { Auth.logout(); Audio2.sfx.click(); showScreen('auth'); });
 }
 
-/* ================= MAP ================= */
+/* ================= MAP (illustrated continent) ================= */
+// each region's biome — drives the terrain painted on the continent + its pin
+const BIOME = {
+  dead_cliffs: 'cliffs', barren_grasslands: 'grass', dark_forest: 'forest',
+  toxic_temple: 'temple', shatter_coast: 'coast', sandcastle: 'sandcastle',
+  knife_mountain: 'mountain', desolate_dunes: 'dunes', secret: 'secret',
+};
+const BIOME_EMOJI = {
+  dead_cliffs: '🪨', barren_grasslands: '🌾', dark_forest: '🌲', toxic_temple: '🛕',
+  shatter_coast: '🏖️', sandcastle: '🏰', knife_mountain: '⛰️', desolate_dunes: '🏜️', secret: '💀',
+};
+function mrand(n) { const s = Math.sin(n * 91.7 + 13.1) * 43758.5453; return s - Math.floor(s); }
+
+/* ---- little terrain glyphs, drawn in 0..100 map space ---- */
+function mapGlyph(kind, cx, cy) {
+  switch (kind) {
+    case 'tree': return `<path d="M${cx} ${cy - 3.6} L${cx - 2} ${cy - 0.4} L${cx + 2} ${cy - 0.4} Z" fill="#2f7a3a"/><path d="M${cx} ${cy - 2} L${cx - 1.6} ${cy + 0.5} L${cx + 1.6} ${cy + 0.5} Z" fill="#3f9a4a"/><rect x="${cx - 0.3}" y="${cy + 0.3}" width="0.6" height="1" fill="#5a3a1a"/>`;
+    case 'pine': return `<path d="M${cx} ${cy - 4} L${cx - 1.8} ${cy} L${cx + 1.8} ${cy} Z" fill="#1e3a24"/><path d="M${cx} ${cy - 2.3} L${cx - 2} ${cy + 0.7} L${cx + 2} ${cy + 0.7} Z" fill="#264a2c"/><rect x="${cx - 0.3}" y="${cy + 0.5}" width="0.6" height="1" fill="#3a2a18"/>`;
+    case 'mountain': return `<path d="M${cx - 3.4} ${cy + 0.6} L${cx} ${cy - 4.6} L${cx + 3.4} ${cy + 0.6} Z" fill="#7a828e"/><path d="M${cx - 1.2} ${cy - 2.1} L${cx} ${cy - 4.6} L${cx + 1.2} ${cy - 2.1} Z" fill="#f0f4f8"/><path d="M${cx} ${cy - 4.6} L${cx + 3.4} ${cy + 0.6} L${cx} ${cy + 0.6} Z" fill="#6a727e"/>`;
+    case 'crag': return `<path d="M${cx - 3} ${cy + 1} L${cx - 1} ${cy - 2.2} L${cx + 0.5} ${cy - 0.5} L${cx + 2} ${cy - 2.8} L${cx + 3} ${cy + 1} Z" fill="#6b7480"/><path d="M${cx - 1} ${cy - 2.2} L${cx + 0.2} ${cy - 0.5} L${cx - 1.6} ${cy - 0.2} Z" fill="#828c98"/>`;
+    case 'dune': return `<path d="M${cx - 4} ${cy} q2 -2.4 4 0 q2 2.4 4 0" fill="none" stroke="#caa14a" stroke-width="0.9" stroke-linecap="round"/>`;
+    case 'grass': return `<path d="M${cx - 1.4} ${cy} q0.4 -2 1.4 -2.7 M${cx} ${cy} q0 -2.3 0 -3 M${cx + 1.4} ${cy} q-0.4 -2 -1.4 -2.7" stroke="#93a352" stroke-width="0.6" fill="none" stroke-linecap="round"/>`;
+    case 'wave': return `<path d="M${cx - 3.4} ${cy} q1.6 -1.3 3.2 0 t3.2 0" fill="none" stroke="#d7f0ff" stroke-width="0.7" stroke-linecap="round"/>`;
+    default: return '';
+  }
+}
+function biomeDecor(r, biome) {
+  let out = '';
+  if (biome === 'temple') out += `<path d="M${r.x - 3.4} ${r.y} L${r.x + 3.4} ${r.y} L${r.x + 2.4} ${r.y - 1.4} L${r.x - 2.4} ${r.y - 1.4} Z" fill="#4f7042"/><path d="M${r.x - 2.4} ${r.y - 1.4} L${r.x + 2.4} ${r.y - 1.4} L${r.x + 1.6} ${r.y - 2.8} L${r.x - 1.6} ${r.y - 2.8} Z" fill="#5f8452"/><path d="M${r.x - 1.6} ${r.y - 2.8} L${r.x + 1.6} ${r.y - 2.8} L${r.x} ${r.y - 4.4} Z" fill="#6f9462"/><rect x="${r.x - 0.5}" y="${r.y - 1.4}" width="1" height="1.4" fill="#20301a"/>`;
+  if (biome === 'sandcastle') out += `<rect x="${r.x - 3}" y="${r.y - 2.6}" width="6" height="2.8" fill="#e7cf88"/><rect x="${r.x - 3}" y="${r.y - 4}" width="1.6" height="1.6" fill="#e7cf88"/><rect x="${r.x + 1.4}" y="${r.y - 4}" width="1.6" height="1.6" fill="#e7cf88"/><rect x="${r.x - 0.8}" y="${r.y - 4.6}" width="1.6" height="2.2" fill="#dcbf72"/><path d="M${r.x + 0.8} ${r.y - 4.6} L${r.x + 2.6} ${r.y - 4.1} L${r.x + 0.8} ${r.y - 3.6} Z" fill="#e0453a"/>`;
+  if (biome === 'secret') out += `<circle cx="${r.x}" cy="${r.y - 1.6}" r="2.6" fill="#e8e2d0"/><path d="M${r.x - 1.9} ${r.y - 0.8} h3.8 v1.4 h-3.8 Z" fill="#e8e2d0"/><circle cx="${r.x - 1}" cy="${r.y - 1.9}" r="0.8" fill="#3a1020"/><circle cx="${r.x + 1}" cy="${r.y - 1.9}" r="0.8" fill="#3a1020"/>`;
+  const g = { cliffs: 'crag', grass: 'grass', forest: 'tree', temple: 'pine', mountain: 'mountain', dunes: 'dune', coast: 'wave' }[biome];
+  const n = biome === 'coast' ? 5 : (biome === 'sandcastle' || biome === 'secret') ? 0 : biome === 'temple' ? 4 : 7;
+  for (let i = 0; i < n; i++) {
+    const a = mrand(r.x * 7 + i * 13.3) * 6.283, rr = 3 + mrand(r.x + i * 2.1) * 5.5;
+    out += mapGlyph(g, r.x + Math.cos(a) * rr, r.y + Math.sin(a) * rr * 0.78);
+  }
+  if (biome === 'dunes') out += `<path d="M${r.x + 2} ${r.y + 1} v-3.4 M${r.x + 2} ${r.y - 1} q-1.4 0 -1.4 -1.2 M${r.x + 2} ${r.y - 0.4} q1.4 0 1.4 -1.2" stroke="#4a8a3a" stroke-width="0.9" fill="none" stroke-linecap="round"/>`;
+  if (biome === 'coast') out += `<path d="M${r.x - 3} ${r.y + 2.4} q-0.6 -2.4 0.4 -4.2" stroke="#8a6a3a" stroke-width="0.7" fill="none"/><path d="M${r.x - 2.6} ${r.y - 1.8} q-1.8 -0.9 -3.2 0 M${r.x - 2.6} ${r.y - 1.8} q1.8 -0.9 3.2 0 M${r.x - 2.6} ${r.y - 1.8} q-0.9 -1.4 -2.2 -1.6 M${r.x - 2.6} ${r.y - 1.8} q0.9 -1.4 2.2 -1.6" stroke="#3f9a4a" stroke-width="0.6" fill="none"/>`;
+  return out;
+}
+
+/* The whole illustrated continent: ocean, landmass, biome terrain, travel route. */
+function continentSVG() {
+  const land = 'M6 24 C 8 13 20 8 32 11 C 41 13 43 21 49 19 C 55 14 59 9 67 9 C 75 8 81 13 85 18 C 91 23 96 31 94 41 C 93 53 96 61 90 69 C 85 79 78 87 66 90 C 52 94 40 94 30 91 C 20 89 10 86 7 76 C 4 66 6 56 6 46 C 6 36 3 31 6 24 Z';
+  let patches = '', decor = '';
+  REGIONS.forEach(r => {
+    const b = BIOME[r.id] || 'grass';
+    patches += `<circle cx="${r.x}" cy="${r.y}" r="${r.id === 'sandcastle' ? 9 : 13}" fill="${r.color}" opacity="0.5"/>`;
+    decor += biomeDecor(r, b);
+  });
+  const chain = REGIONS.filter(r => !r.passageOnly);
+  const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
+  let waves = '';
+  for (let i = 0; i < 5; i++) { const wy = 8 + i * 20 + mrand(i) * 6, wx = 4 + mrand(i * 3) * 8; waves += `<path d="M${wx} ${wy} q3 -2 6 0 t6 0" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="0.7"/>`; }
+  return `<svg viewBox="0 0 100 100" class="map-svg" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <filter id="mapSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.6"/></filter>
+      <clipPath id="mapLandClip"><path d="${land}"/></clipPath>
+      <radialGradient id="mapOcean" cx="50%" cy="38%" r="80%"><stop offset="0" stop-color="#3286b6"/><stop offset="1" stop-color="#164a74"/></radialGradient>
+      <linearGradient id="mapLand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d3c489"/><stop offset="1" stop-color="#ab9c60"/></linearGradient>
+    </defs>
+    <rect width="100" height="100" fill="url(#mapOcean)"/>
+    ${waves}
+    <path d="${land}" fill="#06263f" opacity="0.4" transform="translate(1.4,2.2)"/>
+    <path d="${land}" fill="none" stroke="#bfe9ff" stroke-width="2.6" opacity="0.45"/>
+    <path d="${land}" fill="url(#mapLand)" stroke="#7a6a3a" stroke-width="0.5"/>
+    <g clip-path="url(#mapLandClip)">
+      <g filter="url(#mapSoft)">${patches}</g>
+      ${decor}
+    </g>
+    <path d="${route}" class="map-route"/>
+    <g transform="translate(88,88)" class="map-compass">
+      <circle r="6" fill="rgba(20,40,60,0.5)" stroke="#e6d29a" stroke-width="0.5"/>
+      <path d="M0 -5 L1.4 0 L0 5 L-1.4 0 Z" fill="#e0453a"/><path d="M0 5 L1.4 0 L0 -0 L-1.4 0 Z" fill="#e6eef6"/>
+      <text y="-6.6" text-anchor="middle" font-size="2.6" fill="#e6d29a" font-weight="900">N</text>
+    </g>
+  </svg>`;
+}
+
 function renderMap() {
   Audio2.playMusic('map');
   const el = app();
   el.className = 'screen screen-map';
-  // dotted path connecting regions in order
-  let paths = '';
-  for (let i = 0; i < REGIONS.length - 1; i++) {
-    const a = REGIONS[i], b = REGIONS[i + 1];
-    paths += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="map-path"/>`;
-  }
   let nodes = '';
   REGIONS.forEach(r => {
     const unlocked = isUnlocked(r.id);
     const cleared = isCleared(r.id);
     const label = (r.secret && !unlocked) ? '???' : r.name;
+    const emoji = (r.secret && !unlocked) ? '❓' : unlocked ? BIOME_EMOJI[r.id] || '⚔️' : '🔒';
     nodes += `<button class="map-node ${unlocked ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${r.secret ? 'secret' : ''}"
         style="left:${r.x}%;top:${r.y}%; --rc:${r.color}"
         data-region="${r.id}" ${unlocked ? '' : 'disabled'}>
-        <span class="node-hex">${cleared ? '👑' : unlocked ? '⚔️' : '🔒'}</span>
+        <span class="node-pin">${emoji}${cleared ? '<span class="node-crown">👑</span>' : ''}</span>
         <span class="node-label">${label}</span>
       </button>`;
   });
   el.innerHTML = `
     ${topBar('World Map', { home: true })}
-    <div class="map-canvas">
-      <svg class="map-lines" viewBox="0 0 100 100" preserveAspectRatio="none">${paths}</svg>
-      ${nodes}
+    <div class="map-frame">
+      <div class="map-canvas">
+        ${continentSVG()}
+        ${nodes}
+      </div>
     </div>
-    <div class="map-hint">Tap a place to enter its Arena. Beat a region to unlock the next!</div>`;
+    <div class="map-hint">Journey across the realm — beat a region to travel onward and unlock the next.</div>`;
   wireCommon(el);
   el.querySelectorAll('.map-node:not(.locked)').forEach(node => {
     node.addEventListener('click', () => {
