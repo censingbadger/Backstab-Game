@@ -40,6 +40,8 @@ function newGame() {
     cleared: [],
     // marks that this save is on the 5-heart rebalance (see loadGame migration)
     heartsRebalanced: true,
+    // extra lives — rare Legendary boss-fight boons that let you cheat death once
+    extraLives: 0,
     // per-fighter defeat count (for the bestiary + progression)
     defeated: {},
     muted: false,

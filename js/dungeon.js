@@ -94,16 +94,15 @@ const DUNGEON_THEMES = {
   },
   sandcastle: {
     name: 'Sandcastle',
-    sky: ['#ffcf8a', '#f2a25a', '#c76a4a'],        // warm sunset over the fort
-    ground: ['#ecd79c', '#e1cb8b'],
-    speckle: 'rgba(255,246,205,0.4)',
-    edge: ['#c0a25a', '#a0824a'],
-    props: ['sandtower', 'flag', 'shell', 'starfish', 'palm', 'rock'],
+    sky: ['#6a4a28', '#42301a', '#241a0e'],         // dim underground sand-cave glow
+    ground: ['#e6cd8a', '#d8bd76'],                 // packed sand-cavern floor
+    speckle: 'rgba(255,244,200,0.35)',
+    edge: ['#9a7c46', '#6f5630'],                   // sandstone cavern walls
+    props: ['dune', 'sandpillar', 'pottedpalm', 'sandtower', 'rock', 'dune', 'sandpillar', 'shell'],
     trail: '255,220,150',
-    enemies: ['crab', 'sandy_skeleton', 'pirate'],
+    enemies: ['sandy_skeleton', 'pirate', 'crab', 'colossal_squid', 'swordfish', 'sandy_skeleton'],
     boss: 'crab_king',
-    waypoints: [[10, 14], [26, 14], [26, 30], [42, 30], [44, 46], [54, 50]],
-    beach: true, hard: true,
+    chambers: true, hard: true,                     // temple-style chamber gauntlet through the sand caves
   },
   barren_grasslands: {
     name: 'Barren Grasslands',
@@ -146,6 +145,28 @@ const TEMPLE = {
     { from: 3, to: 4, ax: 14, ay: 35, bx: 14, by: 43, gate: { x: 14, y: 39, hw: 2.2, hh: 1.4 }, stair: 'down' },
   ],
 };
+
+/* The Sandcastle Caverns: a longer, tougher chamber crawl through winding sand
+   caves — six rooms, gated one at a time, ending in the King Crab's grotto. */
+const SANDCASTLE_CAVES = {
+  chambers: [
+    { cx: 12, cy: 12, hw: 6, hh: 5 },               // entry cavern
+    { cx: 30, cy: 12, hw: 6, hh: 5 },
+    { cx: 30, cy: 30, hw: 7, hh: 5 },
+    { cx: 48, cy: 30, hw: 6, hh: 5 },
+    { cx: 48, cy: 48, hw: 6, hh: 5 },
+    { cx: 28, cy: 48, hw: 8, hh: 6, boss: true },   // King Crab's grotto
+  ],
+  corridors: [
+    { from: 0, to: 1, ax: 18, ay: 12, bx: 24, by: 12, gate: { x: 21, y: 12, hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 1, to: 2, ax: 30, ay: 17, bx: 30, by: 25, gate: { x: 30, y: 21, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 2, to: 3, ax: 37, ay: 30, bx: 42, by: 30, gate: { x: 39, y: 30, hw: 1.4, hh: 2.2 }, stair: 'up' },
+    { from: 3, to: 4, ax: 48, ay: 35, bx: 48, by: 43, gate: { x: 48, y: 39, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 4, to: 5, ax: 36, ay: 48, bx: 42, by: 48, gate: { x: 39, y: 48, hw: 1.4, hh: 2.2 }, stair: 'up' },
+  ],
+};
+// Which hand-built chamber layout each chamber-mode region uses.
+const CHAMBER_LAYOUTS = { toxic_temple: TEMPLE, sandcastle: SANDCASTLE_CAVES };
 
 let DUNGEON = null;
 
@@ -347,6 +368,8 @@ function startDungeon(regionId) {
    TOXIC TEMPLE — chamber-clear level with gates, stairs, poison
    ============================================================ */
 function startTempleDungeon(regionId, theme) {
+  const LAYOUT = CHAMBER_LAYOUTS[regionId] || TEMPLE;   // per-region hand-built layout
+  const hazardKind = theme.poison ? 'poison_pool' : 'quicksand';   // sand caves suck you down instead of poisoning
   const W = 62, H = 62;
   const tiles = [];
   for (let y = 0; y < H; y++) { const row = []; for (let x = 0; x < W; x++) row.push('void'); tiles.push(row); }
@@ -356,13 +379,13 @@ function startTempleDungeon(regionId, theme) {
         if (y >= 0 && y < H && x >= 0 && x < W) tiles[y][x] = 'ground';
   };
   // carve each chamber room
-  const chambers = TEMPLE.chambers.map((c, i) => {
+  const chambers = LAYOUT.chambers.map((c, i) => {
     carve(c.cx - c.hw, c.cy - c.hh, c.cx + c.hw, c.cy + c.hh);
     return { cx: c.cx, cy: c.cy, hw: c.hw, hh: c.hh, boss: !!c.boss, index: i, active: false, cleared: false, spawned: false };
   });
   // carve corridors (3-wide) and build gates + stairs
   const doors = [], stairs = [];
-  TEMPLE.corridors.forEach(cor => {
+  LAYOUT.corridors.forEach(cor => {
     if (cor.ax === cor.bx) carve(cor.ax - 1, cor.ay, cor.bx + 1, cor.by);   // vertical passage
     else carve(cor.ax, cor.ay - 1, cor.bx, cor.by + 1);                     // horizontal passage
     doors.push({ x: cor.gate.x, y: cor.gate.y, hw: cor.gate.hw, hh: cor.gate.hh, vertical: cor.ax === cor.bx, open: false, opensAfter: cor.from });
@@ -380,34 +403,38 @@ function startTempleDungeon(regionId, theme) {
     }
   });
 
-  // poison pools + spike traps in the combat chambers (skip the gentle first room)
+  // hazard pools (poison in the Temple, sucking quicksand in the sand caves) +
+  // spike traps in the combat chambers (skip the gentle first room)
   const traps = [];
   chambers.forEach((c, ci) => {
     if (ci === 0 || c.boss) return;
     const nPools = 1 + Math.floor(rand(ci * 4.2) * 2), nSpikes = 1 + Math.floor(rand(ci * 6.6 + 1) * 2);
     for (let k = 0; k < nPools; k++) {
       const x = c.cx + (rand(ci * 2.1 + k) - 0.5) * c.hw * 1.4, y = c.cy + (rand(ci * 3.3 + k) - 0.5) * c.hh * 1.4;
-      if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: 'poison_pool', seed: ci * 10 + k });
+      if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: hazardKind, strong: hazardKind === 'quicksand', sprung: false, seed: ci * 10 + k });
     }
     for (let k = 0; k < nSpikes; k++) {
       const x = c.cx + (rand(ci * 5.5 + k + 2) - 0.5) * c.hw * 1.5, y = c.cy + (rand(ci * 7.7 + k) - 0.5) * c.hh * 1.5;
       if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: 'spikes', phase: rand(ci + k) * 1.8, seed: ci * 20 + k });
     }
   });
-  // ring the boss chamber with poison pools for atmosphere + danger
+  // ring the boss chamber with hazard pools for atmosphere + danger
   const bc = chambers[chambers.length - 1];
   for (let a = 0; a < 6; a++) {
     const x = bc.cx + Math.cos(a) * (bc.hw - 1.5), y = bc.cy + Math.sin(a) * (bc.hh - 1.5);
-    if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: 'poison_pool', seed: 90 + a });
+    if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: hazardKind, strong: hazardKind === 'quicksand', sprung: false, seed: 90 + a });
   }
 
-  // one earnable poison artifact in chambers 1, 2 and 3 (skip ones already owned)
-  const artOrder = ['venom_fang', 'toxic_vigor', 'plague_ward'], artifacts = [];
-  [1, 2, 3].forEach((ci, k) => {
-    if (hasArtifact(artOrder[k])) return;
-    const c = chambers[ci];
-    artifacts.push({ id: artOrder[k], x: c.cx + c.hw * 0.5, y: c.cy - c.hh * 0.4, taken: false });
-  });
+  // one earnable poison artifact in chambers 1, 2 and 3 (Toxic Temple only)
+  const artifacts = [];
+  if (theme.poison) {
+    const artOrder = ['venom_fang', 'toxic_vigor', 'plague_ward'];
+    [1, 2, 3].forEach((ci, k) => {
+      if (hasArtifact(artOrder[k])) return;
+      const c = chambers[ci];
+      artifacts.push({ id: artOrder[k], x: c.cx + c.hw * 0.5, y: c.cy - c.hh * 0.4, taken: false });
+    });
+  }
 
   const start = chambers[0];
   const hero = {
@@ -421,10 +448,10 @@ function startTempleDungeon(regionId, theme) {
 
   DUNGEON = {
     regionId, theme, W, H, tiles, props,
-    path: buildPath(TEMPLE.chambers.map(c => [c.cx, c.cy])),   // fallback path; camera follows hero
+    path: buildPath(LAYOUT.chambers.map(c => [c.cx, c.cy])),   // fallback path; camera follows hero
     checkpoints: [], canopy: [], traps, grabbers: [],
     chamberMode: true, chamberList: chambers, doors, stairs, artifacts, activeIndex: -1, chambersCleared: 0,
-    hard: true, poison: true,
+    hard: true, poison: !!theme.poison,
     hero, enemies: [], drops: [], fx: [],
     kills: 0, spawned: 0, progress: 0,
     boss: null, bossIntro: false,
@@ -512,7 +539,7 @@ function summonBossChamber() {
   const d = DUNGEON;
   const bd = BOSSES[d.theme.boss];
   d.bossIntro = true; d.bossId = d.theme.boss;
-  banner(bd.name.toUpperCase() + ' — THE ROTKING AWAKENS...', 2400);
+  banner(bd.name.toUpperCase() + ' AWAKENS...', 2400);
   Audio2.playMusic('boss');
   Audio2.sfx.lose();
   setTimeout(() => {
@@ -585,6 +612,7 @@ function buildDungeonDOM() {
         <button class="btn-icon" id="dun-quit" title="Leave">‹</button>
         <button class="btn-icon" id="dun-gear" title="Gear (E)">⚙️</button>
         <div id="dun-hearts" class="dun-hearts"></div>
+        <div id="dun-lives" class="dun-lives"></div>
         <div class="dun-obj">
           <span class="obj-label">Journey to the boss</span>
           <div class="obj-bar"><div id="obj-fill" class="obj-fill"></div></div>
@@ -860,12 +888,13 @@ function killEnemy(e) {
   d.kills++;
   earn(e.reward || 1);
   gainXp(e.elite ? 5 : 2);
-  // drops: coins always (already earned), sometimes a heart; elites always drop one
+  // drops: coins always (already earned); a heart is now a RARE treat, so every
+  // hit really counts — elites sometimes drop one, ordinary foes almost never.
   if (e.elite) {
-    d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
     spawnFloatText(e.fx, e.fy - 0.55, 'ELITE! +' + (e.reward || 1), '#ffd23f');
     Audio2.sfx.win();
-  } else if (rand(d.kills * 5.3) < 0.24) {
+    if (rand(d.kills * 3.7 + 2) < 0.35) d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
+  } else if (rand(d.kills * 5.3) < 0.05) {
     d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
   }
   spawnPuff(e.fx, e.fy);
@@ -1872,6 +1901,33 @@ function drawProp(ctx, p, ox, oy) {
       ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 34); ctx.stroke();
       { const fl = Math.sin(performance.now() / 300 + r) * 3; ctx.fillStyle = '#e0453a'; ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.lineTo(x + 18, y - 30 + fl); ctx.lineTo(x, y - 24); ctx.closePath(); ctx.fill(); }
       break;
+
+    /* ---- Sand-cavern props ---- */
+    case 'dune': {
+      ctx.fillStyle = '#cbb072'; ctx.beginPath(); ctx.moveTo(x - 28, y); ctx.quadraticCurveTo(x - 8, y - 21, x + 8, y - 14); ctx.quadraticCurveTo(x + 22, y - 9, x + 30, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e6d095'; ctx.beginPath(); ctx.moveTo(x - 28, y); ctx.quadraticCurveTo(x - 8, y - 21, x + 8, y - 14); ctx.quadraticCurveTo(x - 6, y - 8, x - 28, y); ctx.closePath(); ctx.fill();   // lit crest
+      ctx.strokeStyle = 'rgba(150,120,60,0.45)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x - 20, y - 3); ctx.quadraticCurveTo(x - 2, y - 12, x + 18, y - 4); ctx.stroke();   // wind ripple
+      break;
+    }
+    case 'sandpillar': {
+      ctx.fillStyle = '#c2a25a'; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x - 5, y - 44); ctx.quadraticCurveTo(x, y - 53, x + 5, y - 44); ctx.lineTo(x + 9, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#dcc07e'; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x - 5, y - 44); ctx.quadraticCurveTo(x, y - 53, x, y - 44); ctx.lineTo(x, y); ctx.closePath(); ctx.fill();   // lit half
+      ctx.strokeStyle = 'rgba(120,95,50,0.5)'; ctx.lineWidth = 1.3;
+      for (let i = 1; i <= 4; i++) { const yy = y - i * 9; ctx.beginPath(); ctx.moveTo(x - 8 + i * 0.7, yy); ctx.lineTo(x + 8 - i * 0.7, yy); ctx.stroke(); }   // sandstone strata
+      break;
+    }
+    case 'pottedpalm': {
+      const sway = Math.sin(performance.now() / 900 + r) * 3;
+      ctx.strokeStyle = '#9a7a44'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y - 14); ctx.quadraticCurveTo(x - 2 + sway * 0.4, y - 30, x + sway, y - 44); ctx.stroke();   // trunk
+      ctx.fillStyle = '#3fae5a';
+      for (let k = 0; k < 5; k++) { const a = Math.PI + k * (Math.PI / 4), fx = x + sway, fy = y - 44; ctx.beginPath(); ctx.moveTo(fx, fy); ctx.quadraticCurveTo(fx + Math.cos(a) * 14, fy + Math.sin(a) * 9 - 5, fx + Math.cos(a) * 24, fy + Math.sin(a) * 13); ctx.quadraticCurveTo(fx + Math.cos(a) * 13, fy + Math.sin(a) * 8, fx, fy); ctx.fill(); }
+      ctx.fillStyle = '#7a4a2a'; ctx.beginPath(); ctx.arc(x + sway - 3, y - 41, 2.2, 0, 7); ctx.arc(x + sway + 3, y - 40, 2.2, 0, 7); ctx.fill();   // coconuts
+      ctx.fillStyle = '#b5623a'; ctx.beginPath(); ctx.moveTo(x - 11, y - 14); ctx.lineTo(x + 11, y - 14); ctx.lineTo(x + 8, y); ctx.lineTo(x - 8, y); ctx.closePath(); ctx.fill();   // clay pot
+      ctx.fillStyle = '#c9744a'; ctx.fillRect(x - 12, y - 16, 24, 3);   // pot rim
+      break;
+    }
   }
 }
 
@@ -2184,12 +2240,14 @@ function updateDungeonHUD() {
   const d = DUNGEON; if (!d) return;
   const hearts = document.getElementById('dun-hearts');
   if (hearts) hearts.innerHTML = renderHearts(d.hero.hp, d.hero.maxhp);
+  const lives = document.getElementById('dun-lives');
+  if (lives) lives.textContent = (STATE.extraLives || 0) > 0 ? '🌟×' + STATE.extraLives : '';
   const fill = document.getElementById('obj-fill');
   const cnt = document.getElementById('obj-count');
   if (fill) fill.style.width = clamp((d.progress || 0) * 100, 0, 100) + '%';
   if (d.chamberMode) {
     const label = document.querySelector('.obj-label');
-    if (label) label.textContent = 'Descend the temple';
+    if (label) label.textContent = 'Descend the ' + d.theme.name;
     if (cnt) cnt.textContent = 'Chamber ' + Math.min(d.chambersCleared + 1, d.chamberList.length) + ' / ' + d.chamberList.length;
   } else {
     const reached = d.checkpoints.filter(c => c.reached).length;
@@ -2246,16 +2304,28 @@ function winDungeon() {
   const firstClear = !STATE.rewardedRegions.includes(d.regionId);
   let mods = null;
   if (firstClear) { STATE.rewardedRegions.push(d.regionId); mods = rollModifiers(3); }
+  const gotLife = maybeGrantExtraLife();   // transcendently-rare Legendary boss boon
   saveGame();
   Audio2.sfx.win();
-  showDungeonResult(true, bonus, mods);
+  showDungeonResult(true, bonus, mods, gotLife);
 }
+// Falling to 0 hearts is DEATH. An Extra Life (if you have one) cheats it; else
+// it's GAME OVER and back to the start.
 function loseDungeon() {
   const d = DUNGEON; if (d.over) return;
+  if ((STATE.extraLives || 0) > 0) return reviveDungeon();
   d.over = true; d.outcome = 'lose';
   STATE.losses++; saveGame();
   Audio2.sfx.lose();
-  showDungeonResult(false, 0);
+  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); });
+}
+function reviveDungeon() {
+  const d = DUNGEON, h = d.hero;
+  STATE.extraLives = Math.max(0, (STATE.extraLives || 0) - 1); saveGame();
+  h.hp = h.maxhp; h.hurtInvulnUntil = performance.now() + 2000;
+  banner('🌟 1-UP! An Extra Life pulled you back from death!', 2800);
+  Audio2.sfx.win();
+  updateDungeonHUD();
 }
 function exitDungeon() {
   saveGame();
@@ -2321,7 +2391,7 @@ function closeGearMenu() {
   if (d) { d.paused = false; d.lastT = performance.now(); }
   Audio2.sfx.click();
 }
-function showDungeonResult(won, bonus, mods) {
+function showDungeonResult(won, bonus, mods, gotLife) {
   const d = DUNGEON;
   const overlay = document.createElement('div');
   overlay.className = 'result-overlay';
@@ -2332,6 +2402,7 @@ function showDungeonResult(won, bonus, mods) {
         <p>You reached the end of the ${d.theme.name} and felled <b>${BOSSES[d.bossId || d.theme.boss].name}</b>!</p>
         <p class="reward">+${bonus} ${coinSVG()}</p>
         <p class="unlock">🗺️ Region cleared!</p>
+        ${gotLife ? `<p class="extralife">🌟 LEGENDARY BOON — <b>EXTRA LIFE!</b> (you now have ${STATE.extraLives})</p>` : ''}
         ${(mods && mods.length) ? `<div class="mod-pick">
           <div class="mod-title">✨ Choose a reward:</div>
           <div class="mod-row">${mods.map(m => `<button class="mod-btn" data-mod="${m.id}" style="--rc:${RARITY[m.rarity].color}"><span class="mod-ico">${m.icon}</span><b>${m.name}</b><small>${m.desc}</small><em class="mod-rar">${RARITY[m.rarity].name}</em></button>`).join('')}</div>
