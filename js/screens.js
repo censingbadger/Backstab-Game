@@ -321,11 +321,21 @@ function landform(biome, cx, cy) {
 function continentSVG() {
   const land = 'M6 24 C 8 13 20 8 32 11 C 41 13 43 21 49 19 C 55 14 59 9 67 9 C 75 8 81 13 85 18 C 91 23 96 31 94 41 C 93 53 96 61 90 69 C 85 79 78 87 66 90 C 52 94 40 94 30 91 C 20 89 10 86 7 76 C 4 66 6 56 6 46 C 6 36 3 31 6 24 Z';
   // terrain back-to-front (north first) so nearer landforms overlap correctly
-  const terrain = REGIONS.slice().sort((a, b) => a.y - b.y).map(r => landform(BIOME[r.id] || 'grass', r.x, r.y)).join('');
+  // the Sandcastle is a lonely secret island — drawn separately, off the coast
+  const mainland = REGIONS.filter(r => r.id !== 'sandcastle');
+  const terrain = mainland.slice().sort((a, b) => a.y - b.y).map(r => landform(BIOME[r.id] || 'grass', r.x, r.y)).join('');
   // biome colour field: the whole continent tinted by its nearest region, so
   // each part of the land is the colour of that region (green forest, tan
   // desert, grey mountains…) instead of uniform sand.
-  const field = REGIONS.map(r => `<circle cx="${r.x}" cy="${r.y}" r="${r.id === 'sandcastle' ? 13 : 22}" fill="${r.color}"/>`).join('');
+  const field = mainland.map(r => `<circle cx="${r.x}" cy="${r.y}" r="22" fill="${r.color}"/>`).join('');
+  const sc = REGIONS.find(r => r.id === 'sandcastle');
+  const island = sc ? `<g>
+      <ellipse cx="${sc.x}" cy="${sc.y + 2.5}" rx="9" ry="5.5" fill="#5fd0dd" opacity="0.45"/>
+      <ellipse cx="${sc.x}" cy="${sc.y + 3}" rx="9" ry="5.5" fill="none" stroke="#eaf6ff" stroke-width="0.4" opacity="0.5"/>
+      <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="url(#mapLand)"/>
+      <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="${sc.color}" opacity="0.55"/>
+      ${lf_sandcastle(sc.x, sc.y)}
+    </g>` : '';
   const chain = REGIONS.filter(r => !r.passageOnly);
   const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
   let waves = '';
@@ -356,6 +366,7 @@ function continentSVG() {
       ${rivers}
       <rect width="100" height="100" filter="url(#mapNoise)" opacity="0.10"/>
     </g>
+    ${island}
     <g opacity="0.85" transform="translate(83,73) rotate(-6)"><path d="M-2.2 0 L2.2 0 L1.5 1.3 L-1.5 1.3 Z" fill="#6a4a2a"/><line x1="0" y1="0" x2="0" y2="-3.4" stroke="#3a2a18" stroke-width="0.3"/><path d="M0.2 -3.2 L2 -1.2 L0.2 -0.4 Z" fill="#f0ead8"/></g>
     <path d="${route}" class="map-route"/>
     <g transform="translate(88,88)" class="map-compass">
