@@ -3,6 +3,8 @@
    ============================================================ */
 
 const SAVE_KEY = 'backstab_save_v1';
+// The active save key is per-player (see js/auth.js); falls back to SAVE_KEY.
+function currentSaveKey() { return (typeof Auth !== 'undefined' && Auth.saveKey) ? Auth.saveKey() : SAVE_KEY; }
 
 /* A brand-new hero starts HUMBLE:
    ~3 hearts, a basic weapon, and a little money. */
@@ -44,15 +46,22 @@ let STATE = loadGame() || newGame();
 
 function saveGame() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(STATE));
+    localStorage.setItem(currentSaveKey(), JSON.stringify(STATE));
   } catch (e) {
     /* storage might be disabled — the game still works this session */
   }
 }
 
+// Load the logged-in player's character (called after login / register / reset).
+function loadUserState() {
+  STATE = loadGame() || newGame();
+  saveGame();
+  return STATE;
+}
+
 function loadGame() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(currentSaveKey());
     if (!raw) return null;
     const data = JSON.parse(raw);
     // Merge with a fresh template so older saves gain any new fields.
@@ -127,13 +136,19 @@ function hasArtifact(id) { return !!(STATE.artifacts && STATE.artifacts.includes
 
 function clearRegion(id) {
   if (!STATE.cleared.includes(id)) STATE.cleared.push(id);
-  // Unlock the next region on the path.
-  const idx = REGIONS.findIndex(r => r.id === id);
-  const next = REGIONS[idx + 1];
-  if (next && !STATE.unlocked.includes(next.id)) {
-    STATE.unlocked.push(next.id);
-  }
+  // Unlock the next region on the path — skipping any that are reachable only
+  // through a hidden passage (e.g. the Sandcastle).
+  let ni = REGIONS.findIndex(r => r.id === id) + 1;
+  while (REGIONS[ni] && REGIONS[ni].passageOnly) ni++;
+  const next = REGIONS[ni];
+  if (next && !STATE.unlocked.includes(next.id)) STATE.unlocked.push(next.id);
   saveGame();
+}
+
+// Unlock a region directly (used by secret passages).
+function unlockRegion(id) {
+  if (!STATE.unlocked.includes(id)) { STATE.unlocked.push(id); saveGame(); return true; }
+  return false;
 }
 
 /* Record a defeat of a fighter (enemy or boss) */

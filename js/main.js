@@ -3,8 +3,10 @@
    ============================================================ */
 (function () {
   function boot() {
-    // Start on the title screen.
-    showScreen('title');
+    // Require a player profile so each person keeps their own character.
+    // A remembered login goes straight to the title; otherwise, log in first.
+    if (Auth.currentUser()) showScreen('title');
+    else showScreen('auth');
 
     // Resume audio on the first interaction (browser autoplay policy).
     const kick = () => { Audio2.resume(); window.removeEventListener('pointerdown', kick); };

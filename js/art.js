@@ -456,6 +456,37 @@ function charBody(art, p) {
         <path d="M32 30 q18 -12 36 0 q-4 -4 -18 -4 q-14 0 -18 4Z" fill="#5a4020"/>
         <path d="M40 30 q10 -20 20 0Z" fill="#4a3418"/>`;
 
+    case 'crab':
+      return `${shadow}
+        <g stroke="${p.cloth}" stroke-width="4" stroke-linecap="round" fill="none">
+          <path d="M34 74 L18 70 L12 76"/><path d="M34 82 L16 82 L10 90"/><path d="M36 90 L20 94 L16 103"/>
+          <path d="M66 74 L82 70 L88 76"/><path d="M66 82 L84 82 L90 90"/><path d="M64 90 L80 94 L84 103"/>
+        </g>
+        <path d="M30 70 L20 56 Q16 50 24 50 Q32 50 34 60 Z" fill="${p.skin}"/>
+        <path d="M20 56 Q12 52 16 46 Q22 44 24 52 Z" fill="${p.cloth}"/>
+        <path d="M70 70 L80 56 Q84 50 76 50 Q68 50 66 60 Z" fill="${p.skin}"/>
+        <path d="M80 56 Q88 52 84 46 Q78 44 76 52 Z" fill="${p.cloth}"/>
+        <ellipse cx="50" cy="78" rx="26" ry="19" fill="${p.skin}"/>
+        <ellipse cx="50" cy="73" rx="26" ry="14" fill="rgba(255,255,255,0.12)"/>
+        <path d="M34 74 Q50 84 66 74" stroke="${p.cloth}" stroke-width="2.5" fill="none" opacity="0.5"/>
+        <rect x="41" y="58" width="4" height="9" rx="2" fill="${p.skin}"/><rect x="55" y="58" width="4" height="9" rx="2" fill="${p.skin}"/>
+        <circle cx="43" cy="56" r="4" fill="#fff"/><circle cx="43" cy="56" r="2.2" fill="${eye}"/>
+        <circle cx="57" cy="56" r="4" fill="#fff"/><circle cx="57" cy="56" r="2.2" fill="${eye}"/>
+        <path d="M44 84 l3 3 l3 -3 l3 3 l3 -3" stroke="rgba(0,0,0,0.35)" stroke-width="2" fill="none"/>`;
+
+    case 'shark':
+      return `${shadow}
+        <path d="M6 62 Q40 40 84 58 Q94 60 90 66 Q60 74 30 72 Q14 72 6 62 Z" fill="${p.skin}"/>
+        <path d="M20 70 Q45 78 78 66 Q60 74 30 74 Q22 74 20 70 Z" fill="${p.cloth}"/>
+        <path d="M52 44 L60 20 L70 48 Z" fill="${p.skin}"/>
+        <path d="M84 58 L100 46 L98 60 L100 72 Z" fill="${p.skin}"/>
+        <path d="M34 70 L28 88 L44 74 Z" fill="${p.skin}"/>
+        <path d="M8 62 Q20 66 30 64 Q22 70 12 68 Q6 66 8 62 Z" fill="#2a1010"/>
+        <path d="M10 63 L14 60 L14 64 L18 61 L18 65 L22 62 L22 66 L26 63" stroke="#fff" stroke-width="1.6" fill="none"/>
+        <path d="M10 66 L14 68 L14 64 L18 69 L18 65 L22 68" stroke="#fff" stroke-width="1.6" fill="none"/>
+        <circle cx="30" cy="58" r="3.4" fill="#10151a"/><circle cx="29" cy="57" r="1.1" fill="#fff"/>
+        <path d="M40 66 q3 3 6 0 M50 68 q3 3 6 0" stroke="rgba(0,0,0,0.25)" stroke-width="1.6" fill="none"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>
