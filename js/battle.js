@@ -191,7 +191,8 @@ function doPlayerAttack(mult, isSpecial) {
     dmg = 2; // bare-handed if the weapon is broken
     flash('Weapon broken! Repair it at the shop.');
   } else {
-    dmg = w.damage + (STATE.dmgBonus || 0);   // + Power modifier
+    dmg = weaponDamage(wId) + (STATE.dmgBonus || 0);   // upgrades + Power modifier
+    if (weaponPower(wId) === 'double') dmg *= 2;         // Double Dagger strikes twice
     if (!isSpecial) { // specials don't wear the weapon as fast
       STATE.weapons[wId] = dur - 1;
     }
@@ -202,6 +203,8 @@ function doPlayerAttack(mult, isSpecial) {
   dmg = Math.round(dmg * mult);
 
   b.enemyHP = Math.max(0, b.enemyHP - dmg);
+  // lifesteal weapons heal you a little for the damage dealt
+  if (dur > 0 && weaponPower(wId) === 'lifesteal') { b.playerHP = Math.min(b.playerMaxHP, b.playerHP + Math.round(dmg * 0.5)); }
   b.special = Math.min(100, b.special + (isSpecial ? 0 : 18));
   updateSpecial();
   updateHP();

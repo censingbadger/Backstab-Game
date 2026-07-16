@@ -26,6 +26,9 @@ function newGame() {
     captured: [],
     // permanent reward modifiers earned by clearing dungeons
     dmgBonus: 0, armorBonus: 0, speedBonus: 0, modifiers: [],
+    // roguelike progression: weapon upgrade levels, and which regions already
+    // handed out their one-time reward modifier
+    weaponUpgrades: {}, rewardedRegions: [],
     // which map regions are unlocked / cleared
     unlocked: ['dead_cliffs'],
     cleared: [],
@@ -151,3 +154,13 @@ function absorbWithShield() {
   STATE.shields[id] = Math.max(0, STATE.shields[id] - 1);
   return s.block;
 }
+
+/* ---------- Weapon upgrades (the Forge) ---------- */
+function weaponUpgradeLevel(id) { return (STATE.weaponUpgrades && STATE.weaponUpgrades[id]) || 0; }
+function weaponDamage(id) {
+  const w = WEAPONS[id]; if (!w) return 0;
+  return w.damage + weaponUpgradeLevel(id) * 2;   // +2 damage per upgrade level
+}
+function weaponUpgradeMax() { return 8; }
+function weaponUpgradeCost(id) { return 40 + weaponUpgradeLevel(id) * 30; }
+function weaponPower(id) { const w = WEAPONS[id]; return w ? w.power : null; }

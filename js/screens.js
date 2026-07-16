@@ -230,8 +230,8 @@ function renderStats() {
       <section class="panel stats-panel">
         <h3>Stats</h3>
         <div class="stat-line">Money: <b>${STATE.money}</b> ${coinSVG()}</div>
-        <div class="stat-line">Weapon: <b>${w.name}</b></div>
-        <div class="stat-sub">${w.damage} dmg → ${dur}/${w.durability} durability</div>
+        <div class="stat-line">Weapon: <b>${w.name}</b>${weaponUpgradeLevel(STATE.equippedWeapon) ? ` <span class="rar">⚒️Lv${weaponUpgradeLevel(STATE.equippedWeapon)}</span>` : ''}</div>
+        <div class="stat-sub">${weaponDamage(STATE.equippedWeapon)} dmg → ${dur}/${w.durability} dur${w.power ? ' · ' + powerLabel(w.power) : ''}</div>
         <div class="durbar"><div class="durfill" style="width:${(dur / w.durability) * 100}%"></div></div>
         ${(() => { const sid = STATE.equippedShield, s = SHIELDS[sid]; if (!s) return ''; const sd = STATE.shields[sid] || 0;
           return `<div class="stat-line">Shield: <b>${s.name}</b></div>
@@ -242,6 +242,8 @@ function renderStats() {
         <div class="stat-line">Max health: <b>${STATE.maxHearts}</b> ❤️</div>
         <div class="stat-line">Levels passed: <b>${STATE.cleared.length}</b></div>
         <div class="stat-line big">Overall: <b>${overallScore()}</b></div>
+        <div class="stat-line">Perks:</div>
+        <div class="stat-sub">${perksSummary()}</div>
         <button class="wide-btn" data-nav="enemies">📖 Enemies</button>
       </section>
 
@@ -277,7 +279,8 @@ function renderInventory() {
         data-type="weapon" data-id="${id}" style="--rc:${RARITY[w.rarity].color}">
       <div class="cell-art">${weaponSVG(w.art)}</div>
       <div class="cell-name">${w.name}</div>
-      <div class="cell-sub">${w.damage}→${dur}</div>
+      <div class="cell-sub">${weaponDamage(id)}→${dur}${weaponUpgradeLevel(id) ? ' ·L' + weaponUpgradeLevel(id) : ''}</div>
+      ${w.power ? `<div class="cell-power">${powerLabel(w.power)}</div>` : ''}
       ${equipped ? '<div class="badge">Equipped</div>' : ''}
       ${broken ? '<div class="badge broken">Broken</div>' : ''}
     </button>`;
@@ -372,11 +375,25 @@ function renderShop() {
     </div>`;
   }
 
-  const shopWeapons = ['aluminum_sword', 'wood_spear', 'reinforced_bow', 'steel_katana'];
+  // Forge: upgrade the equipped weapon (+2 damage per level)
+  const uwId = STATE.equippedWeapon, uw = WEAPONS[uwId], lvl = weaponUpgradeLevel(uwId);
+  if (lvl < weaponUpgradeMax()) {
+    const cost = weaponUpgradeCost(uwId);
+    html += `<div class="shop-item forge">
+      <div class="si-art">⚒️</div>
+      <div class="si-info"><div class="si-name">Forge: upgrade ${uw.name} <span class="rar">Lv ${lvl}→${lvl + 1}</span></div>
+        <div class="si-sub">damage ${weaponDamage(uwId)} → ${weaponDamage(uwId) + 2} (also repairs)</div></div>
+      <button class="buy-btn ${canAfford(cost) ? '' : 'disabled'}" data-upgrade="${uwId}" data-cost="${cost}">${cost} ${coinSVG()}</button>
+    </div>`;
+  }
+
+  // Buyable weapons (cheapest first), showing their special power
+  const shopWeapons = Object.keys(WEAPONS).filter(id => id !== 'old_knife').sort((a, b) => WEAPONS[a].price - WEAPONS[b].price);
   shopWeapons.forEach(id => {
     const w = WEAPONS[id];
     const owned = STATE.weapons[id] !== undefined;
-    html += shopRow('weapon', id, w.name, `${w.damage} dmg → ${w.durability} dur`, w.rarity, w.price, owned, weaponSVG(w.art));
+    const sub = `${w.damage} dmg · ${w.durability} dur${w.power ? ' · ' + powerLabel(w.power) : ''}`;
+    html += shopRow('weapon', id, w.name, sub, w.rarity, w.price, owned, weaponSVG(w.art));
   });
   ['aluminum_shield'].forEach(id => {
     const s = SHIELDS[id];
@@ -436,6 +453,16 @@ function renderShop() {
       Audio2.sfx.buy(); saveGame(); renderStats();
     });
   });
+  list.querySelectorAll('.buy-btn[data-upgrade]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.upgrade, cost = +btn.dataset.cost;
+      if (!spend(cost)) { Audio2.sfx.lose(); return; }
+      if (!STATE.weaponUpgrades) STATE.weaponUpgrades = {};
+      STATE.weaponUpgrades[id] = (STATE.weaponUpgrades[id] || 0) + 1;
+      STATE.weapons[id] = WEAPONS[id].durability;   // forging also repairs
+      Audio2.sfx.buy(); saveGame(); renderStats();
+    });
+  });
   list.querySelectorAll('.sell-btn[data-sell]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.sell, val = +btn.dataset.val, w = WEAPONS[id];
@@ -451,6 +478,20 @@ function renderShop() {
 
 // Resale value of a weapon (about 60% of its shop price).
 function sellValue(w) { return Math.max(0, Math.round((w.price || 0) * 0.6)); }
+
+// Short label for a weapon's special power.
+function powerLabel(p) {
+  return ({ reach: '➹ reach', sweep: '↺ wide sweep', double: '⚔ 2× hits', lifesteal: '❤ lifesteal', poison: '☠ poison', stun: '✷ stun' })[p] || '';
+}
+// One-line summary of the character's permanent perks.
+function perksSummary() {
+  const parts = [];
+  if (STATE.dmgBonus) parts.push('+' + STATE.dmgBonus + ' dmg');
+  if (STATE.armorBonus) parts.push('-' + Math.round(STATE.armorBonus * 100) + '% dmg taken');
+  if (STATE.speedBonus) parts.push('faster');
+  const n = (STATE.modifiers || []).length;
+  return (parts.join(' · ') || 'none') + (n ? `  (${n} reward${n > 1 ? 's' : ''} claimed)` : '');
+}
 
 function shopRow(type, id, name, sub, rarity, price, owned, art) {
   const r = RARITY[rarity];
