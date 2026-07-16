@@ -58,7 +58,8 @@ const ENEMIES = {
 
 /* ---------- Named bosses (tougher, unique, bigger rewards) ---------- */
 const BOSSES = {
-  brute:      { id:'brute',      name:'The Brute',        hearts:10, attack:4, reward:60,  art:'zombie',   palette:{ skin:'#5f8a4e', cloth:'#3a2e22' }, boss:true, dungeon:true, blurb:'A hulking giant zombie — the Dead Cliffs mini-boss. Slow, but its slam shakes the ground.' },
+  brute:      { id:'brute',      name:'The Brute',        hearts:10, attack:4, reward:60,  art:'zombie',    palette:{ skin:'#5f8a4e', cloth:'#3a2e22' }, boss:true, dungeon:true, blurb:'A hulking giant zombie — the Dead Cliffs mini-boss. Slow, but its slam shakes the ground.' },
+  hexstraw:   { id:'hexstraw',   name:'Hexstraw',         hearts:11, attack:4, reward:80,  art:'scarecrow', palette:{ skin:'#d9b24a', cloth:'#7a4a2a' }, boss:true, dungeon:true, blurb:'A towering scarecrow come alive — the Barren Grasslands mini-boss. Flails with a scything swipe.' },
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },

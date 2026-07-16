@@ -11,6 +11,35 @@ const DUN = {
   MAX_ENEMIES: 9,                         // concurrent swarm size
 };
 
+/* Each region's dungeon has its own environment, enemy pool, and mini-boss. */
+const DUNGEON_THEMES = {
+  dead_cliffs: {
+    name: 'Dead Cliffs',
+    sky: ['#241a3a', '#171029', '#0c0818'],
+    ground: ['#4a4a54', '#41414b'],
+    speckle: 'rgba(90,120,70,0.25)',
+    edge: ['#2b2b33', '#232329'],
+    props: ['tomb', 'bone', 'rock', 'rock', 'tree', 'skull', 'torch'],
+    trail: '255,224,120',
+    enemies: ['skeleton', 'zombie', 'skeleton', 'zombie', 'giant_tick'],
+    boss: 'brute',
+    waypoints: [[8, 12], [8, 28], [22, 32], [22, 16], [38, 14], [40, 32], [28, 42], [42, 50], [54, 54]],
+  },
+  barren_grasslands: {
+    name: 'Barren Grasslands',
+    sky: ['#4a4826', '#33341c', '#181a0e'],   // dusky field
+    ground: ['#6b7a3c', '#5f7034'],           // olive grass
+    speckle: 'rgba(210,200,90,0.30)',
+    edge: ['#3a3320', '#2a2618'],
+    props: ['grass', 'grass', 'bush', 'fence', 'hay', 'tree', 'rock'],
+    trail: '255,240,150',
+    enemies: ['angry_peasant', 'giant_tick', 'lumberjack', 'baby_werewolf', 'bear'],
+    boss: 'hexstraw',
+    waypoints: [[10, 10], [26, 10], [26, 24], [12, 28], [14, 44], [34, 44], [36, 28], [50, 30], [54, 50]],
+  },
+};
+function dungeonTheme(regionId) { return DUNGEON_THEMES[regionId]; }
+
 let DUNGEON = null;
 
 /* ---------- tiny helpers ---------- */
@@ -42,15 +71,13 @@ function startDungeon(regionId) {
   Audio2.resume();
   Audio2.playMusic('battle');
 
+  const theme = dungeonTheme(regionId) || DUNGEON_THEMES.dead_cliffs;
   const W = 62, H = 62;                    // map size in tiles
   const HALF = 3.1;                        // half-width of the walkable trail
 
-  // A winding cliff trail: carve a corridor along a polyline; everything
-  // else is chasm (void), so you follow a path with drops on both sides.
-  const WP = [
-    [8, 12], [8, 28], [22, 32], [22, 16], [38, 14],
-    [40, 32], [28, 42], [42, 50], [54, 54],
-  ];
+  // A winding trail: carve a corridor along a polyline; everything else is
+  // void (chasm / edge), so you follow a path with drops on both sides.
+  const WP = theme.waypoints;
   const path = buildPath(WP);              // { samples:[{x,y,cum}], length, step }
 
   const tiles = [];
@@ -66,9 +93,9 @@ function startDungeon(regionId) {
     tiles.push(row);
   }
 
-  // props scattered on the trail + along its rim
+  // props scattered on the trail + along its rim (theme-specific)
   const props = [];
-  const kinds = ['tomb', 'bone', 'rock', 'rock', 'tree', 'skull', 'torch'];
+  const kinds = theme.props;
   for (let i = 0; i < 150; i++) {
     const x = 2 + Math.floor(rand(i * 7.1) * (W - 4));
     const y = 2 + Math.floor(rand(i * 3.7 + 2) * (H - 4));
@@ -94,7 +121,7 @@ function startDungeon(regionId) {
   };
 
   DUNGEON = {
-    regionId, W, H, tiles, props, path, checkpoints,
+    regionId, theme, W, H, tiles, props, path, checkpoints,
     hero,
     enemies: [], drops: [], fx: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET,
@@ -393,24 +420,27 @@ function killEnemy(e) {
 
 function summonBoss() {
   const d = DUNGEON;
+  const bd = BOSSES[d.theme.boss];
   d.bossIntro = true;
-  banner('THE BRUTE APPROACHES...', 2200);
+  d.bossId = d.theme.boss;
+  banner(bd.name.toUpperCase() + ' APPROACHES...', 2200);
   Audio2.sfx.lose(); // ominous
   setTimeout(() => {
     if (!DUNGEON) return;
-    const bd = BOSSES.brute;
     // Spawn on the trail a little ahead of the hero so it looms in on-path.
     const h = d.hero;
     const pi = nearestSampleIndex(h.fx, h.fy);
     const bs = d.path.samples[Math.min(d.path.samples.length - 1, pi + 10)];
-    const bx = bs.x, by = bs.y;
+    const hp = Math.round(bd.hearts * 24);
     d.boss = {
-      boss: true, fighter: bd, art: 'zombie', palette: bd.palette,
-      fx: bx, fy: by, r: 0.9, scale: 2.1,
-      hp: 260, maxhp: 260, attack: bd.attack, reward: bd.reward,
+      boss: true, fighter: bd, art: bd.art, palette: bd.palette,
+      fx: bs.x, fy: bs.y, r: 0.9, scale: 2.1,
+      hp, maxhp: hp, attack: bd.attack, reward: bd.reward,
       speed: 1.5, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, name: bd.name,
     };
-    document.getElementById('boss-bar').classList.remove('hidden');
+    const bar = document.getElementById('boss-bar');
+    bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
+    bar.classList.remove('hidden');
     updateBossHUD();
   }, 2200);
 }
@@ -430,20 +460,28 @@ function spawnEnemy() {
     const fx = clamp(s.x + Math.cos(ang) * rad, 3.5, d.W - 3.5);
     const fy = clamp(s.y + Math.sin(ang) * rad, 3.5, d.H - 3.5);
     if (d.tiles[Math.floor(fy)][Math.floor(fx)] !== 'ground') continue;
-    const isSkel = rand(d.spawned * 9.1) < 0.5;
-    const base = isSkel ? ENEMIES.skeleton : ENEMIES.zombie;
-    d.enemies.push({
-      fighter: base, art: base.art, palette: base.palette,
-      fx, fy, r: 0.4,
-      hp: isSkel ? 8 : 14, maxhp: isSkel ? 8 : 14,
-      speed: isSkel ? 2.5 : 1.7,
-      attack: isSkel ? 1 : 1, reward: 1,
-      facing: -1, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: rand(tries),
-    });
+    const pool = d.theme.enemies;
+    const id = pool[Math.floor(rand(d.spawned * 9.1 + tries) * pool.length)];
+    d.enemies.push(makeDungeonEnemy(id, fx, fy, d.spawned + tries));
     d.spawned++;
     return true;
   }
   return false;
+}
+
+/* Build a swarm enemy from a roster id, scaling its card stats for melee. */
+function makeDungeonEnemy(id, fx, fy, seed) {
+  const f = ENEMIES[id] || ENEMIES.zombie;
+  const hp = Math.max(4, Math.round(f.hearts * 6));
+  const speed = f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5;
+  return {
+    fighter: f, art: f.art, palette: f.palette,
+    fx, fy, r: 0.4,
+    hp, maxhp: hp, speed,
+    attack: f.attack, reward: f.reward || 1,
+    contact: f.attack >= 3 ? 0.75 : 0.5,   // heavier hitters do more
+    facing: -1, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: rand(seed),
+  };
 }
 
 /* ============================================================
@@ -565,7 +603,7 @@ function enemyStrikeHero(e) {
   if (dist(e.fx, e.fy, h.fx, h.fy) > 1.15) return;         // moved away in time
   if (t < h.dodgeUntil) { spawnFloatText(h.fx, h.fy, 'dodge', '#8ff0a0'); return; }
   if (t < h.hurtInvulnUntil) return;                       // brief mercy i-frames
-  hurtHero(0.5);
+  hurtHero(e.contact || 0.5);
 }
 
 function bossSlam(b) {
@@ -615,9 +653,10 @@ function renderDungeon() {
   const cw = W / dpr, ch = H / dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // sky / background
+  // sky / background (theme-specific)
+  const sk = d.theme.sky;
   const sky = ctx.createLinearGradient(0, 0, 0, ch);
-  sky.addColorStop(0, '#241a3a'); sky.addColorStop(0.55, '#171029'); sky.addColorStop(1, '#0c0818');
+  sky.addColorStop(0, sk[0]); sky.addColorStop(0.55, sk[1]); sky.addColorStop(1, sk[2]);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, cw, ch);
 
   // camera transform: hero centred
@@ -691,11 +730,12 @@ function drawTrail(ctx, ox, oy) {
     const fade = clamp(1 - along / 34, 0.18, 1);
     const pulse = 0.4 + 0.35 * Math.sin(t * 5 - c * 0.6);
     const a = fade * (0.55 + pulse * 0.45);
+    const col = d.theme.trail;
     // soft glow
     ctx.fillStyle = `rgba(255,180,40,${a * 0.35})`;
     ctx.beginPath(); ctx.ellipse(x, y, 13, 6.5, 0, 0, 7); ctx.fill();
     // bright core dot
-    ctx.fillStyle = `rgba(255,224,120,${a})`;
+    ctx.fillStyle = `rgba(${col},${a})`;
     ctx.beginPath(); ctx.ellipse(x, y, 6.5, 3.2, 0, 0, 7); ctx.fill();
   }
 }
@@ -727,26 +767,27 @@ function drawFloorTile(ctx, gx, gy, ox, oy) {
   const s = isoToScreen(gx, gy);
   const x = s.x + ox, y = s.y + oy;
   const hw = ISO.TW / 2, hh = ISO.TH / 2;
-  // checker of two dead-grey/greenish tones
-  const shade = (gx + gy) % 2 === 0 ? '#4a4a54' : '#41414b';
+  const g = DUNGEON.theme.ground;
+  const shade = (gx + gy) % 2 === 0 ? g[0] : g[1];
   ctx.beginPath();
   ctx.moveTo(x, y - hh); ctx.lineTo(x + hw, y); ctx.lineTo(x, y + hh); ctx.lineTo(x - hw, y); ctx.closePath();
   ctx.fillStyle = shade; ctx.fill();
   ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.stroke();
-  // subtle mossy speckle
+  // subtle speckle (moss / grass tufts)
   const r = rand(gx * 12.9 + gy * 4.7);
-  if (r > 0.86) { ctx.fillStyle = 'rgba(90,120,70,0.25)'; ctx.beginPath(); ctx.ellipse(x + (r - 0.9) * 30, y, 7, 3.5, 0, 0, 7); ctx.fill(); }
+  if (r > 0.86) { ctx.fillStyle = DUNGEON.theme.speckle; ctx.beginPath(); ctx.ellipse(x + (r - 0.9) * 30, y, 7, 3.5, 0, 0, 7); ctx.fill(); }
 }
 
 function drawCliffEdge(ctx, gx, gy, ox, oy) {
   const s = isoToScreen(gx, gy);
   const x = s.x + ox, y = s.y + oy;
   const hw = ISO.TW / 2, hh = ISO.TH / 2, depth = 26;
-  // draw rocky side walls dropping into the chasm
-  ctx.fillStyle = '#2b2b33';
+  const ec = DUNGEON.theme.edge;
+  // draw side walls dropping into the chasm
+  ctx.fillStyle = ec[0];
   ctx.beginPath();
   ctx.moveTo(x - hw, y); ctx.lineTo(x, y + hh); ctx.lineTo(x, y + hh + depth); ctx.lineTo(x - hw, y + depth); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#232329';
+  ctx.fillStyle = ec[1];
   ctx.beginPath();
   ctx.moveTo(x, y + hh); ctx.lineTo(x + hw, y); ctx.lineTo(x + hw, y + depth); ctx.lineTo(x, y + hh + depth); ctx.closePath(); ctx.fill();
 }
@@ -786,6 +827,29 @@ function drawProp(ctx, p, ox, oy) {
       const fl = 4 + Math.sin(performance.now() / 90 + r) * 2;
       ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(x, y - 34, 5, 8 + fl, 0, 0, 7); ctx.fill();
       ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.ellipse(x, y - 32, 2.5, 4 + fl / 2, 0, 0, 7); ctx.fill();
+      break;
+    case 'grass': {
+      const sway = Math.sin(performance.now() / 400 + r) * 2;
+      ctx.strokeStyle = '#7a8a3a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+      for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(x + i * 4, y); ctx.quadraticCurveTo(x + i * 4 + sway, y - 12, x + i * 4 + sway * 1.5, y - 18); ctx.stroke(); }
+      break;
+    }
+    case 'bush':
+      ctx.fillStyle = '#4a6a2a'; ctx.beginPath(); ctx.ellipse(x, y - 8, 15, 11, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#5f8a34'; ctx.beginPath(); ctx.ellipse(x - 5, y - 12, 8, 6, 0, 0, 7); ctx.ellipse(x + 6, y - 10, 7, 5, 0, 0, 7); ctx.fill();
+      if (r % 3 === 0) { ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.arc(x - 3, y - 9, 2, 0, 7); ctx.arc(x + 5, y - 11, 2, 0, 7); ctx.fill(); }
+      break;
+    case 'fence':
+      ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 12, y - 2); ctx.lineTo(x - 12, y - 22); ctx.moveTo(x + 12, y - 2); ctx.lineTo(x + 12, y - 22); ctx.stroke();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#7a5a2f';
+      ctx.beginPath(); ctx.moveTo(x - 16, y - 8); ctx.lineTo(x + 16, y - 12); ctx.moveTo(x - 16, y - 16); ctx.lineTo(x + 16, y - 20); ctx.stroke();
+      break;
+    case 'hay':
+      ctx.fillStyle = '#c9a43a'; roundRectPath(ctx, x - 15, y - 20, 30, 20, 9); ctx.fill();
+      ctx.strokeStyle = '#a8811f'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); for (let i = -1; i <= 1; i++) ctx.ellipse(x, y - 10, 5, 10, 0, 0, 7); ctx.stroke();
+      ctx.strokeStyle = '#8a6a1a'; ctx.lineWidth = 2; ctx.strokeRect(x - 15, y - 15, 30, 2);
       break;
   }
 }
@@ -961,10 +1025,11 @@ function banner(text, ms) {
 function winDungeon() {
   const d = DUNGEON; if (d.over) return;
   d.over = true; d.outcome = 'win';
-  const bonus = BOSSES.brute.reward + 40;
+  const bd = BOSSES[d.bossId || d.theme.boss];
+  const bonus = bd.reward + 40;
   earn(bonus);
   STATE.wins++;
-  recordDefeat('brute');
+  recordDefeat(bd.id);
   gainXp(25);
   clearRegion(d.regionId);              // unlock the next region
   saveGame();
@@ -989,9 +1054,9 @@ function showDungeonResult(won, bonus) {
   overlay.className = 'result-overlay';
   overlay.innerHTML = `
     <div class="result-card ${won ? 'win' : 'lose'}">
-      <h2>${won ? 'CLIFFS CLEARED!' : 'YOU FELL'}</h2>
+      <h2>${won ? (d.theme.name + ' CLEARED!').toUpperCase() : 'YOU FELL'}</h2>
       ${won ? `
-        <p>You battled through the Dead Cliffs and felled <b>The Brute</b>!</p>
+        <p>You battled through the ${d.theme.name} and felled <b>${BOSSES[d.bossId || d.theme.boss].name}</b>!</p>
         <p class="reward">+${bonus} ${coinSVG()}</p>
         <p class="unlock">🗺️ New region unlocked!</p>
       ` : `
