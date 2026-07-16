@@ -230,6 +230,8 @@ function mrand(n) { const s = Math.sin(n * 91.7 + 13.1) * 43758.5453; return s -
    mountains). Lit (top-left) / shadowed (bottom-right) faces fake elevation. */
 function mtree(x, y, s) { s = s || 1; return `<circle cx="${x}" cy="${y + 0.6 * s}" r="${1.6 * s}" fill="#173316"/><circle cx="${x}" cy="${y}" r="${1.6 * s}" fill="#2f6030"/><circle cx="${x - 0.5 * s}" cy="${y - 0.5 * s}" r="${0.75 * s}" fill="#4a8a44"/>`; }
 function mcactus(x, y) { return `<path d="M${x} ${y} v-4 M${x} ${y - 2} q-1.5 0 -1.5 -1.4 M${x} ${y - 1.2} q1.5 0 1.5 -1.4" stroke="#4a8a3a" stroke-width="0.9" fill="none" stroke-linecap="round"/>`; }
+function mtuft(x, y) { return `<path d="M${x - 0.7} ${y} q0.2 -1.6 0 -2.6 M${x} ${y} q0.1 -1.9 0.3 -2.9 M${x + 0.7} ${y} q-0.1 -1.6 0.1 -2.6" stroke="#556a30" stroke-width="0.4" fill="none" stroke-linecap="round"/>`; }
+function mbush(x, y, s) { s = s || 1; return `<ellipse cx="${x}" cy="${y}" rx="${2 * s}" ry="${1.4 * s}" fill="#3f6a34"/><ellipse cx="${x - 0.5 * s}" cy="${y - 0.5 * s}" rx="${1.1 * s}" ry="${0.8 * s}" fill="#57883f"/>`; }
 
 function lf_mountain(cx, cy) {
   // a range that stretches across the whole continent — tall snowy peaks in the
@@ -245,30 +247,45 @@ function lf_mountain(cx, cy) {
     const w = 2.6 + taper * 1.8;
     s += `<path d="M${x} ${y - h} L${x + w} ${y} L${x} ${y} Z" fill="#565d68"/>`;   // shadow face
     s += `<path d="M${x} ${y - h} L${x - w} ${y} L${x} ${y} Z" fill="#8b939f"/>`;   // lit face
+    s += `<path d="M${x - w} ${y} L${x} ${y - h} L${x + w} ${y}" fill="none" stroke="#3d434d" stroke-width="0.3" stroke-linejoin="round"/>`;   // pen outline
     if (h > 7.5) { const sn = h * 0.36; s += `<path d="M${x} ${y - h} L${x - 1.3} ${y - h + sn} L${x - 0.4} ${y - h + sn * 0.6} L${x + 0.4} ${y - h + sn} L${x + 1.1} ${y - h + sn * 0.55} L${x + 1} ${y - h + sn} Z" fill="#f4f8fc"/>`; }
   }
   return s;
 }
 function lf_cliffs(cx, cy) {
-  // a rugged run of cliff headlands down the side of the continent
+  // a high plateau that ends in a sheer, striated cliff face along the continent's
+  // edge — pines and grass on top, the drop hatched with vertical strata
   let s = '';
-  [[cx - 3, cy - 9, 3.4], [cx + 1, cy - 4, 4.2], [cx + 4, cy + 1, 4], [cx + 3, cy + 6, 3.4], [cx - 1, cy + 10, 3]].forEach(([x, y, w]) => {
-    s += `<path d="M${x - w} ${y - 2} Q ${x} ${y - 3.6} ${x + w} ${y - 2} L ${x + w} ${y + 1.6} L ${x - w} ${y + 1.6} Z" fill="#7d7b71"/>`;
-    s += `<path d="M${x - w} ${y + 1.6} L${x + w} ${y + 1.6} L${x + w - 0.5} ${y + 5} L${x - w - 0.5} ${y + 4.6} Z" fill="#45443f"/>`;
-    s += `<g stroke="#33332e" stroke-width="0.3">`;
-    for (let i = -w + 0.6; i < w; i += 1.1) s += `<line x1="${x + i}" y1="${y + 1.6}" x2="${x + i - 0.3}" y2="${y + 4.7}"/>`;
-    s += `</g>`;
-  });
-  for (let i = 0; i < 6; i++) { const x = cx - 9 + mrand(i * 2) * 5, y = cy - 6 + i * 2.8; s += `<path d="M${x} ${y + 1.4} L${x + 0.8} ${y - 1.2} L${x + 1.6} ${y + 1.4} Z" fill="#5a5a55"/>`; }  // sea stacks
-  for (let i = 0; i < 3; i++) s += `<path d="M${cx - 9} ${cy - 4 + i * 5} q5 1.4 11 0" fill="none" stroke="#eaf6ff" stroke-width="0.5" opacity="0.5"/>`; // foam
+  // plateau top surface
+  s += `<path d="M${cx - 13} ${cy - 1} Q ${cx - 6} ${cy - 5} ${cx + 3} ${cy - 3.5} Q ${cx + 11} ${cy - 2} ${cx + 10} ${cy + 2} L ${cx + 8} ${cy + 3} L ${cx - 13} ${cy + 3} Z" fill="#8f8d80"/>`;
+  s += `<path d="M${cx - 13} ${cy - 1} Q ${cx - 6} ${cy - 5} ${cx + 3} ${cy - 3.5} Q ${cx + 11} ${cy - 2} ${cx + 10} ${cy + 2}" fill="none" stroke="#b9b7a6" stroke-width="0.8"/>`;
+  // sheer cliff face dropping toward the sea
+  s += `<path d="M${cx - 13} ${cy + 3} L${cx + 8} ${cy + 3} L${cx + 6.5} ${cy + 10} L${cx - 13.5} ${cy + 9.5} Z" fill="#5d5b52"/>`;
+  s += `<g stroke="#38372e" stroke-width="0.3">`;
+  for (let i = -12.5; i < 8; i += 1.35) s += `<line x1="${cx + i}" y1="${cy + 3}" x2="${cx + i - 0.9}" y2="${cy + 9.6}"/>`;   // vertical strata
+  s += `</g>`;
+  s += `<path d="M${cx - 13} ${cy + 6} L${cx + 7.2} ${cy + 6.1}" stroke="#4a483f" stroke-width="0.5" opacity="0.55"/>`;   // strata band
+  // sea stacks at the foot
+  for (let i = 0; i < 3; i++) { const x = cx - 10 + mrand(i * 2) * 6, y = cy + 11 + mrand(i); s += `<path d="M${x} ${y} L${x + 0.9} ${y - 2.4} L${x + 1.8} ${y} Z" fill="#54524a"/>`; }
+  // pines and grass on the plateau
+  s += mtree(cx - 8, cy - 0.5, 1) + mtree(cx - 2.5, cy - 1.8, 1.15) + mtree(cx + 3, cy - 0.5, 0.95);
+  s += mtuft(cx - 10.5, cy + 1.6) + mtuft(cx + 5.5, cy + 1.4) + mtuft(cx + 0.5, cy + 2);
   return s;
 }
 function lf_forest(cx, cy) {
-  // a huge, dense forest of trees
+  // a huge thicket drawn as a bumpy, hand-scribbled canopy cloud, packed with trees
   let s = `<ellipse cx="${cx + 1.5}" cy="${cy + 3}" rx="16" ry="7" fill="#000" opacity="0.12" filter="url(#mapSoft)"/>`;
-  s += `<ellipse cx="${cx}" cy="${cy + 1}" rx="16" ry="11" fill="#244a24"/>`;
+  const N = 15, rx = 15, ry = 11;
+  let ring = '';
+  for (let i = 0; i <= N; i++) {
+    const a = i / N * 6.283, wob = 1 + (mrand(i * 2.3) - 0.5) * 0.32;
+    const x = cx + Math.cos(a) * rx * wob, y = cy + 1 + Math.sin(a) * ry * wob;
+    const mx = cx + Math.cos(a - 0.21) * rx * 1.2 * wob, my = cy + 1 + Math.sin(a - 0.21) * ry * 1.2 * wob;
+    ring += i === 0 ? `M${x} ${y}` : ` Q ${mx} ${my} ${x} ${y}`;
+  }
+  s += `<path d="${ring} Z" fill="#244a24" stroke="#173316" stroke-width="0.5"/>`;
   const trees = [];
-  for (let i = 0; i < 90; i++) { const a = mrand(cx * 3 + i) * 6.283, rr = Math.sqrt(mrand(cx + i * 1.7)) * 15; trees.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.68, 0.9 + mrand(i) * 0.9]); }
+  for (let i = 0; i < 90; i++) { const a = mrand(cx * 3 + i) * 6.283, rr = Math.sqrt(mrand(cx + i * 1.7)) * 14; trees.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.68, 0.9 + mrand(i) * 0.9]); }
   trees.sort((a, b) => a[1] - b[1]).forEach(([x, y, sc]) => { s += mtree(x, y, sc); });
   return s;
 }
@@ -278,6 +295,8 @@ function lf_grass(cx, cy) {
   s += `<path d="M${cx - 15} ${cy + 2} q7 -3 15 0 M${cx - 12} ${cy + 5} q7 -3 15 0 M${cx - 8} ${cy - 3} q7 -2.5 14 0 M${cx - 4} ${cy + 8} q6 -2.5 12 0" fill="none" stroke="#7c9446" stroke-width="0.5" opacity="0.5"/>`;
   for (let i = 0; i < 70; i++) { const x = cx - 15 + mrand(i * 3) * 30, y = cy - 9 + mrand(i * 1.3) * 18, c = mrand(i) > 0.5 ? '#6f8a3e' : '#82a04a'; s += `<path d="M${x - 0.8} ${y} q0.3 -1.3 0.8 -1.8 M${x} ${y} q0 -1.5 0.1 -2 M${x + 0.8} ${y} q-0.3 -1.3 -0.8 -1.8" stroke="${c}" stroke-width="0.4" fill="none"/>`; }
   s += mtree(cx + 9, cy - 3, 1.2) + mtree(cx - 11, cy + 4, 1.1) + mtree(cx + 4, cy + 6, 1);
+  s += mbush(cx + 6, cy + 2, 1.1) + mbush(cx - 6, cy - 4, 0.9) + mbush(cx + 12, cy + 3, 0.85);
+  for (let i = 0; i < 7; i++) s += mtuft(cx - 13 + mrand(i * 5) * 26, cy - 7 + mrand(i * 2.2) * 15);
   return s;
 }
 function lf_temple(cx, cy) {
@@ -314,11 +333,16 @@ function lf_sandcastle(cx, cy) {
   return s;
 }
 function lf_secret(cx, cy) {
-  let s = `<ellipse cx="${cx + 2}" cy="${cy + 3.5}" rx="9" ry="3.4" fill="#000" opacity="0.28" filter="url(#mapSoft)"/>`;
-  s += `<path d="M${cx - 8} ${cy + 3.5} L${cx} ${cy - 8} L${cx + 8} ${cy + 3.5} Z" fill="#2a1220"/><path d="M${cx} ${cy - 8} L${cx + 8} ${cy + 3.5} L${cx} ${cy + 3.5} Z" fill="#180a12"/>`; // volcanic cone
-  s += `<ellipse cx="${cx}" cy="${cy - 7.2}" rx="1.8" ry="0.8" fill="#ff6a2a"/>`; // crater glow
-  s += `<path d="M${cx} ${cy - 7} L${cx - 1.6} ${cy - 2} L${cx - 1} ${cy + 1.5} M${cx} ${cy - 7} L${cx + 1.8} ${cy - 1} L${cx + 1.1} ${cy + 2}" stroke="#ff5a2a" stroke-width="0.4" fill="none" opacity="0.85"/>`; // lava cracks
-  s += `<ellipse cx="${cx}" cy="${cy - 10}" rx="2.6" ry="1.5" fill="#5a5560" opacity="0.5"/><ellipse cx="${cx + 1}" cy="${cy - 11.5}" rx="1.8" ry="1.1" fill="#4a4550" opacity="0.4"/>`; // ash plume
+  // a hooded, horned figure with a '???' face — the mystery lurking at the edge of the world
+  let s = `<ellipse cx="${cx}" cy="${cy + 6.5}" rx="7" ry="2.2" fill="#000" opacity="0.3" filter="url(#mapSoft)"/>`;
+  // horns curving up from the hood
+  s += `<path d="M${cx - 2.6} ${cy - 4.5} Q ${cx - 6} ${cy - 7} ${cx - 5.4} ${cy - 10} Q ${cx - 4} ${cy - 7.4} ${cx - 2.2} ${cy - 6} Z" fill="#4a1420"/>`;
+  s += `<path d="M${cx + 2.6} ${cy - 4.5} Q ${cx + 6} ${cy - 7} ${cx + 5.4} ${cy - 10} Q ${cx + 4} ${cy - 7.4} ${cx + 2.2} ${cy - 6} Z" fill="#4a1420"/>`;
+  // hooded cloak (teardrop)
+  s += `<path d="M${cx} ${cy - 7} Q ${cx - 6.5} ${cy - 3.5} ${cx - 5.5} ${cy + 4.5} Q ${cx - 3} ${cy + 6.5} ${cx} ${cy + 6.5} Q ${cx + 3} ${cy + 6.5} ${cx + 5.5} ${cy + 4.5} Q ${cx + 6.5} ${cy - 3.5} ${cx} ${cy - 7} Z" fill="#2a1220" stroke="#7a1030" stroke-width="0.5"/>`;
+  // dark face void + '???'
+  s += `<ellipse cx="${cx}" cy="${cy - 1}" rx="3.2" ry="3.8" fill="#0c0610"/>`;
+  s += `<text x="${cx}" y="${cy + 0.4}" text-anchor="middle" font-size="3.6" fill="#c9445a" font-weight="900" font-family="serif">???</text>`;
   return s;
 }
 function landform(biome, cx, cy) {
