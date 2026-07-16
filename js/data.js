@@ -97,7 +97,7 @@ const WEAPONS = {
   reinforced_mace:{ id:'reinforced_mace',name:'Reinforced Mace',damage:23, durability:200, rarity:'E', price:360, repairCost:70, art:'sword',  power:'stun' },
   double_dagger:  { id:'double_dagger',  name:'Double Dagger',  damage:13, durability:200, rarity:'E', price:420, repairCost:55, art:'knife',  power:'double' },
   emerald_scythe: { id:'emerald_scythe', name:'Emerald Scythe', damage:26, durability:220, rarity:'E', price:560, repairCost:80, art:'spear',  power:'poison' },
-  pastors_blade:  { id:'pastors_blade',  name:"Pastor's Blade", damage:30, durability:240, rarity:'L', price:720, repairCost:100,art:'katana', power:'lifesteal' },
+  pastors_blade:  { id:'pastors_blade',  name:"Master's Blade", damage:30, durability:240, rarity:'L', price:720, repairCost:100,art:'katana', power:'lifesteal' },
 };
 
 /* ---------- Items (used in battle) ----------

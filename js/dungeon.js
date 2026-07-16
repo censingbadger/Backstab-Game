@@ -197,7 +197,7 @@ function startDungeon(regionId) {
     over: false, outcome: null,
     cam: { x: 0, y: 0 },
     keys: {}, mouse: { x: 0, y: 0, down: false }, joy: { active: false, dx: 0, dy: 0 },
-    attackHeld: false,
+    attackHeld: false, paused: false,
     lastT: performance.now(), raf: null,
     spawnTimer: 0,
   };
@@ -258,6 +258,7 @@ function buildDungeonDOM() {
     <div class="dun-hud">
       <div class="dun-top">
         <button class="btn-icon" id="dun-quit" title="Leave">‹</button>
+        <button class="btn-icon" id="dun-gear" title="Gear (E)">⚙️</button>
         <div id="dun-hearts" class="dun-hearts"></div>
         <div class="dun-obj">
           <span class="obj-label">Journey to the boss</span>
@@ -311,6 +312,8 @@ function bindDungeonInput() {
     if (e.key.toLowerCase() === 'k') heroAttack();
     if (e.key.toLowerCase() === 'shift') heroDodge();
     if (e.key.toLowerCase() === 'q') heroHeal();
+    if (e.key.toLowerCase() === 'e') openGearMenu();
+    if (e.key === 'Escape') closeGearMenu();
   };
   d._ku = e => { d.keys[e.key.toLowerCase()] = false; };
   const canvas = document.getElementById('dun-canvas');
@@ -331,6 +334,7 @@ function bindDungeonInput() {
   window.addEventListener('resize', d._rs);
 
   document.getElementById('dun-quit').addEventListener('click', () => { Audio2.sfx.click(); exitDungeon(); });
+  document.getElementById('dun-gear').addEventListener('click', () => { Audio2.sfx.click(); openGearMenu(); });
   const atk = document.getElementById('t-attack');
   const holdOn = e => { e.preventDefault(); d.attackHeld = true; heroAttack(); };
   const holdOff = e => { d.attackHeld = false; };
@@ -603,7 +607,7 @@ function dungeonLoop(t) {
   if (!d) return;
   const dt = Math.min(0.05, (t - d.lastT) / 1000);
   d.lastT = t;
-  if (!d.over) updateDungeon(dt, t);
+  if (!d.over && !d.paused) updateDungeon(dt, t);
   renderDungeon();
   d.raf = requestAnimationFrame(dungeonLoop);
 }
@@ -760,7 +764,7 @@ function updateDungeon(dt, t) {
 }
 
 function enemyStrikeHero(e) {
-  const d = DUNGEON; if (!d || d.over || e.dead) return;
+  const d = DUNGEON; if (!d || d.over || d.paused || e.dead) return;
   const h = d.hero, t = performance.now();
   if (dist(e.fx, e.fy, h.fx, h.fy) > 1.15) return;         // moved away in time
   if (t < h.dodgeUntil) { spawnFloatText(h.fx, h.fy, 'dodge', '#8ff0a0'); return; }
@@ -769,7 +773,7 @@ function enemyStrikeHero(e) {
 }
 
 function bossSlam(b) {
-  const d = DUNGEON; if (!d || d.over || b.dead) return;
+  const d = DUNGEON; if (!d || d.over || d.paused || b.dead) return;
   const h = d.hero, t = performance.now();
   shake();
   if (dist(b.fx, b.fy, h.fx, h.fy) > 2.2) return;
@@ -1340,6 +1344,65 @@ function exitDungeon() {
   saveGame();
   stopDungeon();
   showScreen('map');
+}
+
+/* ---------- Mid-level Gear menu: switch weapons/shields, pauses the level ---------- */
+function openGearMenu() {
+  const d = DUNGEON; if (!d || d.over || d.paused) return;
+  d.paused = true;
+  const ov = document.createElement('div');
+  ov.className = 'result-overlay show gear-overlay'; ov.id = 'gear-overlay';
+  ov.innerHTML = `
+    <div class="result-card gear-card">
+      <h2>⚙️ GEAR</h2>
+      <p class="tip">Swap your weapon or shield, then get back in there.</p>
+      <div class="gear-sec">Weapons</div>
+      <div class="gear-grid" id="gear-weapons"></div>
+      <div class="gear-sec">Shields</div>
+      <div class="gear-grid" id="gear-shields"></div>
+      <button class="wide-btn" id="gear-resume">▶ Resume</button>
+    </div>`;
+  app().appendChild(ov);
+  renderGearLists();
+  ov.querySelector('#gear-resume').addEventListener('click', closeGearMenu);
+}
+function renderGearLists() {
+  const wg = document.getElementById('gear-weapons'), sg = document.getElementById('gear-shields');
+  if (wg) {
+    wg.innerHTML = Object.keys(STATE.weapons).map(id => {
+      const w = WEAPONS[id], dur = STATE.weapons[id], eq = STATE.equippedWeapon === id, broken = dur <= 0;
+      return `<button class="gear-item ${eq ? 'on' : ''} ${broken ? 'broken' : ''}" data-w="${id}" style="--rc:${RARITY[w.rarity].color}">
+        <div class="gi-art">${weaponSVG(w.art)}</div>
+        <div class="gi-name">${w.name}</div>
+        <div class="gi-sub">${weaponDamage(id)}→${dur}${w.power ? ' · ' + powerLabel(w.power) : ''}</div>
+        ${eq ? '<span class="gi-badge">Equipped</span>' : ''}${broken ? '<span class="gi-badge broken">Broken</span>' : ''}
+      </button>`;
+    }).join('');
+    wg.querySelectorAll('.gear-item[data-w]').forEach(btn => btn.addEventListener('click', () => {
+      STATE.equippedWeapon = btn.dataset.w; Audio2.sfx.click(); saveGame(); renderGearLists(); updateWeaponHUD();
+    }));
+  }
+  if (sg) {
+    sg.innerHTML = Object.keys(STATE.shields).map(id => {
+      const s = SHIELDS[id], eq = STATE.equippedShield === id, dur = STATE.shields[id] || 0;
+      return `<button class="gear-item ${eq ? 'on' : ''} ${dur <= 0 ? 'broken' : ''}" data-s="${id}" style="--rc:${RARITY[s.rarity].color}">
+        <div class="gi-art">${shieldIcon('#b98a3a')}</div>
+        <div class="gi-name">${s.name}</div>
+        <div class="gi-sub">🛡️ ${dur}/${s.durability}</div>
+        ${eq ? '<span class="gi-badge">Equipped</span>' : ''}
+      </button>`;
+    }).join('');
+    sg.querySelectorAll('.gear-item[data-s]').forEach(btn => btn.addEventListener('click', () => {
+      STATE.equippedShield = btn.dataset.s; Audio2.sfx.click(); saveGame(); renderGearLists(); updateWeaponHUD();
+    }));
+  }
+}
+function closeGearMenu() {
+  const d = DUNGEON; const ov = document.getElementById('gear-overlay');
+  if (!ov) return;
+  ov.remove();
+  if (d) { d.paused = false; d.lastT = performance.now(); }
+  Audio2.sfx.click();
 }
 function showDungeonResult(won, bonus, mods) {
   const d = DUNGEON;
