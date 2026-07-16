@@ -97,6 +97,7 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .map-svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
 .map-route{ fill:none; stroke:#fff3c8; stroke-width:0.7; stroke-linecap:round;
   stroke-dasharray:0.2 2.4; opacity:.85; filter:drop-shadow(0 0.3px 0.4px rgba(0,0,0,.6)); }
+.map-river{ fill:none; stroke:#4fb0d8; stroke-width:1; stroke-linecap:round; opacity:.85; }
 .map-compass{ opacity:.9; }
 .map-node{
   position:absolute; transform:translate(-50%,-60%); width:74px; z-index:2;

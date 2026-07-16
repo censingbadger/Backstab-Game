@@ -225,63 +225,132 @@ const BIOME_EMOJI = {
 function mrand(n) { const s = Math.sin(n * 91.7 + 13.1) * 43758.5453; return s - Math.floor(s); }
 
 /* ---- little terrain glyphs, drawn in 0..100 map space ---- */
-function mapGlyph(kind, cx, cy) {
-  switch (kind) {
-    case 'tree': return `<path d="M${cx} ${cy - 3.6} L${cx - 2} ${cy - 0.4} L${cx + 2} ${cy - 0.4} Z" fill="#2f7a3a"/><path d="M${cx} ${cy - 2} L${cx - 1.6} ${cy + 0.5} L${cx + 1.6} ${cy + 0.5} Z" fill="#3f9a4a"/><rect x="${cx - 0.3}" y="${cy + 0.3}" width="0.6" height="1" fill="#5a3a1a"/>`;
-    case 'pine': return `<path d="M${cx} ${cy - 4} L${cx - 1.8} ${cy} L${cx + 1.8} ${cy} Z" fill="#1e3a24"/><path d="M${cx} ${cy - 2.3} L${cx - 2} ${cy + 0.7} L${cx + 2} ${cy + 0.7} Z" fill="#264a2c"/><rect x="${cx - 0.3}" y="${cy + 0.5}" width="0.6" height="1" fill="#3a2a18"/>`;
-    case 'mountain': return `<path d="M${cx - 3.4} ${cy + 0.6} L${cx} ${cy - 4.6} L${cx + 3.4} ${cy + 0.6} Z" fill="#7a828e"/><path d="M${cx - 1.2} ${cy - 2.1} L${cx} ${cy - 4.6} L${cx + 1.2} ${cy - 2.1} Z" fill="#f0f4f8"/><path d="M${cx} ${cy - 4.6} L${cx + 3.4} ${cy + 0.6} L${cx} ${cy + 0.6} Z" fill="#6a727e"/>`;
-    case 'crag': return `<path d="M${cx - 3} ${cy + 1} L${cx - 1} ${cy - 2.2} L${cx + 0.5} ${cy - 0.5} L${cx + 2} ${cy - 2.8} L${cx + 3} ${cy + 1} Z" fill="#6b7480"/><path d="M${cx - 1} ${cy - 2.2} L${cx + 0.2} ${cy - 0.5} L${cx - 1.6} ${cy - 0.2} Z" fill="#828c98"/>`;
-    case 'dune': return `<path d="M${cx - 4} ${cy} q2 -2.4 4 0 q2 2.4 4 0" fill="none" stroke="#caa14a" stroke-width="0.9" stroke-linecap="round"/>`;
-    case 'grass': return `<path d="M${cx - 1.4} ${cy} q0.4 -2 1.4 -2.7 M${cx} ${cy} q0 -2.3 0 -3 M${cx + 1.4} ${cy} q-0.4 -2 -1.4 -2.7" stroke="#93a352" stroke-width="0.6" fill="none" stroke-linecap="round"/>`;
-    case 'wave': return `<path d="M${cx - 3.4} ${cy} q1.6 -1.3 3.2 0 t3.2 0" fill="none" stroke="#d7f0ff" stroke-width="0.7" stroke-linecap="round"/>`;
-    default: return '';
-  }
+/* ---- LANDFORMS: real relief per biome, drawn in 0..100 map space ----
+   Each form shades a lit (top-left) and shadowed (bottom-right) face so the
+   terrain reads as elevation, not flat colour. */
+function lf_mountain(cx, cy) {
+  let s = `<ellipse cx="${cx + 2.5}" cy="${cy + 3.5}" rx="13" ry="5" fill="#000" opacity="0.2" filter="url(#mapSoft)"/>`;
+  // foothills
+  s += `<ellipse cx="${cx}" cy="${cy + 2}" rx="11" ry="5" fill="#6f7682"/>`;
+  const peaks = [[-7, 3, 7], [-2.5, 1, 11], [2, 2, 9], [6.5, 3.5, 6], [9.5, 4.5, 4.5]];
+  peaks.forEach(([dx, dy, h]) => {
+    const x = cx + dx, y = cy + dy;
+    s += `<path d="M${x} ${y - h} L${x + 3.4} ${y} L${x} ${y} Z" fill="#565d68"/>`;   // shadow face
+    s += `<path d="M${x} ${y - h} L${x - 3.4} ${y} L${x} ${y} Z" fill="#8b939f"/>`;   // lit face
+    const snow = h * 0.4;
+    s += `<path d="M${x} ${y - h} L${x - 1.4} ${y - h + snow} L${x - 0.5} ${y - h + snow * 0.6} L${x + 0.4} ${y - h + snow} L${x + 1.2} ${y - h + snow * 0.55} L${x + 1.1} ${y - h + snow} Z" fill="#f4f8fc"/>`;
+  });
+  return s;
 }
-function biomeDecor(r, biome) {
-  let out = '';
-  if (biome === 'temple') out += `<path d="M${r.x - 3.4} ${r.y} L${r.x + 3.4} ${r.y} L${r.x + 2.4} ${r.y - 1.4} L${r.x - 2.4} ${r.y - 1.4} Z" fill="#4f7042"/><path d="M${r.x - 2.4} ${r.y - 1.4} L${r.x + 2.4} ${r.y - 1.4} L${r.x + 1.6} ${r.y - 2.8} L${r.x - 1.6} ${r.y - 2.8} Z" fill="#5f8452"/><path d="M${r.x - 1.6} ${r.y - 2.8} L${r.x + 1.6} ${r.y - 2.8} L${r.x} ${r.y - 4.4} Z" fill="#6f9462"/><rect x="${r.x - 0.5}" y="${r.y - 1.4}" width="1" height="1.4" fill="#20301a"/>`;
-  if (biome === 'sandcastle') out += `<rect x="${r.x - 3}" y="${r.y - 2.6}" width="6" height="2.8" fill="#e7cf88"/><rect x="${r.x - 3}" y="${r.y - 4}" width="1.6" height="1.6" fill="#e7cf88"/><rect x="${r.x + 1.4}" y="${r.y - 4}" width="1.6" height="1.6" fill="#e7cf88"/><rect x="${r.x - 0.8}" y="${r.y - 4.6}" width="1.6" height="2.2" fill="#dcbf72"/><path d="M${r.x + 0.8} ${r.y - 4.6} L${r.x + 2.6} ${r.y - 4.1} L${r.x + 0.8} ${r.y - 3.6} Z" fill="#e0453a"/>`;
-  if (biome === 'secret') out += `<circle cx="${r.x}" cy="${r.y - 1.6}" r="2.6" fill="#e8e2d0"/><path d="M${r.x - 1.9} ${r.y - 0.8} h3.8 v1.4 h-3.8 Z" fill="#e8e2d0"/><circle cx="${r.x - 1}" cy="${r.y - 1.9}" r="0.8" fill="#3a1020"/><circle cx="${r.x + 1}" cy="${r.y - 1.9}" r="0.8" fill="#3a1020"/>`;
-  const g = { cliffs: 'crag', grass: 'grass', forest: 'tree', temple: 'pine', mountain: 'mountain', dunes: 'dune', coast: 'wave' }[biome];
-  const n = biome === 'coast' ? 5 : (biome === 'sandcastle' || biome === 'secret') ? 0 : biome === 'temple' ? 4 : 7;
-  for (let i = 0; i < n; i++) {
-    const a = mrand(r.x * 7 + i * 13.3) * 6.283, rr = 3 + mrand(r.x + i * 2.1) * 5.5;
-    out += mapGlyph(g, r.x + Math.cos(a) * rr, r.y + Math.sin(a) * rr * 0.78);
+function lf_cliffs(cx, cy) {
+  let s = `<path d="M${cx - 7} ${cy - 2} Q ${cx - 2} ${cy - 6} ${cx + 5} ${cy - 3} Q ${cx + 8.5} ${cy} ${cx + 4} ${cy + 3} L ${cx - 6.5} ${cy + 3} Z" fill="#7d7b71"/>`; // plateau top
+  s += `<path d="M${cx - 6} ${cy - 3} Q ${cx} ${cy - 5.5} ${cx + 4} ${cy - 2.6}" fill="none" stroke="#9a988c" stroke-width="0.6"/>`; // lit rim
+  s += `<path d="M${cx - 6.5} ${cy + 3} L${cx + 4} ${cy + 3} L${cx + 3} ${cy + 7} L${cx - 7} ${cy + 6.4} Z" fill="#45443f"/>`;       // cliff face
+  s += `<g stroke="#33332e" stroke-width="0.35">`;
+  for (let i = -6; i <= 3; i += 1.4) s += `<line x1="${cx + i}" y1="${cy + 3}" x2="${cx + i - 0.4}" y2="${cy + 6.6}"/>`;
+  s += `</g>`;
+  s += `<path d="M${cx - 8.5} ${cy + 7.5} L${cx - 7.5} ${cy + 5.6} L${cx - 6.5} ${cy + 7.6} Z" fill="#5a5a55"/><path d="M${cx + 4.5} ${cy + 7.6} L${cx + 5.3} ${cy + 6.2} L${cx + 6} ${cy + 7.8} Z" fill="#5a5a55"/>`; // sea stacks
+  s += `<path d="M${cx - 7.5} ${cy + 7.2} q4.5 1.2 12 0.2" fill="none" stroke="#eaf6ff" stroke-width="0.5" opacity="0.7"/>`; // foam
+  return s;
+}
+function lf_forest(cx, cy) {
+  let s = `<ellipse cx="${cx + 1.5}" cy="${cy + 2.5}" rx="10" ry="4.5" fill="#000" opacity="0.14" filter="url(#mapSoft)"/>`;
+  s += `<ellipse cx="${cx}" cy="${cy + 1}" rx="9.5" ry="6.5" fill="#2c5632"/>`;   // canopy hill
+  for (let i = 0; i < 30; i++) {
+    const a = mrand(cx * 3 + i) * 6.283, rr = mrand(cx + i * 1.7) * 8.6;
+    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 0.62;
+    s += `<circle cx="${x}" cy="${y}" r="${1.5 + mrand(i) * 1.1}" fill="${y > cy ? '#20421f' : '#3a7038'}"/>`;
   }
-  if (biome === 'dunes') out += `<path d="M${r.x + 2} ${r.y + 1} v-3.4 M${r.x + 2} ${r.y - 1} q-1.4 0 -1.4 -1.2 M${r.x + 2} ${r.y - 0.4} q1.4 0 1.4 -1.2" stroke="#4a8a3a" stroke-width="0.9" fill="none" stroke-linecap="round"/>`;
-  if (biome === 'coast') out += `<path d="M${r.x - 3} ${r.y + 2.4} q-0.6 -2.4 0.4 -4.2" stroke="#8a6a3a" stroke-width="0.7" fill="none"/><path d="M${r.x - 2.6} ${r.y - 1.8} q-1.8 -0.9 -3.2 0 M${r.x - 2.6} ${r.y - 1.8} q1.8 -0.9 3.2 0 M${r.x - 2.6} ${r.y - 1.8} q-0.9 -1.4 -2.2 -1.6 M${r.x - 2.6} ${r.y - 1.8} q0.9 -1.4 2.2 -1.6" stroke="#3f9a4a" stroke-width="0.6" fill="none"/>`;
-  return out;
+  for (let i = 0; i < 5; i++) { const x = cx - 7 + i * 3.4, y = cy - 3.4; s += `<path d="M${x} ${y - 3} L${x - 1.2} ${y} L${x + 1.2} ${y} Z" fill="#16351b"/>`; }
+  return s;
+}
+function lf_grass(cx, cy) {
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="12" ry="7.5" fill="#93a556"/>`;
+  s += `<ellipse cx="${cx - 2}" cy="${cy - 1}" rx="9" ry="4" fill="#9fb060" opacity="0.7"/>`; // gentle rise
+  s += `<path d="M${cx - 10} ${cy + 1.5} q6 -3 11 0 M${cx - 7} ${cy + 4} q6 -3 11 0 M${cx - 3} ${cy - 2.5} q5 -2 9 0" fill="none" stroke="#7f9448" stroke-width="0.5" opacity="0.7"/>`;
+  for (let i = 0; i < 10; i++) { const x = cx - 9 + mrand(i * 3) * 18, y = cy - 5 + mrand(i) * 10; s += `<path d="M${x - 1} ${y} q0.3 -1.4 1 -1.9 M${x} ${y} q0 -1.6 0 -2.1 M${x + 1} ${y} q-0.3 -1.4 -1 -1.9" stroke="#6f8a3e" stroke-width="0.4" fill="none"/>`; }
+  s += `<path d="M${cx + 6} ${cy - 1} L${cx + 4.4} ${cy + 1.6} L${cx + 7.6} ${cy + 1.6} Z" fill="#3f7a3a"/><rect x="${cx + 5.7}" y="${cy + 1.4}" width="0.6" height="1.1" fill="#5a3a1a"/>`; // lone tree
+  return s;
+}
+function lf_temple(cx, cy) {
+  let s = `<ellipse cx="${cx}" cy="${cy + 1.5}" rx="11" ry="7" fill="#48602f"/>`;   // murky basin
+  s += `<ellipse cx="${cx - 4}" cy="${cy + 2.5}" rx="3.4" ry="1.5" fill="#37543f"/><ellipse cx="${cx + 3.5}" cy="${cy + 3.5}" rx="2.6" ry="1.2" fill="#37543f"/><ellipse cx="${cx + 5}" cy="${cy - 1}" rx="1.8" ry="0.9" fill="#37543f"/>`; // marsh pools
+  for (let i = 0; i < 7; i++) { const x = cx - 6 + i * 2; s += `<line x1="${x}" y1="${cy + 3.4}" x2="${x + mrand(i) - 0.5}" y2="${cy + 0.6}" stroke="#2c4522" stroke-width="0.4"/>`; }
+  s += `<path d="M${cx - 4} ${cy} L${cx + 4} ${cy} L${cx + 2.9} ${cy - 1.7} L${cx - 2.9} ${cy - 1.7} Z" fill="#5a7a4a"/><path d="M${cx - 2.9} ${cy - 1.7} L${cx + 2.9} ${cy - 1.7} L${cx + 2} ${cy - 3.4} L${cx - 2} ${cy - 3.4} Z" fill="#6a8a5a"/><path d="M${cx - 2} ${cy - 3.4} L${cx + 2} ${cy - 3.4} L${cx} ${cy - 5.2} Z" fill="#7a9a6a"/><rect x="${cx - 0.6}" y="${cy - 1.7}" width="1.2" height="1.7" fill="#1c2a16"/>`; // ziggurat
+  s += `<ellipse cx="${cx}" cy="${cy + 1.5}" rx="11" ry="7" fill="#9fe060" opacity="0.07"/>`; // toxic sheen
+  return s;
+}
+function lf_coast(cx, cy) {
+  let s = `<ellipse cx="${cx}" cy="${cy - 4.5}" rx="12" ry="7" fill="#2f9fc0"/><ellipse cx="${cx}" cy="${cy - 4}" rx="9.5" ry="5" fill="#5fd0dd"/>`; // bay + shallows
+  s += `<path d="M${cx - 12} ${cy + 2} Q ${cx} ${cy - 3.5} ${cx + 12} ${cy + 2} L ${cx + 12} ${cy + 5} Q ${cx} ${cy + 0.5} ${cx - 12} ${cy + 5} Z" fill="#ecd8a0"/>`; // beach
+  s += `<path d="M${cx - 12} ${cy + 1.4} Q ${cx} ${cy - 4} ${cx + 12} ${cy + 1.4}" fill="none" stroke="#f4fbff" stroke-width="0.6"/>`; // foam
+  s += `<ellipse cx="${cx - 5}" cy="${cy - 5.5}" rx="1.4" ry="0.9" fill="#6b7480"/><ellipse cx="${cx + 4}" cy="${cy - 6.5}" rx="1.1" ry="0.7" fill="#6b7480"/><ellipse cx="${cx + 1}" cy="${cy - 3}" rx="0.9" ry="0.6" fill="#6b7480"/>`; // islets
+  [-6, 6].forEach(dx => { s += `<path d="M${cx + dx} ${cy + 3} q${-0.5 * Math.sign(dx)} -2.4 ${0.5 * Math.sign(dx)} -4" stroke="#8a6a3a" stroke-width="0.6" fill="none"/><path d="M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q-1.6 -0.9 -2.8 0 M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q1.6 -0.9 2.8 0 M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q-0.8 -1.4 -2 -1.7 M${cx + dx + 0.5 * Math.sign(dx)} ${cy - 1} q0.8 -1.4 2 -1.7" stroke="#3f9a4a" stroke-width="0.55" fill="none"/>`; });
+  return s;
+}
+function lf_dunes(cx, cy) {
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="12" ry="7.5" fill="#d9b25a"/>`;
+  for (let i = 0; i < 6; i++) {
+    const y = cy - 5 + i * 2.1, x = cx - 5 + (i % 2) * 5;
+    s += `<path d="M${x - 6} ${y + 0.7} q6 -2.6 12 0" fill="none" stroke="#b58c3a" stroke-width="1.1" stroke-linecap="round"/>`;   // shadowed lee
+    s += `<path d="M${x - 6} ${y} q6 -3.2 12 0" fill="none" stroke="#f0d488" stroke-width="1.3" stroke-linecap="round"/>`;        // lit crest
+  }
+  s += `<path d="M${cx + 5} ${cy + 2} v-4 M${cx + 5} ${cy} q-1.4 0 -1.4 -1.3 M${cx + 5} ${cy + 0.6} q1.4 0 1.4 -1.3" stroke="#4a8a3a" stroke-width="0.9" fill="none" stroke-linecap="round"/>`; // cactus
+  return s;
+}
+function lf_sandcastle(cx, cy) {
+  let s = `<ellipse cx="${cx}" cy="${cy + 1}" rx="7" ry="4.5" fill="#e6cd82"/><ellipse cx="${cx}" cy="${cy + 2.6}" rx="8.5" ry="4.8" fill="#5fd0dd" opacity="0.4"/>`; // sandy point + shallows
+  s += `<rect x="${cx - 3}" y="${cy - 2.4}" width="6" height="2.8" fill="#dcbf72"/><rect x="${cx - 3}" y="${cy - 3.8}" width="1.6" height="1.6" fill="#dcbf72"/><rect x="${cx + 1.4}" y="${cy - 3.8}" width="1.6" height="1.6" fill="#dcbf72"/><rect x="${cx - 0.8}" y="${cy - 4.4}" width="1.6" height="2.2" fill="#cdae62"/><path d="M${cx + 0.8} ${cy - 4.4} L${cx + 2.6} ${cy - 3.9} L${cx + 0.8} ${cy - 3.4} Z" fill="#e0453a"/>`;
+  return s;
+}
+function lf_secret(cx, cy) {
+  let s = `<ellipse cx="${cx + 2}" cy="${cy + 3.5}" rx="9" ry="3.4" fill="#000" opacity="0.28" filter="url(#mapSoft)"/>`;
+  s += `<path d="M${cx - 8} ${cy + 3.5} L${cx} ${cy - 8} L${cx + 8} ${cy + 3.5} Z" fill="#2a1220"/><path d="M${cx} ${cy - 8} L${cx + 8} ${cy + 3.5} L${cx} ${cy + 3.5} Z" fill="#180a12"/>`; // volcanic cone
+  s += `<ellipse cx="${cx}" cy="${cy - 7.2}" rx="1.8" ry="0.8" fill="#ff6a2a"/>`; // crater glow
+  s += `<path d="M${cx} ${cy - 7} L${cx - 1.6} ${cy - 2} L${cx - 1} ${cy + 1.5} M${cx} ${cy - 7} L${cx + 1.8} ${cy - 1} L${cx + 1.1} ${cy + 2}" stroke="#ff5a2a" stroke-width="0.4" fill="none" opacity="0.85"/>`; // lava cracks
+  s += `<ellipse cx="${cx}" cy="${cy - 10}" rx="2.6" ry="1.5" fill="#5a5560" opacity="0.5"/><ellipse cx="${cx + 1}" cy="${cy - 11.5}" rx="1.8" ry="1.1" fill="#4a4550" opacity="0.4"/>`; // ash plume
+  return s;
+}
+function landform(biome, cx, cy) {
+  const fn = { mountain: lf_mountain, cliffs: lf_cliffs, forest: lf_forest, grass: lf_grass, temple: lf_temple, coast: lf_coast, dunes: lf_dunes, sandcastle: lf_sandcastle, secret: lf_secret }[biome];
+  return fn ? fn(cx, cy) : '';
 }
 
-/* The whole illustrated continent: ocean, landmass, biome terrain, travel route. */
+/* The whole illustrated continent: ocean depth, a relief landmass with real
+   topography per region, rivers flowing from the mountains, and a travel route. */
 function continentSVG() {
   const land = 'M6 24 C 8 13 20 8 32 11 C 41 13 43 21 49 19 C 55 14 59 9 67 9 C 75 8 81 13 85 18 C 91 23 96 31 94 41 C 93 53 96 61 90 69 C 85 79 78 87 66 90 C 52 94 40 94 30 91 C 20 89 10 86 7 76 C 4 66 6 56 6 46 C 6 36 3 31 6 24 Z';
-  let patches = '', decor = '';
-  REGIONS.forEach(r => {
-    const b = BIOME[r.id] || 'grass';
-    patches += `<circle cx="${r.x}" cy="${r.y}" r="${r.id === 'sandcastle' ? 9 : 13}" fill="${r.color}" opacity="0.5"/>`;
-    decor += biomeDecor(r, b);
-  });
+  // terrain back-to-front (north first) so nearer landforms overlap correctly
+  const terrain = REGIONS.slice().sort((a, b) => a.y - b.y).map(r => landform(BIOME[r.id] || 'grass', r.x, r.y)).join('');
   const chain = REGIONS.filter(r => !r.passageOnly);
   const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
   let waves = '';
-  for (let i = 0; i < 5; i++) { const wy = 8 + i * 20 + mrand(i) * 6, wx = 4 + mrand(i * 3) * 8; waves += `<path d="M${wx} ${wy} q3 -2 6 0 t6 0" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="0.7"/>`; }
+  for (let i = 0; i < 6; i++) { const wy = 6 + i * 16 + mrand(i) * 6, wx = 3 + mrand(i * 3) * 8; waves += `<path d="M${wx} ${wy} q3 -2 6 0 t6 0" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="0.7"/>`; }
+  // rivers run down from Knife Mountain (52,62) to the western wetlands and the south coast
+  const rivers = `<path d="M52 58 Q 42 53 33 51 Q 24 49 16 41 Q 11 35 8 30" class="map-river"/>
+    <path d="M52 60 Q 47 68 42 74 Q 36 81 28 85" class="map-river"/>
+    <ellipse cx="31" cy="51" rx="2.6" ry="1.4" fill="#4fb0d0"/><ellipse cx="31" cy="51" rx="2.6" ry="1.4" fill="none" stroke="#eaf6ff" stroke-width="0.3" opacity="0.6"/>`;
   return `<svg viewBox="0 0 100 100" class="map-svg" preserveAspectRatio="none" aria-hidden="true">
     <defs>
-      <filter id="mapSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.6"/></filter>
+      <filter id="mapSoft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter>
+      <filter id="mapNoise" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.14" numOctaves="3" seed="11" stitchTiles="stitch" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0"/></filter>
       <clipPath id="mapLandClip"><path d="${land}"/></clipPath>
-      <radialGradient id="mapOcean" cx="50%" cy="38%" r="80%"><stop offset="0" stop-color="#3286b6"/><stop offset="1" stop-color="#164a74"/></radialGradient>
-      <linearGradient id="mapLand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d3c489"/><stop offset="1" stop-color="#ab9c60"/></linearGradient>
+      <radialGradient id="mapOcean" cx="50%" cy="40%" r="82%"><stop offset="0" stop-color="#3aa0cc"/><stop offset="0.6" stop-color="#1e6ea0"/><stop offset="1" stop-color="#123f66"/></radialGradient>
+      <linearGradient id="mapLand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9bd84"/><stop offset="1" stop-color="#9f9257"/></linearGradient>
     </defs>
     <rect width="100" height="100" fill="url(#mapOcean)"/>
     ${waves}
-    <path d="${land}" fill="#06263f" opacity="0.4" transform="translate(1.4,2.2)"/>
-    <path d="${land}" fill="none" stroke="#bfe9ff" stroke-width="2.6" opacity="0.45"/>
-    <path d="${land}" fill="url(#mapLand)" stroke="#7a6a3a" stroke-width="0.5"/>
+    <ellipse cx="90" cy="18" rx="1.5" ry="0.9" fill="#5a6470"/><ellipse cx="11" cy="62" rx="1.3" ry="0.8" fill="#5a6470"/>
+    <path d="${land}" fill="#05263f" opacity="0.4" transform="translate(1.6,2.4)"/>
+    <path d="${land}" fill="none" stroke="#7fd8e6" stroke-width="3.4" opacity="0.4"/>
+    <path d="${land}" fill="none" stroke="#eaf6ff" stroke-width="1.1" opacity="0.6"/>
+    <path d="${land}" fill="url(#mapLand)" stroke="#6a5c32" stroke-width="0.4"/>
     <g clip-path="url(#mapLandClip)">
-      <g filter="url(#mapSoft)">${patches}</g>
-      ${decor}
+      ${terrain}
+      ${rivers}
+      <rect width="100" height="100" filter="url(#mapNoise)" opacity="0.10"/>
     </g>
+    <g opacity="0.85" transform="translate(83,73) rotate(-6)"><path d="M-2.2 0 L2.2 0 L1.5 1.3 L-1.5 1.3 Z" fill="#6a4a2a"/><line x1="0" y1="0" x2="0" y2="-3.4" stroke="#3a2a18" stroke-width="0.3"/><path d="M0.2 -3.2 L2 -1.2 L0.2 -0.4 Z" fill="#f0ead8"/></g>
     <path d="${route}" class="map-route"/>
     <g transform="translate(88,88)" class="map-compass">
       <circle r="6" fill="rgba(20,40,60,0.5)" stroke="#e6d29a" stroke-width="0.5"/>
