@@ -829,6 +829,11 @@ function renderShop() {
     const it = ITEMS[id];
     html += shopRow('item', id, it.name, it.blurb, it.rarity, it.price, false, itemSVG(it.art));
   });
+  // ---- Act 2 relic: the Wings of Icarus (flight) ----
+  if (currentAct() === 2 && typeof ARTIFACTS !== 'undefined' && ARTIFACTS.wings) {
+    html += `<div class="shop-sep">🪽 Time-traveller's relic</div>`;
+    html += shopRow('artifact', 'wings', ARTIFACTS.wings.name, ARTIFACTS.wings.desc, 'L', 9000, hasArtifact('wings'), `<div style="font-size:26px">🪽</div>`);
+  }
 
   // ---- Trash (sell) your weapons for coins ----
   const ownedWeapons = Object.keys(STATE.weapons);
@@ -867,6 +872,7 @@ function renderShop() {
       if (type === 'weapon') STATE.weapons[id] = WEAPONS[id].durability;
       else if (type === 'shield') STATE.shields[id] = SHIELDS[id].durability;
       else if (type === 'item') STATE.items[id] = (STATE.items[id] || 0) + 1;
+      else if (type === 'artifact') { if (!STATE.artifacts) STATE.artifacts = []; if (!STATE.artifacts.includes(id)) STATE.artifacts.push(id); }
       Audio2.sfx.buy(); saveGame(); renderStats();
     });
   });
@@ -906,7 +912,7 @@ function sellValue(w) { return Math.max(0, Math.round((w.price || 0) * 0.6)); }
 
 // Short label for a weapon's special power.
 function powerLabel(p) {
-  return ({ reach: '➹ reach', sweep: '↺ wide sweep', double: '⚔ 2× hits', lifesteal: '❤ lifesteal', poison: '☠ poison', stun: '✷ stun' })[p] || '';
+  return ({ reach: '➹ reach', sweep: '↺ wide sweep', double: '⚔ 2× hits', lifesteal: '❤ lifesteal', poison: '☠ poison', stun: '✷ stun', gun: '🔫 shoots bullets', bazooka: '🚀 explosive shells' })[p] || '';
 }
 // One-line summary of the character's permanent perks.
 function perksSummary() {

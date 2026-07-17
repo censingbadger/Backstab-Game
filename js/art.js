@@ -103,6 +103,8 @@ function weaponFamily(w) {
   if (id === 'spiked_spear') return 'spikespear';
   if (id.indexOf('spear') >= 0) return 'spear';
   if (w.art === 'bow') return 'bow';
+  if (w.art === 'gun' || w.power === 'gun') return 'gun';
+  if (w.art === 'bazooka' || w.power === 'bazooka') return 'bazooka';
   if (w.art === 'katana') return 'katana';
   if (id.indexOf('mace') >= 0 || w.power === 'stun') return 'mace';
   return 'sword';
@@ -203,6 +205,17 @@ function weaponSVG(w) {
       return svg(`<path d="M12 4 C28 12 28 28 12 36" fill="none" stroke="${wood}" stroke-width="3"/>
         <line x1="12" y1="4" x2="12" y2="36" stroke="#eee" stroke-width="1"/>
         <path d="M12 20 H32 M28 17 L32 20 L28 23" stroke="${mixHex('#c0392b', blade, 0.2)}" stroke-width="1.8" fill="none"/>`);
+    case 'gun':
+      return svg(`<path d="M6 20 H30 L30 25 L14 25 L14 30 L9 30 L9 25 L6 25 Z" fill="${blade}" stroke="${st}" stroke-width="1.2"/>
+        <rect x="26" y="16" width="8" height="5" rx="1.5" fill="#3a3a40"/>
+        <circle cx="34" cy="18.5" r="1.4" fill="#ffcf3f"/>
+        <rect x="9" y="25" width="6" height="8" rx="1.5" fill="${grip}"/>`);
+    case 'bazooka':
+      return svg(`<rect x="5" y="16" width="26" height="9" rx="4" fill="#4a4a52" stroke="${st}" stroke-width="1.2"/>
+        <path d="M31 15 L37 18 L37 23 L31 26 Z" fill="#c0392b"/>
+        <rect x="10" y="12" width="6" height="5" rx="1.5" fill="#2a2a30"/>
+        <rect x="16" y="25" width="5" height="8" rx="1.5" fill="${grip}"/>
+        <circle cx="8" cy="20.5" r="2" fill="#1a1a20"/>`);
     default:
       return weaponSVG({ id: 'aluminum_sword', art: 'sword', rarity: 'C' });
   }

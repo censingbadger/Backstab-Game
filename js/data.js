@@ -117,6 +117,10 @@ const WEAPONS = {
   double_dagger:  { id:'double_dagger',  name:'Double Dagger',  damage:13, durability:200, rarity:'E', price:8000,  repairCost:170, art:'knife',  power:'double' },
   emerald_scythe: { id:'emerald_scythe', name:'Emerald Scythe', damage:26, durability:220, rarity:'E', price:12000, repairCost:240, art:'spear',  power:'poison' },
   pastors_blade:  { id:'pastors_blade',  name:"Master's Blade", damage:30, durability:240, rarity:'L', price:15000, repairCost:420, art:'katana', power:'lifesteal' },
+  /* ===== ACT TWO — powerful new arms (guns shoot; the bazooka explodes) ===== */
+  plasma_katana:  { id:'plasma_katana',  name:'Plasma Katana', damage:34, durability:260, rarity:'E', price:13000, repairCost:300, art:'katana', power:'sweep' },
+  six_shooter:    { id:'six_shooter',    name:'Six-Shooter',   damage:17, durability:320, rarity:'R', price:7000,  repairCost:120, art:'gun',     power:'gun' },
+  bazooka:        { id:'bazooka',        name:'Bazooka',       damage:46, durability:90,  rarity:'L', price:17000, repairCost:450, art:'bazooka', power:'bazooka' },
 };
 
 /* ---------- Items (used in battle) ----------
