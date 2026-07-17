@@ -345,6 +345,14 @@ const BIOME = {
   toxic_temple: 'temple', shatter_coast: 'coast', sandcastle: 'sandcastle',
   knife_mountain: 'mountain', desolate_dunes: 'dunes', secret: 'secret',
 };
+// Act 2: the same continent redrawn era by era — jungle, frontier town, city
+// skyline, pyramids, sunken ruins, volcano town, icebergs, magma, and the
+// retro-future skyline at the end of time.
+const BIOME_ACT2 = {
+  dead_cliffs: 'jungle', barren_grasslands: 'west', dark_forest: 'city',
+  toxic_temple: 'pyramids', shatter_coast: 'atlantis', sandcastle: 'pompeii',
+  knife_mountain: 'ice', desolate_dunes: 'primordial', secret: 'jetsons',
+};
 const BIOME_EMOJI = {
   dead_cliffs: '🪨', barren_grasslands: '🌾', dark_forest: '🌲', toxic_temple: '🛕',
   shatter_coast: '🏖️', sandcastle: '🏰', knife_mountain: '⛰️', desolate_dunes: '🏜️', secret: '💀',
@@ -484,37 +492,210 @@ function lf_secret(cx, cy) {
   s += `<text x="${cx}" y="${cy + 0.4}" text-anchor="middle" font-size="3.6" fill="#c9445a" font-weight="900" font-family="serif">???</text>`;
   return s;
 }
+/* ---- ACT 2 landforms: the same continent, redrawn era by era ---- */
+function mpalm(x, y, s) {
+  s = s || 1;
+  let f = `<path d="M${x} ${y} q${0.7 * s} -2.2 ${0.3 * s} -${4 * s}" stroke="#7a5a34" stroke-width="${0.55 * s}" fill="none"/>`;
+  const tx = x + 0.3 * s, ty = y - 4 * s;
+  [[-2.4, -0.7], [-1.6, -1.7], [1.6, -1.7], [2.4, -0.7]].forEach(([dx, dy]) => { f += `<path d="M${tx} ${ty} q${dx * s * 0.6} ${dy * s * 0.5} ${dx * s} ${-dy * s * 0.1 + 0.5}" stroke="#3f9a4a" stroke-width="${0.5 * s}" fill="none"/>`; });
+  return f;
+}
+function msaguaro(x, y, s) {
+  s = s || 1;
+  return `<path d="M${x} ${y} v${-5 * s} M${x} ${y - 2.4 * s} q${-1.8 * s} -0.2 ${-1.8 * s} -${2 * s} M${x} ${y - 1.6 * s} q${1.8 * s} -0.2 ${1.8 * s} -${2.4 * s}" stroke="#3f7a34" stroke-width="${1 * s}" fill="none" stroke-linecap="round"/>`;
+}
+function mpyramid(x, y, w, h) {
+  return `<path d="M${x} ${y - h} L${x + w} ${y} L${x} ${y} Z" fill="#b5924a"/><path d="M${x} ${y - h} L${x - w} ${y} L${x} ${y} Z" fill="#e8cd8a"/>
+    <path d="M${x - w} ${y} L${x} ${y - h} L${x + w} ${y}" fill="none" stroke="#8a6a2e" stroke-width="0.3" stroke-linejoin="round"/>`;
+}
+function mhouse(x, y, s) {
+  s = s || 1;
+  return `<rect x="${x - 1.1 * s}" y="${y - 1.2 * s}" width="${2.2 * s}" height="${1.2 * s}" fill="#f2e8d8"/><path d="M${x - 1.4 * s} ${y - 1.2 * s} L${x} ${y - 2.1 * s} L${x + 1.4 * s} ${y - 1.2 * s} Z" fill="#b8442a"/>`;
+}
+function lf_jungle(cx, cy) {
+  // steaming tropical jungle — a lush canopy stuffed with palms and giant ferns
+  let s = `<ellipse cx="${cx + 1.5}" cy="${cy + 3}" rx="16" ry="7" fill="#000" opacity="0.12" filter="url(#mapSoft)"/>`;
+  const N = 15, rx = 15, ry = 10;
+  let ring = '';
+  for (let i = 0; i <= N; i++) {
+    const a = i / N * 6.283, wob = 1 + (mrand(i * 4.1) - 0.5) * 0.3;
+    const x = cx + Math.cos(a) * rx * wob, y = cy + 1 + Math.sin(a) * ry * wob;
+    ring += (i === 0 ? `M${x} ${y}` : ` L ${x} ${y}`);
+  }
+  s += `<path d="${ring} Z" fill="#2e7030" stroke="#1c4a1e" stroke-width="0.5"/>`;
+  for (let i = 0; i < 40; i++) { const a = mrand(cx * 5 + i) * 6.283, rr = Math.sqrt(mrand(cx + i * 2.1)) * 13; const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 0.62; s += `<circle cx="${x}" cy="${y}" r="${1.3 + mrand(i) * 1.2}" fill="${mrand(i * 7) > 0.5 ? '#3f8a3a' : '#57a04a'}"/>`; }
+  s += mpalm(cx - 9, cy + 4, 1.1) + mpalm(cx + 3, cy - 4, 1.3) + mpalm(cx + 9, cy + 3, 1) + mpalm(cx - 3, cy + 7, 1.2);
+  for (let i = 0; i < 5; i++) { const x = cx - 10 + mrand(i * 9) * 20, y = cy - 5 + mrand(i * 3) * 12; s += `<circle cx="${x}" cy="${y}" r="0.5" fill="#e05a7a"/>`; }   // jungle blooms
+  // steam wisps rising off the canopy
+  s += `<path d="M${cx - 5} ${cy - 8} q1 -2 0 -3.6 M${cx + 6} ${cy - 7} q-1 -2 0 -3.4" stroke="rgba(255,255,255,0.35)" stroke-width="0.6" fill="none"/>`;
+  return s;
+}
+function lf_west(cx, cy) {
+  // the dusty frontier: mesas, saguaros, and a one-street saloon town
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="17" ry="10" fill="#cfa055"/><ellipse cx="${cx - 3}" cy="${cy - 2}" rx="13" ry="6" fill="#e0b46a" opacity="0.6"/>`;
+  // red-rock mesas on the horizon
+  [[-11, -5, 3.4], [-2, -7, 2.6], [8, -5.5, 3]].forEach(([dx, dy, w]) => {
+    const x = cx + dx, y = cy + dy;
+    s += `<path d="M${x - w} ${y} L${x - w + 0.7} ${y - 2.6} L${x + w - 0.7} ${y - 2.6} L${x + w} ${y} Z" fill="#b0603a"/><rect x="${x - w + 0.7}" y="${y - 2.9}" width="${(w - 0.7) * 2}" height="0.5" fill="#c97a4a"/>`;
+  });
+  // the saloon (false-front) + a couple of town buildings on a dirt street
+  s += `<rect x="${cx - 3.4}" y="${cy + 0.6}" width="6.8" height="0.9" fill="#a8814a"/>`;   // street
+  s += `<rect x="${cx - 2.8}" y="${cy - 2.6}" width="3" height="3.2" fill="#8a5a34"/><rect x="${cx - 3.1}" y="${cy - 3.3}" width="3.6" height="0.9" fill="#a06a3c"/><rect x="${cx - 2.4}" y="${cy - 2.9}" width="2.2" height="0.5" fill="#e8d8a0"/><rect x="${cx - 2.2}" y="${cy - 1.4}" width="0.8" height="2" fill="#3a2414"/>`;
+  s += `<rect x="${cx + 0.8}" y="${cy - 1.9}" width="2.4" height="2.5" fill="#9a6a3e"/><path d="M${cx + 0.5} ${cy - 1.9} L${cx + 2} ${cy - 3} L${cx + 3.5} ${cy - 1.9} Z" fill="#6a4424"/>`;
+  // saguaros standing tall around the town
+  s += msaguaro(cx - 12, cy + 5, 1.2) + msaguaro(cx - 7, cy - 4, 1) + msaguaro(cx + 8, cy + 4, 1.3) + msaguaro(cx + 13, cy - 2, 1) + msaguaro(cx + 2, cy + 7, 0.9);
+  // tumbleweeds + a longhorn skull
+  s += `<circle cx="${cx - 5}" cy="${cy + 5.5}" r="0.9" fill="none" stroke="#9a7a44" stroke-width="0.35"/><circle cx="${cx + 6}" cy="${cy + 6.5}" r="0.7" fill="none" stroke="#9a7a44" stroke-width="0.3"/>`;
+  s += `<circle cx="${cx + 11.5}" cy="${cy + 6.5}" r="0.55" fill="#f0ead8"/><path d="M${cx + 10.6} ${cy + 6.2} q-0.8 -0.5 -0.9 -1.2 M${cx + 12.4} ${cy + 6.2} q0.8 -0.5 0.9 -1.2" stroke="#f0ead8" stroke-width="0.3" fill="none"/>`;
+  return s;
+}
+function lf_city(cx, cy) {
+  // the present-day city: a skyline of lit towers over an asphalt grid
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="15" ry="9.5" fill="#5f6873"/><ellipse cx="${cx - 2}" cy="${cy - 2}" rx="11" ry="5.5" fill="#77828e" opacity="0.55"/>`;
+  s += `<path d="M${cx - 13} ${cy + 3} h26 M${cx - 12} ${cy + 6.5} h24 M${cx - 4} ${cy - 6} v13 M${cx + 5} ${cy - 6} v13" stroke="#454e58" stroke-width="0.8"/>`;   // road grid
+  s += `<path d="M${cx - 13} ${cy + 3} h26" stroke="#ffd23f" stroke-width="0.16" stroke-dasharray="0.9 0.9"/>`;
+  const B = [[-10, -1, 2.2, 6], [-6.6, 1, 2, 8.5], [-2.6, -2.5, 2.4, 10.5], [1.4, 0.5, 2, 7.5], [4.8, -3, 2.4, 9], [8.6, -0.5, 2, 5.5], [-9.5, 4.5, 1.8, 4]];
+  B.forEach(([dx, dy, w, h], i) => {
+    const x = cx + dx, y = cy + dy;
+    s += `<rect x="${x}" y="${y - h}" width="${w}" height="${h}" fill="#39414b"/><rect x="${x}" y="${y - h}" width="${w * 0.45}" height="${h}" fill="#4d5762"/>`;
+    for (let wy = 0; wy < Math.floor(h / 1.15); wy++) for (let wx = 0; wx < 2; wx++) {
+      if (mrand(i * 17 + wy * 3 + wx) > 0.45) s += `<rect x="${x + 0.35 + wx * (w / 2)}" y="${y - h + 0.5 + wy * 1.15}" width="0.55" height="0.55" fill="${mrand(i + wy + wx) > 0.3 ? '#ffd76a' : '#9adfff'}"/>`;
+    }
+  });
+  s += `<line x1="${cx - 2.6 + 1.2}" y1="${cy - 13}" x2="${cx - 2.6 + 1.2}" y2="${cy - 15}" stroke="#8a939f" stroke-width="0.3"/><circle cx="${cx - 2.6 + 1.2}" cy="${cy - 15.2}" r="0.4" fill="#ff4a4a"/>`;   // antenna
+  return s;
+}
+function lf_pyramids(cx, cy) {
+  // the Egyptian desert: great pyramids everywhere, an oasis, and date palms
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="16" ry="10" fill="#e0c070"/><ellipse cx="${cx - 2}" cy="${cy - 2}" rx="12" ry="6" fill="#ecd08a" opacity="0.6"/>`;
+  for (let i = 0; i < 8; i++) { const y = cy - 6 + (i % 4) * 3.6, x = cx - 11 + mrand(i * 3.3) * 22, w = 3.5 + mrand(i) * 3; s += `<path d="M${x - w} ${y} q${w} -2.2 ${w * 2} 0" fill="none" stroke="#f2dc9a" stroke-width="0.9" stroke-linecap="round"/>`; }
+  s += mpyramid(cx - 7, cy - 3, 4.4, 5.8) + mpyramid(cx + 2, cy - 5.5, 3, 4) + mpyramid(cx + 8, cy - 1, 3.6, 4.6) + mpyramid(cx - 1, cy + 4, 2.6, 3.2) + mpyramid(cx + 12, cy + 4, 2.2, 2.8);
+  // golden capstone glints
+  s += `<circle cx="${cx - 7}" cy="${cy - 8.6}" r="0.35" fill="#ffd76a"/><circle cx="${cx + 8}" cy="${cy - 5.4}" r="0.3" fill="#ffd76a"/>`;
+  // a little oasis with palms
+  s += `<ellipse cx="${cx - 10}" cy="${cy + 6}" rx="2.4" ry="1.2" fill="#4fb0d0"/>` + mpalm(cx - 12, cy + 6, 0.9) + mpalm(cx - 8, cy + 6.4, 0.8);
+  return s;
+}
+function lf_atlantis(cx, cy) {
+  // a turquoise bay with the drowned city glinting beneath the surface
+  let s = `<ellipse cx="${cx}" cy="${cy - 2}" rx="15" ry="8.5" fill="#2f9fc0"/><ellipse cx="${cx}" cy="${cy - 2}" rx="12" ry="6.4" fill="#3ab4c8"/>`;
+  // sunken columns + a broken dome, seen through the water
+  const sub = 'opacity="0.75"';
+  [[-6, 0.5, 1], [-2.5, -1.5, 1.2], [2, 0, 1], [5.5, -2, 0.9]].forEach(([dx, dy, sc]) => {
+    const x = cx + dx, y = cy + dy;
+    s += `<g ${sub}><rect x="${x - 0.45 * sc}" y="${y - 2.6 * sc}" width="${0.9 * sc}" height="${2.6 * sc}" fill="#cfe8e4"/><rect x="${x - 0.7 * sc}" y="${y - 2.9 * sc}" width="${1.4 * sc}" height="0.45" fill="#e2f4f0"/></g>`;
+  });
+  s += `<g ${sub}><path d="M${cx - 0.5} ${cy - 4.2} a2.6 2.6 0 0 1 2.6 2.6 l-5.2 0 a2.6 2.6 0 0 1 2.6 -2.6" fill="#bfe0da"/></g>`;
+  // ripples + bubbles + a glinting trident
+  s += `<path d="M${cx - 9} ${cy - 5.5} q3 -1.4 6 0 M${cx + 2} ${cy - 6.5} q2.6 -1.2 5.2 0" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.4"/>`;
+  for (let i = 0; i < 6; i++) s += `<circle cx="${cx - 7 + mrand(i * 5) * 14}" cy="${cy - 4 + mrand(i * 2) * 5}" r="${0.25 + mrand(i) * 0.25}" fill="rgba(255,255,255,0.55)"/>`;
+  s += `<path d="M${cx + 8.6} ${cy + 1.6} v-3 M${cx + 7.8} ${cy - 0.6} v-0.9 M${cx + 9.4} ${cy - 0.6} v-0.9 M${cx + 7.8} ${cy - 1.5} h1.6" stroke="#ffd76a" stroke-width="0.35" fill="none"/>`;
+  return s;
+}
+function lf_ice(cx, cy) {
+  // the deep freeze: a snowfield broken by an icy lagoon full of drifting bergs
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="16" ry="10" fill="#eef6fb"/><ellipse cx="${cx - 2}" cy="${cy - 2}" rx="12" ry="6" fill="#ffffff" opacity="0.7"/>`;
+  s += `<ellipse cx="${cx + 2}" cy="${cy + 2}" rx="10" ry="5" fill="#9ad4e8"/>`;   // glacial lagoon
+  // angular icebergs, lit face / blue shadow face
+  [[-3, 1.5, 1.4], [2, 3.5, 1.1], [6, 0.8, 1.6], [-7.5, 3.4, 0.9]].forEach(([dx, dy, sc]) => {
+    const x = cx + dx, y = cy + dy;
+    s += `<path d="M${x} ${y - 2.6 * sc} L${x + 1.7 * sc} ${y} L${x} ${y + 0.4 * sc} Z" fill="#b8dcec"/><path d="M${x} ${y - 2.6 * sc} L${x - 1.5 * sc} ${y} L${x} ${y + 0.4 * sc} Z" fill="#ffffff"/>`;
+  });
+  // snow drifts + falling snow + a pair of hardy pines
+  s += `<path d="M${cx - 13} ${cy - 4} q4 -1.6 8 0 M${cx + 4} ${cy - 6} q4 -1.6 8 0" fill="none" stroke="#d8ecf6" stroke-width="0.8"/>`;
+  for (let i = 0; i < 10; i++) s += `<circle cx="${cx - 13 + mrand(i * 7) * 26}" cy="${cy - 8 + mrand(i * 3) * 16}" r="0.3" fill="#ffffff"/>`;
+  s += `<path d="M${cx - 11} ${cy + 6.5} l1.1 -2.6 l1.1 2.6 Z" fill="#2f5a44"/><path d="M${cx + 11} ${cy - 3.5} l1 -2.4 l1 2.4 Z" fill="#2f5a44"/>`;
+  return s;
+}
+function lf_primordial(cx, cy) {
+  // the newborn world: black basalt, glowing magma, and the first green soup
+  let s = `<ellipse cx="${cx}" cy="${cy}" rx="17" ry="11" fill="#443430"/><ellipse cx="${cx - 2}" cy="${cy - 2}" rx="13" ry="7" fill="#54403a" opacity="0.8"/>`;
+  // magma pools with soft glow
+  [[-6, 2, 3.4, 1.7], [4, -3, 2.6, 1.3], [9, 4, 2, 1]].forEach(([dx, dy, rx, ry]) => {
+    const x = cx + dx, y = cy + dy;
+    s += `<ellipse cx="${x}" cy="${y}" rx="${rx + 1.2}" ry="${ry + 0.8}" fill="#ff6a2a" opacity="0.25" filter="url(#mapSoft)"/><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#ff7a2a"/><ellipse cx="${x - rx * 0.25}" cy="${y - ry * 0.25}" rx="${rx * 0.5}" ry="${ry * 0.45}" fill="#ffca4a"/>`;
+  });
+  // glowing cracks webbing the crust
+  s += `<path d="M${cx - 13} ${cy - 3} l4 1.5 l3 -1 l4 2 M${cx - 2} ${cy + 6} l3.5 -1 l3 1.5" fill="none" stroke="#ff9a4a" stroke-width="0.45"/>`;
+  // two young volcanoes venting smoke
+  [[-11, -4.5, 1.3], [1, -6.5, 1.6]].forEach(([dx, dy, sc]) => {
+    const x = cx + dx, y = cy + dy;
+    s += `<path d="M${x} ${y - 3 * sc} L${x + 2.2 * sc} ${y} L${x - 2.2 * sc} ${y} Z" fill="#3a2c28"/><path d="M${x - 0.7 * sc} ${y - 2.6 * sc} L${x + 0.7 * sc} ${y - 2.6 * sc} L${x} ${y - 3.2 * sc} Z" fill="#ff8a3a"/><circle cx="${x + 0.6 * sc}" cy="${y - 4 * sc}" r="${0.7 * sc}" fill="rgba(90,80,76,0.7)"/><circle cx="${x + 1.4 * sc}" cy="${y - 4.8 * sc}" r="${0.5 * sc}" fill="rgba(90,80,76,0.5)"/>`;
+  });
+  // the primordial soup — a green pond winking with first life
+  s += `<ellipse cx="${cx + 10}" cy="${cy - 2}" rx="3" ry="1.6" fill="#5a9a4a"/><ellipse cx="${cx + 10}" cy="${cy - 2}" rx="3" ry="1.6" fill="none" stroke="#8ad07a" stroke-width="0.3"/>`;
+  for (let i = 0; i < 4; i++) s += `<circle cx="${cx + 8.6 + mrand(i * 3) * 2.8}" cy="${cy - 2.6 + mrand(i) * 1.4}" r="0.3" fill="#b8f0a0"/>`;
+  return s;
+}
+function lf_pompeii(cx, cy) {
+  // Vesuvius looming over a little Italian town on the shore
+  let s = '';
+  // the volcano: wide brown cone, lit face, glowing crater, drifting ash plume
+  s += `<path d="M${cx} ${cy - 5.6} L${cx + 4.6} ${cy + 0.5} L${cx - 4.6} ${cy + 0.5} Z" fill="#6a4a38"/>`;
+  s += `<path d="M${cx} ${cy - 5.6} L${cx - 4.6} ${cy + 0.5} L${cx - 1} ${cy + 0.5} Z" fill="#8a6248"/>`;
+  s += `<path d="M${cx - 1.1} ${cy - 5} L${cx + 1.1} ${cy - 5} L${cx} ${cy - 5.9} Z" fill="#ff7a2a"/>`;
+  s += `<path d="M${cx} ${cy - 6.6} q1.6 -0.8 3 -0.2 q1.2 0.5 2.4 0.2" fill="none" stroke="rgba(120,110,106,0.8)" stroke-width="0.9" stroke-linecap="round"/>`;
+  s += `<path d="M${cx - 0.6} ${cy - 4.6} q0.6 1.6 1.4 2.2" stroke="#ff8a3a" stroke-width="0.4" fill="none"/>`;   // lava trickle
+  // the old town: red-roofed houses along the base + cypress spikes
+  s += mhouse(cx - 3.4, cy + 2.2, 0.9) + mhouse(cx - 1.2, cy + 2.6, 1) + mhouse(cx + 1.2, cy + 2.4, 0.9) + mhouse(cx + 3.4, cy + 2.1, 0.8);
+  s += `<path d="M${cx - 4.8} ${cy + 2.2} l0.5 -1.6 l0.5 1.6 Z M${cx + 4.6} ${cy + 2} l0.45 -1.5 l0.45 1.5 Z" fill="#2f5a34"/>`;
+  return s;
+}
+function lf_jetsons(cx, cy) {
+  // the end of time: a retro-future skyline — saucer houses on sky-high stalks
+  let s = `<ellipse cx="${cx}" cy="${cy + 5}" rx="12" ry="4.5" fill="#4a3a6a"/>`;
+  const towers = [[-6, 0, 1.2, 8], [0, 1.5, 1.5, 11], [6, 0.5, 1.1, 7]];
+  towers.forEach(([dx, dy, sc, h], i) => {
+    const x = cx + dx, y = cy + dy + 4;
+    s += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - h}" stroke="#8a92b8" stroke-width="${0.55 * sc}"/>`;
+    s += `<ellipse cx="${x}" cy="${y - h * 0.45}" rx="${1.1 * sc}" ry="0.35" fill="none" stroke="#5adfff" stroke-width="0.25" opacity="0.8"/>`;   // anti-grav ring
+    s += `<ellipse cx="${x}" cy="${y - h}" rx="${2.6 * sc}" ry="${0.9 * sc}" fill="#b8c2d8"/><ellipse cx="${x - 0.5 * sc}" cy="${y - h - 0.2 * sc}" rx="${1.9 * sc}" ry="${0.6 * sc}" fill="#dde4f0"/>`;
+    s += `<path d="M${x - 1.4 * sc} ${y - h - 0.5 * sc} a${1.4 * sc} ${1.1 * sc} 0 0 1 ${2.8 * sc} 0" fill="#9adfff" opacity="0.85"/>`;   // glass dome
+    for (let w = 0; w < 3; w++) s += `<circle cx="${x - 1.2 * sc + w * 1.2 * sc}" cy="${y - h + 0.15 * sc}" r="${0.22 * sc}" fill="#ffd76a"/>`;
+  });
+  // a little flying saucer zipping between the towers
+  s += `<g transform="translate(${cx + 3.5},${cy - 9}) rotate(-8)"><ellipse rx="1.5" ry="0.5" fill="#c8d2e4"/><path d="M-0.7 -0.4 a0.8 0.7 0 0 1 1.4 0" fill="#9adfff"/><circle cx="-2.4" cy="0.3" r="0.16" fill="#5adfff"/><circle cx="-3.2" cy="0.5" r="0.12" fill="#5adfff" opacity="0.7"/></g>`;
+  // twinkling stars of the last night
+  for (let i = 0; i < 7; i++) s += `<circle cx="${cx - 11 + mrand(i * 11) * 22}" cy="${cy - 12 + mrand(i * 5) * 7}" r="${0.2 + mrand(i) * 0.2}" fill="#cfe0ff" opacity="0.8"/>`;
+  return s;
+}
+
 function landform(biome, cx, cy) {
-  const fn = { mountain: lf_mountain, cliffs: lf_cliffs, forest: lf_forest, grass: lf_grass, temple: lf_temple, coast: lf_coast, dunes: lf_dunes, sandcastle: lf_sandcastle, secret: lf_secret }[biome];
+  const fn = { mountain: lf_mountain, cliffs: lf_cliffs, forest: lf_forest, grass: lf_grass, temple: lf_temple, coast: lf_coast, dunes: lf_dunes, sandcastle: lf_sandcastle, secret: lf_secret,
+               jungle: lf_jungle, west: lf_west, city: lf_city, pyramids: lf_pyramids, atlantis: lf_atlantis, pompeii: lf_pompeii, ice: lf_ice, primordial: lf_primordial, jetsons: lf_jetsons }[biome];
   return fn ? fn(cx, cy) : '';
 }
 
 /* The whole illustrated continent: ocean depth, a relief landmass with real
    topography per region, rivers flowing from the mountains, and a travel route. */
 function continentSVG() {
+  const act2 = currentAct() === 2;
   const land = 'M6 24 C 8 13 20 8 32 11 C 41 13 43 21 49 19 C 55 14 59 9 67 9 C 75 8 81 13 85 18 C 91 23 96 31 94 41 C 93 53 96 61 90 69 C 85 79 78 87 66 90 C 52 94 40 94 30 91 C 20 89 10 86 7 76 C 4 66 6 56 6 46 C 6 36 3 31 6 24 Z';
   // terrain back-to-front (north first) so nearer landforms overlap correctly
   // the Sandcastle is a lonely secret island — drawn separately, off the coast
+  const biomes = act2 ? BIOME_ACT2 : BIOME;
   const mainland = REGIONS.filter(r => r.id !== 'sandcastle');
-  const terrain = mainland.slice().sort((a, b) => a.y - b.y).map(r => landform(BIOME[r.id] || 'grass', r.x, r.y)).join('');
+  const terrain = mainland.slice().sort((a, b) => a.y - b.y).map(r => landform(biomes[r.id] || 'grass', r.x, r.y)).join('');
   // biome colour field: the whole continent tinted by its nearest region, so
   // each part of the land is the colour of that region (green forest, tan
-  // desert, grey mountains…) instead of uniform sand.
-  const field = mainland.map(r => `<circle cx="${r.x}" cy="${r.y}" r="22" fill="${r.color}"/>`).join('');
+  // desert, grey mountains…). In Act 2 the eras repaint it — icy blue Ice Age,
+  // molten Dawn of Time, neon End of Time…
+  const field = mainland.map(r => `<circle cx="${r.x}" cy="${r.y}" r="22" fill="${regionView(r.id).color}"/>`).join('');
   const sc = REGIONS.find(r => r.id === 'sandcastle');
   const island = sc ? `<g>
       <ellipse cx="${sc.x}" cy="${sc.y + 2.5}" rx="9" ry="5.5" fill="#5fd0dd" opacity="0.45"/>
       <ellipse cx="${sc.x}" cy="${sc.y + 3}" rx="9" ry="5.5" fill="none" stroke="#eaf6ff" stroke-width="0.4" opacity="0.5"/>
       <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="url(#mapLand)"/>
-      <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="${sc.color}" opacity="0.55"/>
-      ${lf_sandcastle(sc.x, sc.y)}
+      <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="${regionView(sc.id).color}" opacity="0.55"/>
+      ${landform(biomes[sc.id] || 'sandcastle', sc.x, sc.y)}
     </g>` : '';
   const chain = REGIONS.filter(r => !r.passageOnly);
   const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
   let waves = '';
   for (let i = 0; i < 6; i++) { const wy = 6 + i * 16 + mrand(i) * 6, wx = 3 + mrand(i * 3) * 8; waves += `<path d="M${wx} ${wy} q3 -2 6 0 t6 0" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="0.7"/>`; }
-  // rivers run down from Knife Mountain (52,62) to the western wetlands and the south coast
-  const rivers = `<path d="M52 58 Q 42 53 33 51 Q 24 49 16 41 Q 11 35 8 30" class="map-river"/>
+  // rivers run down from Knife Mountain (52,62) to the western wetlands and the
+  // south coast — Act 1 only; the Act 2 eras redraw that land entirely.
+  const rivers = act2 ? '' : `<path d="M52 58 Q 42 53 33 51 Q 24 49 16 41 Q 11 35 8 30" class="map-river"/>
     <path d="M52 60 Q 47 68 42 74 Q 36 81 28 85" class="map-river"/>
     <ellipse cx="31" cy="51" rx="2.6" ry="1.4" fill="#4fb0d0"/><ellipse cx="31" cy="51" rx="2.6" ry="1.4" fill="none" stroke="#eaf6ff" stroke-width="0.3" opacity="0.6"/>`;
   return `<svg viewBox="0 0 100 100" class="map-svg" preserveAspectRatio="none" aria-hidden="true">
