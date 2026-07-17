@@ -128,14 +128,41 @@ const Audio2 = (function () {
     knife_mountain:    { tempo: 260, wave: 'triangle', lead: [57,64,69,64, 67,72,76,72, 69,76,81,76, 74,69,64,0], bass: [45,45,52,50,41,41,48,43], drum: 'k--sk--s' },
     desolate_dunes:    { tempo: 240, wave: 'sawtooth', lead: [64,65,64,67, 65,64,62,60, 64,65,67,65, 64,62,60,64], bass: [40,40,41,40], drum: 'k-h-k-hh' },
     secret:            { tempo: 300, wave: 'sawtooth', bassWave: 'sawtooth', lead: [57,0,58,0, 60,0,58,0, 56,0,57,0, 63,60,58,57], bass: [36,0,37,0,41,0,43,0], drum: 'k-------' },
+
+    /* ---- ACT TWO: every era gets its own song (auto-picked when act === 2) ---- */
+    // The Time Map — clockwork ticking and wide, wondering leaps through time.
+    act2_map:              { tempo: 240, wave: 'triangle', spark: true, lead: [69,0,74,0, 76,0,81,0, 79,74,76,72, 69,0,64,0], bass: [45,0,52,0, 50,0,45,0], drum: 'k-h-h-h-' },
+    // Resurrected wardens — a heavier, meaner boss anthem than Act 1's.
+    act2_boss:             { tempo: 165, wave: 'sawtooth', bassWave: 'sawtooth', lead: [50,50,53,50, 56,55,53,0, 50,50,53,55, 56,58,60,56], bass: [38,38,38,38, 34,34,36,36], drum: 'kk-skh-k' },
+    // Cretaceous Coast — primal pentatonic stomps and jungle toms.
+    act2_dead_cliffs:      { tempo: 230, wave: 'square', bassWave: 'sine', lead: [57,0,60,62, 64,0,62,60, 57,0,60,57, 55,0,57,0], bass: [33,33,38,36], drum: 'k-k-s-k-' },
+    // The Old West — a horseback gallop with a jaunty frontier whistle.
+    act2_barren_grasslands:{ tempo: 215, wave: 'triangle', spark: true, lead: [64,0,64,66, 67,0,67,0, 69,67,66,64, 62,0,64,0], bass: [40,40,47,45], drum: 'k-hk-hk-' },
+    // Present Day — driving city rock on overdriven squares.
+    act2_dark_forest:      { tempo: 200, wave: 'square', lead: [69,69,0,69, 72,71,69,0, 67,67,0,67, 71,69,67,0], bass: [45,45,45,45, 43,43,47,47], drum: 'k-hks-hh' },
+    // Pyramids of Egypt — a winding hijaz melody deep in the tomb.
+    act2_toxic_temple:     { tempo: 260, wave: 'square', bassWave: 'sine', spark: true, lead: [62,63,66,67, 69,70,69,67, 66,63,62,63, 66,62,0,0], bass: [38,38,45,43], drum: 'k--hk--s' },
+    // Atlantis — slow glassy arpeggios drifting like light through deep water.
+    act2_shatter_coast:    { tempo: 320, wave: 'sine', spark: true, lead: [64,0,69,0, 71,0,76,0, 74,71,69,0, 66,0,64,0], bass: [45,0,50,0], drum: 'k---h---' },
+    // Pompeii — a doom march under the volcano.
+    act2_sandcastle:       { tempo: 220, wave: 'sawtooth', bassWave: 'sawtooth', lead: [57,0,57,58, 57,0,55,0, 53,0,53,55, 57,55,53,52], bass: [33,33,33,33, 36,36,34,34], drum: 'k-k-s-k-' },
+    // The Ice Age — sparse, icy bell tones over slow mammoth stomps.
+    act2_knife_mountain:   { tempo: 300, wave: 'sine', spark: true, lead: [76,0,0,74, 0,0,71,0, 72,0,0,69, 0,0,64,0], bass: [40,0,45,0, 43,0,38,0], drum: 'k-----s-' },
+    // The Dawn of Time — a low primordial rumble crawling out of the magma.
+    act2_desolate_dunes:   { tempo: 210, wave: 'sawtooth', bassWave: 'sawtooth', lead: [45,46,45,48, 50,48,46,45, 45,46,48,50, 53,50,48,46], bass: [33,33,32,32], drum: 'kk--k-s-' },
+    // The End of Time — cold machine arpeggios climbing toward the finale.
+    act2_secret:           { tempo: 170, wave: 'square', bassWave: 'sawtooth', lead: [57,60,64,69, 57,60,64,69, 56,59,63,68, 58,61,65,70], bass: [33,0,33,0, 31,0,35,0], drum: 'k-h-k-hk' },
   };
 
   function playMusic(name) {
     ensure();
-    if (currentTrack === name) return;
-    currentTrack = name;
+    // In Act 2, any screen or region with an `act2_` variant plays that instead —
+    // the whole soundtrack shifts when you travel through time.
+    const key = (typeof currentAct === 'function' && currentAct() === 2 && TRACKS['act2_' + name]) ? 'act2_' + name : name;
+    if (currentTrack === key) return;
+    currentTrack = key;
     if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
-    const tr = TRACKS[name] || TRACKS.battle;
+    const tr = TRACKS[key] || TRACKS.battle;
     if (!tr || !ctx) return;
     let step = 0;
     const stepMs = tr.tempo, lead = tr.lead, bass = tr.bass, drum = tr.drum || '';
@@ -157,5 +184,6 @@ const Audio2 = (function () {
   }
 
   return { resume, setMuted, sfx, playMusic, stopMusic,
-           get isMuted() { return STATE.muted; } };
+           get isMuted() { return STATE.muted; },
+           get track() { return currentTrack; } };
 })();
