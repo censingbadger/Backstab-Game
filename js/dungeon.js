@@ -188,6 +188,20 @@ const ACT2_THEMES = {
     boss: 'iron_horse',
     waypoints: [[10, 10], [26, 10], [26, 24], [12, 28], [14, 44], [34, 44], [36, 28], [50, 30], [54, 50]],
   },
+  dark_forest: {
+    name: 'Present Day',
+    color: '#6a7a8a', emoji: '🏙️',
+    sky: ['#8aa0c0', '#5a6a86', '#28323f'],        // smoggy dusk city skyline
+    ground: ['#565b62', '#4a4f56'],                // asphalt
+    speckle: 'rgba(200,210,222,0.18)',
+    edge: ['#26292f', '#181b20'],
+    props: ['burgerjoint', 'streetlight', 'trafficcone', 'car', 'barrel', 'streetlight', 'trafficcone'],
+    trail: '255,214,90',                           // yellow road markings
+    enemies: ['soldier', 'drone', 'jet', 'soldier', 'drone'],
+    boss: 'warhound',
+    waypoints: [[10, 10], [10, 28], [26, 34], [26, 16], [44, 14], [46, 34], [30, 46], [46, 52], [56, 54]],
+    hard: true, wider: true,                        // a wide city street (no forest canopy/traps)
+  },
 };
 // Act-aware theme lookup: Act 2 re-skin when one exists, else the Act 1 theme.
 function dungeonTheme(regionId) {
@@ -2569,6 +2583,40 @@ function drawProp(ctx, p, ox, oy) {
       for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 10, Math.sin(a) * 10); ctx.stroke(); }
       ctx.strokeStyle = '#8a6f38'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.stroke();
       ctx.restore();
+      break;
+    }
+
+    /* ---- Present Day (city) props ---- */
+    case 'burgerjoint': {
+      ctx.fillStyle = '#c24a44'; ctx.fillRect(x - 20, y - 26, 40, 26);
+      ctx.fillStyle = '#e7dfce'; ctx.fillRect(x - 20, y - 12, 40, 12);
+      ctx.fillStyle = '#7fd0ff'; ctx.fillRect(x - 15, y - 10, 9, 10); ctx.fillRect(x + 6, y - 10, 9, 10);
+      ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x - 4, y - 10, 8, 10);
+      ctx.strokeStyle = '#ffcf3f'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(x - 4, y - 32, 5, Math.PI, 0); ctx.arc(x + 4, y - 32, 5, Math.PI, 0); ctx.stroke();
+      break;
+    }
+    case 'streetlight': {
+      ctx.strokeStyle = '#3a3e46'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 40); ctx.quadraticCurveTo(x, y - 46, x + 10, y - 46); ctx.stroke();
+      ctx.save(); ctx.globalAlpha = 0.22; ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.moveTo(x + 11, y - 42); ctx.lineTo(x + 1, y); ctx.lineTo(x + 22, y); ctx.closePath(); ctx.fill(); ctx.restore();
+      ctx.fillStyle = '#ffe89a'; ctx.beginPath(); ctx.ellipse(x + 11, y - 44, 4, 5, 0, 0, 7); ctx.fill();
+      break;
+    }
+    case 'trafficcone': {
+      ctx.fillStyle = '#e8621a'; ctx.beginPath(); ctx.moveTo(x, y - 20); ctx.lineTo(x + 8, y); ctx.lineTo(x - 8, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f2f2f2'; ctx.beginPath(); ctx.moveTo(x - 4, y - 11); ctx.lineTo(x + 4, y - 11); ctx.lineTo(x + 5, y - 6); ctx.lineTo(x - 5, y - 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c94e10'; ctx.fillRect(x - 11, y - 2, 22, 3);
+      break;
+    }
+    case 'car': {
+      const cols = ['#c0392b', '#2a6ac0', '#3a9a4a', '#d0b040']; const bc = cols[r % 4];
+      ctx.fillStyle = bc; roundRectPath(ctx, x - 22, y - 12, 44, 12, 4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x - 12, y - 12); ctx.lineTo(x - 6, y - 22); ctx.lineTo(x + 10, y - 22); ctx.lineTo(x + 15, y - 12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#bfe0f0'; ctx.beginPath(); ctx.moveTo(x - 9, y - 13); ctx.lineTo(x - 5, y - 20); ctx.lineTo(x + 3, y - 20); ctx.lineTo(x + 3, y - 13); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#17171b'; ctx.beginPath(); ctx.arc(x - 12, y, 5, 0, 7); ctx.arc(x + 12, y, 5, 0, 7); ctx.fill();
+      ctx.fillStyle = '#6a6a72'; ctx.beginPath(); ctx.arc(x - 12, y, 2, 0, 7); ctx.arc(x + 12, y, 2, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffe89a'; ctx.fillRect(x + 20, y - 8, 3, 3);
       break;
     }
   }

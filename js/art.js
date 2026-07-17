@@ -592,6 +592,55 @@ function charBody(art, p) {
         <circle cx="30" cy="96" r="3" fill="#6a6a74"/><circle cx="52" cy="96" r="4" fill="#6a6a74"/><circle cx="74" cy="96" r="3" fill="#6a6a74"/>
         <rect x="16" y="74" width="70" height="4" fill="${p.cloth}"/>`;
 
+    /* ===== ACT TWO — Present Day ===== */
+    case 'soldier':
+      return `${shadow}
+        <rect x="42" y="64" width="16" height="28" rx="4" fill="${p.cloth}"/>
+        <rect x="39" y="90" width="10" height="8" rx="2" fill="#26261e"/><rect x="51" y="90" width="10" height="8" rx="2" fill="#26261e"/>
+        <rect x="36" y="54" width="28" height="26" rx="6" fill="${p.cloth}"/>
+        <path d="M38 60 h24 M38 68 h24" stroke="#39442e" stroke-width="2" opacity="0.6"/>
+        <circle cx="50" cy="42" r="11" fill="${p.skin}"/>
+        <circle cx="45" cy="43" r="2" fill="${eye}"/><circle cx="55" cy="43" r="2" fill="${eye}"/>
+        <path d="M38 41 a12 10 0 0 1 24 0 Z" fill="#3f4a33"/>
+        <rect x="30" y="59" width="30" height="4" rx="1.5" fill="#26262c" transform="rotate(-8 45 61)"/>
+        <rect x="55" y="56" width="9" height="4" rx="1" fill="#3a3a40" transform="rotate(-8 60 58)"/>`;
+
+    case 'drone':
+      return `${shadow}
+        <g stroke="#26262c" stroke-width="2.6"><line x1="40" y1="74" x2="26" y2="66"/><line x1="60" y1="74" x2="74" y2="66"/></g>
+        <ellipse cx="26" cy="66" rx="11" ry="2.6" fill="rgba(190,205,225,0.55)"/>
+        <ellipse cx="74" cy="66" rx="11" ry="2.6" fill="rgba(190,205,225,0.55)"/>
+        <ellipse cx="50" cy="78" rx="15" ry="9" fill="${p.skin}"/>
+        <ellipse cx="50" cy="74" rx="15" ry="4" fill="#54545e"/>
+        <rect x="46" y="85" width="8" height="6" rx="1.5" fill="${p.cloth}"/>
+        <rect x="52" y="87" width="13" height="2.6" rx="1" fill="#26262c"/>
+        <circle cx="50" cy="77" r="3.4" fill="#ff3b3b"/><circle cx="51" cy="76" r="1.3" fill="#fff"/>`;
+
+    case 'jet':
+      return `${shadow}
+        <path d="M6 74 L70 68 Q94 68 98 75 Q94 82 70 82 L6 79 Z" fill="${p.skin}"/>
+        <path d="M28 72 L50 52 L58 55 L44 74 Z" fill="${p.cloth}"/>
+        <path d="M30 79 L48 94 L57 91 L46 79 Z" fill="${p.cloth}"/>
+        <path d="M8 74 L1 66 L3 78 L1 84 Z" fill="${p.cloth}"/>
+        <path d="M62 70 Q70 65 79 70 L74 75 L64 75 Z" fill="#8fd0ff"/>
+        <path d="M98 75 L102 73 L102 77 Z" fill="#26262c"/>
+        <rect x="38" y="77" width="16" height="3" rx="1.5" fill="#3a4656"/>
+        <circle cx="6" cy="76" r="3" fill="#ff9a3a"/>`;
+
+    case 'tank': // The Warhound (boss battle tank)
+      return `${shadow}
+        <rect x="10" y="82" width="80" height="15" rx="7" fill="#26291f"/>
+        <g fill="#4a4e42"><circle cx="20" cy="89" r="6"/><circle cx="34" cy="89" r="6"/><circle cx="50" cy="89" r="6"/><circle cx="66" cy="89" r="6"/><circle cx="80" cy="89" r="6"/></g>
+        <rect x="14" y="62" width="72" height="22" rx="5" fill="${p.skin}"/>
+        <rect x="14" y="62" width="72" height="6" fill="#7a866c"/>
+        <path d="M20 62 l6 -8 h46 l6 8 Z" fill="${p.cloth}"/>
+        <rect x="18" y="70" width="6" height="7" rx="1" fill="#39412f"/><rect x="76" y="70" width="6" height="7" rx="1" fill="#39412f"/>
+        <rect x="36" y="44" width="30" height="20" rx="5" fill="${p.skin}"/>
+        <rect x="60" y="50" width="40" height="7" rx="3" fill="#39412f"/>
+        <rect x="94" y="47" width="6" height="13" rx="2" fill="#262c1e"/>
+        <rect x="40" y="49" width="22" height="7" rx="2" fill="#12140c"/>
+        <circle cx="46" cy="52.5" r="2.6" fill="#ffd23f"/><circle cx="56" cy="52.5" r="2.6" fill="#ffd23f"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>
