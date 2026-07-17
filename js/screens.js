@@ -562,8 +562,12 @@ function renderMap() {
     const v = regionView(r.id);
     const label = (r.secret && !unlocked) ? '???' : v.name;
     const emoji = (r.secret && !unlocked) ? '❓' : unlocked ? v.emoji : '🔒';
-    // difficulty rating: 1-4 skulls from the region's tier on the journey curve
-    const skulls = unlocked && !(r.secret && !unlocked) ? '💀'.repeat(Math.max(1, Math.min(4, 1 + Math.floor(regionTier(r.id) / 4)))) : '';
+    // difficulty rating: 1-4 skulls from the region's tier on the journey curve.
+    // A couple of Act 1 lands are meaner than their map position suggests
+    // (killer gusts, pitch-black canopy) — those get hand-tuned ratings.
+    const SKULLS_ACT1 = { dark_forest: 3, desolate_dunes: 4 };
+    const skullCount = (currentAct() === 1 && SKULLS_ACT1[r.id]) || Math.max(1, Math.min(4, 1 + Math.floor(regionTier(r.id) / 4)));
+    const skulls = unlocked && !(r.secret && !unlocked) ? '💀'.repeat(skullCount) : '';
     nodes += `<button class="map-node ${unlocked ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${r.secret ? 'secret' : ''}"
         style="left:${r.x}%;top:${r.y}%; --rc:${v.color}"
         data-region="${r.id}" ${unlocked ? '' : 'disabled'}>
