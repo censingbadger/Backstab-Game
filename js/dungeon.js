@@ -1796,18 +1796,31 @@ function pushHeroRaw(dx, dy) {
 function heroFellOff() {
   const d = DUNGEON, h = d.hero;
   if (d.over || h.blownOff) return;
-  const safe = d.path.samples[nearestSampleIndex(h.fx, h.fy)];
+  // Extra Life: a free full recovery, right where you were.
   if ((STATE.extraLives || 0) > 0) {
+    const safe = d.path.samples[nearestSampleIndex(h.fx, h.fy)];
     STATE.extraLives = Math.max(0, STATE.extraLives - 1); saveGame();
     h.fx = safe.x; h.fy = safe.y; h.hp = h.maxhp; h.hurtInvulnUntil = performance.now() + 2000;
     banner('🌪️ Blown off — an Extra Life hauled you back!', 2800);
     Audio2.sfx.win(); updateDungeonHUD();
     return;
   }
-  h.blownOff = true;
-  d.over = true; d.outcome = 'lose'; STATE.losses++; saveGame();
-  banner('🌪️ BLOWN OFF THE EDGE!', 1600); Audio2.sfx.lose();
-  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); });
+  // A gust off the edge costs a single heart and sweeps you back to the start
+  // of the dune — only an emptied heart bar actually ends the run.
+  h.hp -= 1;
+  if (h.hp <= 0) {
+    h.hp = 0; h.blownOff = true;
+    d.over = true; d.outcome = 'lose'; STATE.losses++; saveGame();
+    banner('🌪️ BLOWN OFF THE EDGE!', 1600); Audio2.sfx.lose();
+    showGameOverOverlay(() => { stopDungeon(); showScreen('title'); });
+    return;
+  }
+  const start = (d.path && d.path.samples && d.path.samples[0]) || { x: h.fx, y: h.fy };
+  h.fx = start.x; h.fy = start.y;
+  h.jumpZ = 0; h.rootedUntil = 0; h.sinkUntil = 0; h.submerged = false;
+  h.hurtInvulnUntil = performance.now() + 2000;
+  banner('🌬️ Blown off — lost a heart! Back to the start of the dunes.', 2200);
+  Audio2.sfx.lose(); shake(); updateDungeonHUD();
 }
 
 /* ============================================================
