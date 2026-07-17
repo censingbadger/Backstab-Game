@@ -753,6 +753,14 @@ function chamberContains(c, fx, fy) {
 
 /* Per-frame chamber logic: activate the room you enter, spawn its wave, and open
    the onward gate once it's cleared. The final chamber summons the boss. */
+/* Pause the mobs while a banner is on screen: extends the freeze window the
+   whole game respects (no spawns, no movement, no attacks) so the player can
+   actually read what just popped up. */
+function pauseMobs(ms) {
+  const d = DUNGEON; if (!d) return;
+  d.introUntil = Math.max(d.introUntil || 0, performance.now() + ms);
+}
+
 function updateChambers(dt, t) {
   const d = DUNGEON, h = d.hero;
   if (t < (d.introUntil || 0)) return;   // let the player read the intro before the first horde spawns
@@ -776,7 +784,7 @@ function activateChamber(c, t) {
   const count = 5 + c.index * 3;   // a denser horde guards every chamber gate
   for (let k = 0; k < count; k++) spawnInChamber(c, k);
   c.spawned = true;
-  if (c.index > 0) banner('⚔️ CHAMBER GATE ' + (c.index + 1) + ' — defeat the horde!', 1600);
+  if (c.index > 0) { banner('⚔️ CHAMBER GATE ' + (c.index + 1) + ' — defeat the horde!', 1600); pauseMobs(1700); }
 }
 
 /* Boss-rush chamber: resurrect one of the realm's fallen bosses as a tough
@@ -799,6 +807,7 @@ function spawnMiniBoss(c) {
   d.spawned++;
   for (let k = 0; k < 3; k++) spawnInChamber(c, k + 50);   // a few guards alongside it
   banner('☠️ BOSS RUSH — ' + bd.name.toUpperCase() + ' RISES AGAIN!', 2000);
+  pauseMobs(2100);   // let the announcement land before the resurrected warden moves
   Audio2.sfx.lose();
 }
 
@@ -1576,7 +1585,7 @@ function updateDungeon(dt, t) {
   }
 
   /* --- Desolate Dunes: wind, gusts, tornadoes, and being blown off the edge --- */
-  if (d.dunes) {
+  if (d.dunes && t >= (d.introUntil || 0)) {   // the storm holds its breath while you read
     const t2 = t / 1000;
     const ang = t2 * 0.35 + Math.sin(t2 * 0.13) * 1.5;             // wind slowly veers
     const gusting = (t2 % 7) < 1.4;                                // a hard gust ~1.4s every 7s
@@ -1608,7 +1617,7 @@ function updateDungeon(dt, t) {
   }
 
   /* --- Pompeii: Vesuvius rains telegraphed lava bombs that erupt underfoot --- */
-  if (d.volcano) { updateVolcano(dt, t); if (d.over) return; }
+  if (d.volcano && t >= (d.introUntil || 0)) { updateVolcano(dt, t); if (d.over) return; }
 
   // grabber trees: root the hero when close (unless jumping)
   if (d.grabbers) d.grabbers.forEach(g => {
@@ -1632,6 +1641,7 @@ function updateDungeon(dt, t) {
       cp.reached = true;
       earn(10);
       banner('⚔️ GATE ' + cp.idx + ' / ' + d.checkpoints.length + ' — fight through the horde!', 1900);
+      pauseMobs(2000);   // the horde holds until the banner clears
       Audio2.sfx.coin();
       spawnFloatText(h.fx, h.fy, '+10 💰', '#ffcf3f');
       h.hp = Math.min(h.maxhp, h.hp + 1);   // small reward heal before the fight
@@ -1682,7 +1692,7 @@ function updateDungeon(dt, t) {
   d.enemies = d.enemies.filter(e => !e.dead || t - (e.deadAt || (e.deadAt = t)) < 200);
 
   /* --- boss --- */
-  if (d.boss && !d.boss.dead) {
+  if (d.boss && !d.boss.dead && t >= (d.introUntil || 0)) {
     const b = d.boss;
     tickPoison(b, t);
     if (b.worm) { updateWormBoss(b, h, dt, t); if (d.over) return; }
