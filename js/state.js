@@ -48,6 +48,8 @@ function newGame() {
     heartsRebalanced: true,
     // extra lives — rare Legendary boss-fight boons that let you cheat death once
     extraLives: 0,
+    // one-time controls hint shown on the first dungeon crawl
+    seenControls: false,
     // per-fighter defeat count (for the bestiary + progression)
     defeated: {},
     muted: false,
@@ -116,6 +118,12 @@ function gainXp(amount) {
     leveled = true;
   }
   return leveled;
+}
+
+/* Weapon mastery: every level makes your swings 1% stronger (up to +25%), so
+   levelling keeps pace with the world getting tougher region by region. */
+function levelMastery() {
+  return 1 + Math.min(0.25, Math.max(0, (STATE.level - 1)) * 0.01);
 }
 
 /* ---------- Overall score (shown on the Stats screen) ---------- */

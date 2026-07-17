@@ -139,6 +139,7 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .node-crown{ position:absolute; top:-10px; left:-10px; font-size:15px; filter:drop-shadow(0 1px 1px #000); }
 .node-label{ font-size:11px; font-weight:900; color:#fff; margin-top:3px;
   background:rgba(30,20,10,.72); padding:1px 7px; border-radius:8px; white-space:nowrap; text-shadow:0 1px 2px #000; }
+.node-skulls{ font-size:8px; letter-spacing:1px; margin-top:1px; opacity:.9; filter:drop-shadow(0 1px 1px #000); }
 .map-node.locked{ }
 .map-node.locked .node-pin{ background:linear-gradient(180deg,#6a6478,#403a52); border-color:rgba(255,255,255,.4); filter:grayscale(.5); }
 .map-node.locked .node-label{ opacity:.65; }
@@ -151,6 +152,11 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
   padding:10px 22px; cursor:pointer; box-shadow:0 3px 0 #160f28, 0 0 14px rgba(122,79,160,.35); transition:transform .08s, box-shadow .12s; }
 .act-switch:hover{ transform:translateY(-1px); box-shadow:0 4px 0 #160f28, 0 0 20px rgba(150,110,220,.55); }
 .act-switch:active{ transform:translateY(2px); box-shadow:0 1px 0 #160f28; }
+.controls-hint{ position:absolute; bottom:118px; left:50%; transform:translateX(-50%); z-index:14;
+  background:rgba(10,8,20,.86); color:#f0e8d2; font-size:13px; padding:9px 16px; border-radius:999px;
+  border:1px solid rgba(255,255,255,.22); white-space:nowrap; pointer-events:none; transition:opacity .7s; }
+.controls-hint.fade{ opacity:0; }
+.controls-hint b{ color:#ffd76a; }
 
 /* ---------------- Arena ---------------- */
 .arena-region{ display:flex; justify-content:space-between; align-items:center; gap:8px;

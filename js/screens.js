@@ -56,19 +56,24 @@ function showScreen(name, param) {
 /* ================= DEATH & EXTRA LIVES ================= */
 // A dramatic full-screen GAME OVER. There is no retry — you go back to the start.
 // `onBack` cleans up the current mode and returns to the title screen.
-function showGameOverOverlay(onBack) {
+function showGameOverOverlay(onBack, onRetry) {
   const overlay = document.createElement('div');
   overlay.className = 'result-overlay';
   overlay.innerHTML = `
     <div class="result-card lose gameover">
       <h2>💀 GAME OVER</h2>
       <p>You ran out of hearts.</p>
-      <p class="tip">Only a rare Legendary Extra Life — sometimes won at the end of a boss fight — can save you from death. Back to the start you go.</p>
-      <div class="result-btns"><button class="wide-btn" id="go-start">⌂ Back to Start</button></div>
+      <p class="tip">Only a rare Legendary Extra Life — sometimes won at the end of a boss fight — can save you from death.</p>
+      <div class="result-btns">
+        ${onRetry ? '<button class="wide-btn" id="go-retry">🔁 Try Again</button>' : ''}
+        <button class="wide-btn" id="go-start">⌂ Back to Start</button>
+      </div>
     </div>`;
   app().appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('show'));
   overlay.querySelector('#go-start').addEventListener('click', () => { Audio2.sfx.click(); onBack(); });
+  const rb = overlay.querySelector('#go-retry');
+  if (rb) rb.addEventListener('click', () => { Audio2.sfx.click(); onRetry(); });
 }
 
 /* Beating the Act 1 Backstabber reveals his TIME MACHINE — press the button to
@@ -557,11 +562,14 @@ function renderMap() {
     const v = regionView(r.id);
     const label = (r.secret && !unlocked) ? '???' : v.name;
     const emoji = (r.secret && !unlocked) ? '❓' : unlocked ? v.emoji : '🔒';
+    // difficulty rating: 1-4 skulls from the region's tier on the journey curve
+    const skulls = unlocked && !(r.secret && !unlocked) ? '💀'.repeat(Math.max(1, Math.min(4, 1 + Math.floor(regionTier(r.id) / 4)))) : '';
     nodes += `<button class="map-node ${unlocked ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${r.secret ? 'secret' : ''}"
         style="left:${r.x}%;top:${r.y}%; --rc:${v.color}"
         data-region="${r.id}" ${unlocked ? '' : 'disabled'}>
         <span class="node-pin">${emoji}${cleared ? '<span class="node-crown">👑</span>' : ''}</span>
         <span class="node-label">${label}</span>
+        ${skulls ? `<span class="node-skulls">${skulls}</span>` : ''}
       </button>`;
   });
   el.innerHTML = `
