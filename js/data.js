@@ -60,6 +60,11 @@ const ENEMIES = {
   raptor:        { id:'raptor',        name:'Raptor',         hearts:2.5, attack:4, reward:9,  art:'raptor',   palette:{ skin:'#7a9a44', cloth:'#4a6a26' }, blurb:'A fast, vicious pack hunter with a killing sickle-claw on each foot.' },
   stego:         { id:'stego',         name:'Stegosaurus',    hearts:4,   attack:3, reward:11, art:'dino',     palette:{ skin:'#5f8060', cloth:'#3d5340' }, blurb:'Armoured plates down its back and a spiked tail. Slow, but a wall of muscle.' },
   ptero:         { id:'ptero',         name:'Pterodactyl',    hearts:2,   attack:4, reward:12, art:'ptero',    palette:{ skin:'#9a6a44', cloth:'#5f3f28' }, blurb:'A leathery-winged terror that shrieks down out of the sky.' },
+
+  /* ===== ACT TWO — The Old West (1885) ===== */
+  outlaw:        { id:'outlaw',        name:'Outlaw',         hearts:3,   attack:4, reward:11, art:'cowboy',   palette:{ skin:'#d8a878', cloth:'#8a3a2a' }, blurb:'A quick-draw bandit with a rusty six-shooter and an even rustier temper.' },
+  grandpa:       { id:'grandpa',       name:'Mustache Grandpa',hearts:2.5,attack:3, reward:9,  art:'grandpa',  palette:{ skin:'#e6bd92', cloth:'#5a6a8a' }, blurb:'A cantankerous old-timer who whacks folks with his cane. Do NOT get on his lawn.' },
+  coyote:        { id:'coyote',        name:'Coyote',         hearts:2,   attack:3, reward:8,  art:'wolf',     palette:{ skin:'#b89a6a', cloth:'#7a6244' }, blurb:'A mangy desert scavenger that snaps at your heels for a nickel.' },
 };
 
 /* ---------- Named bosses (tougher, unique, bigger rewards) ---------- */
@@ -74,6 +79,7 @@ const BOSSES = {
   dune_worm:  { id:'dune_worm',  name:'The Dune Devourer', hearts:20, attack:6, reward:320, art:'worm',    palette:{ skin:'#d9a441', cloth:'#a8791f' }, boss:true, dungeon:true, blurb:'A colossal sandworm with a maw of jagged teeth. It burrows and erupts from below to bite — learn its rhythm, dodge the strike, and bring a powerful weapon or it will devour you in two bites.' },
   // ACT TWO bosses — the wardens, resurrected and toxic-mutated across time
   trex:       { id:'trex',       name:'The Tyrant King',   hearts:22, attack:7, reward:340, art:'trex',     palette:{ skin:'#6a8040', cloth:'#3f4f24' }, boss:true, dungeon:true, blurb:'The Brute, dragged forward in time and mutated by toxic waste into a colossal Tyrannosaurus. Its jaws could swallow a hero whole.' },
+  iron_horse: { id:'iron_horse', name:'The Iron Horse',    hearts:24, attack:7, reward:380, art:'train',    palette:{ skin:'#5a5a66', cloth:'#8a2a1a' }, boss:true, dungeon:true, blurb:'Hexstraw, dragged into the Age of Steam and fused with a runaway locomotive — a roaring iron monster that belches toxic black smoke.' },
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },
