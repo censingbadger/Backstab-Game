@@ -761,6 +761,97 @@ function charBody(art, p) {
         <path d="M40 44 L44 60 L38 74 M60 44 L57 58 L63 72 M50 46 L48 64 L52 80" stroke="${p.cloth}" stroke-width="3" fill="none" stroke-linecap="round"/>
         <path d="M20 54 L24 66 M80 54 L76 66" stroke="${p.cloth}" stroke-width="2.5" fill="none"/>`;
 
+    /* ===== ACT TWO — The Ice Age ===== */
+    case 'caveman':
+      return `${shadow}
+        <rect x="42" y="64" width="16" height="26" rx="5" fill="${p.skin}"/>
+        <rect x="40" y="88" width="9" height="9" rx="3" fill="${p.skin}"/><rect x="51" y="88" width="9" height="9" rx="3" fill="${p.skin}"/>
+        <path d="M36 56 L64 56 L60 82 L40 82 Z" fill="${p.cloth}"/>
+        <path d="M40 60 l6 8 l-6 8 M60 60 l-6 8 l6 8" stroke="#6a4020" stroke-width="2" fill="none"/>
+        <circle cx="50" cy="42" r="12" fill="${p.skin}"/>
+        <path d="M36 44 Q34 24 50 24 Q66 24 64 44 Q58 34 50 36 Q42 34 36 44 Z" fill="#3a2a18"/>
+        <circle cx="45" cy="43" r="2" fill="${eye}"/><circle cx="55" cy="43" r="2" fill="${eye}"/>
+        <path d="M43 49 q7 4 14 0" stroke="#4a2a14" stroke-width="2.4" fill="none"/>
+        <path d="M64 62 L80 44" stroke="#7a5a34" stroke-width="4" stroke-linecap="round"/>
+        <ellipse cx="82" cy="41" rx="7" ry="9" fill="#8a8f96" transform="rotate(35 82 41)"/>`;
+
+    case 'sabertooth':
+      return `${shadow}
+        <ellipse cx="46" cy="74" rx="26" ry="15" fill="${p.skin}"/>
+        <path d="M22 72 Q10 64 12 52 Q20 58 26 64" fill="${p.skin}"/>
+        <rect x="28" y="84" width="7" height="13" rx="3" fill="${p.skin}"/><rect x="42" y="86" width="7" height="12" rx="3" fill="${p.skin}"/>
+        <rect x="56" y="86" width="7" height="12" rx="3" fill="${p.skin}"/><rect x="66" y="84" width="7" height="13" rx="3" fill="${p.skin}"/>
+        <circle cx="74" cy="58" r="13" fill="${p.skin}"/>
+        <path d="M64 48 L60 38 L70 44 Z" fill="${p.cloth}"/><path d="M82 46 L86 36 L76 43 Z" fill="${p.cloth}"/>
+        <circle cx="70" cy="56" r="2.2" fill="#ffcf3f"/><circle cx="79" cy="56" r="2.2" fill="#ffcf3f"/>
+        <ellipse cx="75" cy="64" rx="6" ry="4" fill="#e8d8c0"/>
+        <path d="M70 66 L68 78 L72 67 M80 66 L82 78 L78 67" fill="#f2ece0" stroke="#f2ece0" stroke-width="1.5"/>
+        <path d="M40 64 q8 -4 16 0 M36 74 q6 -3 12 0" stroke="${p.cloth}" stroke-width="2" fill="none" opacity="0.6"/>`;
+
+    case 'mammoth': // boss: the Mammoth King
+      return `${shadow}
+        <ellipse cx="48" cy="66" rx="34" ry="26" fill="${p.skin}"/>
+        <path d="M16 60 Q14 84 24 92 M32 56 Q28 84 36 94 M62 56 Q66 84 60 94 M78 62 Q82 84 74 92" stroke="#6a4e30" stroke-width="2.4" fill="none" opacity="0.7"/>
+        <rect x="26" y="84" width="12" height="14" rx="4" fill="${p.skin}"/><rect x="58" y="84" width="12" height="14" rx="4" fill="${p.skin}"/>
+        <rect x="26" y="94" width="12" height="4" rx="2" fill="#5a4026"/><rect x="58" y="94" width="12" height="4" rx="2" fill="#5a4026"/>
+        <circle cx="76" cy="40" r="17" fill="${p.skin}"/>
+        <path d="M70 26 Q78 18 86 26 Q80 24 74 28 Z" fill="#6a4e30"/>
+        <path d="M88 46 Q96 58 92 74 Q88 80 84 76 Q90 62 84 50 Z" fill="${p.skin}"/>
+        <path d="M64 52 Q44 56 40 74 Q38 84 46 88" stroke="${p.cloth}" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M84 52 Q100 58 102 74 Q102 84 92 86" stroke="${p.cloth}" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="72" cy="38" r="3" fill="#ff5a3a"/><circle cx="82" cy="38" r="3" fill="#ff5a3a"/>
+        <path d="M62 24 L58 10 L68 18 Z" fill="#c9b89a"/>`;
+
+    /* ===== ACT TWO — The Dawn of Time ===== */
+    case 'amoeba': {
+      return `${shadow}
+        <path d="M26 70 Q18 52 34 46 Q40 30 56 36 Q74 28 78 48 Q92 56 80 70 Q84 86 66 86 Q52 96 42 84 Q24 86 26 70 Z" fill="${p.skin}" opacity="0.6"/>
+        <path d="M30 68 Q24 54 36 50 Q42 38 56 42 Q70 36 74 50 Q84 58 76 68 Q78 80 64 80 Q52 88 44 78 Q30 80 30 68 Z" fill="${p.skin}" opacity="0.5"/>
+        <circle cx="54" cy="62" r="10" fill="${p.cloth}"/>
+        <circle cx="51" cy="59" r="3.4" fill="rgba(255,255,255,0.55)"/>
+        <circle cx="38" cy="56" r="3" fill="rgba(255,255,255,0.35)"/><circle cx="66" cy="70" r="3.6" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="64" cy="50" r="2.4" fill="rgba(255,255,255,0.35)"/><circle cx="42" cy="72" r="2.6" fill="rgba(255,255,255,0.3)"/>`;
+    }
+
+    case 'trilobite':
+      return `${shadow}
+        <ellipse cx="50" cy="72" rx="24" ry="20" fill="${p.skin}"/>
+        <ellipse cx="50" cy="58" rx="20" ry="11" fill="${p.cloth}"/>
+        <path d="M30 68 h40 M31 76 h38 M34 84 h32" stroke="${p.cloth}" stroke-width="3"/>
+        <path d="M50 62 V90" stroke="${p.cloth}" stroke-width="2" opacity="0.6"/>
+        <circle cx="42" cy="55" r="3.4" fill="#ffcf3f"/><circle cx="58" cy="55" r="3.4" fill="#ffcf3f"/>
+        <circle cx="42" cy="55" r="1.4" fill="#161616"/><circle cx="58" cy="55" r="1.4" fill="#161616"/>
+        <path d="M44 48 q-3 -8 1 -12 M56 48 q3 -8 -1 -12" stroke="${p.cloth}" stroke-width="2" fill="none"/>
+        <g stroke="${p.cloth}" stroke-width="2.4" stroke-linecap="round"><line x1="28" y1="74" x2="20" y2="80"/><line x1="30" y1="82" x2="23" y2="89"/><line x1="72" y1="74" x2="80" y2="80"/><line x1="70" y1="82" x2="77" y2="89"/></g>`;
+
+    /* ===== ACT TWO — The End of Time ===== */
+    case 'robot':
+      return `${shadow}
+        <rect x="40" y="60" width="20" height="26" rx="4" fill="${p.skin}"/>
+        <rect x="40" y="60" width="20" height="6" fill="#5a6a7a"/>
+        <rect x="38" y="86" width="10" height="12" rx="2" fill="#4a5560"/><rect x="52" y="86" width="10" height="12" rx="2" fill="#4a5560"/>
+        <rect x="30" y="62" width="8" height="18" rx="3" fill="#5a6a7a"/><rect x="62" y="62" width="8" height="18" rx="3" fill="#5a6a7a"/>
+        <rect x="38" y="34" width="24" height="22" rx="6" fill="${p.skin}"/>
+        <rect x="42" y="41" width="16" height="7" rx="3.5" fill="#141821"/>
+        <circle cx="50" cy="44.5" r="2.8" fill="${p.cloth}"/>
+        <path d="M50 34 V26" stroke="#5a6a7a" stroke-width="2.4"/><circle cx="50" cy="24" r="2.6" fill="${p.cloth}"/>
+        <path d="M42 68 h16 M42 74 h16" stroke="#39434e" stroke-width="2"/>
+        <circle cx="45" cy="80" r="1.6" fill="${p.cloth}"/><circle cx="55" cy="80" r="1.6" fill="#ff4a6a"/>`;
+
+    case 'mech':
+      return `${shadow}
+        <path d="M36 78 L30 96 M64 78 L70 96" stroke="#3a3a48" stroke-width="7" stroke-linecap="round"/>
+        <rect x="24" y="92" width="14" height="6" rx="2" fill="#2c2c38"/><rect x="62" y="92" width="14" height="6" rx="2" fill="#2c2c38"/>
+        <path d="M36 70 L32 84 M64 70 L68 84" stroke="#565668" stroke-width="5" stroke-linecap="round"/>
+        <rect x="28" y="46" width="44" height="32" rx="8" fill="${p.skin}"/>
+        <rect x="28" y="46" width="44" height="9" rx="4" fill="#6e6e82"/>
+        <rect x="36" y="56" width="28" height="12" rx="4" fill="#12141e"/>
+        <circle cx="44" cy="62" r="2.6" fill="${p.cloth}"/><circle cx="56" cy="62" r="2.6" fill="${p.cloth}"/>
+        <rect x="16" y="50" width="12" height="20" rx="4" fill="#565668"/><rect x="72" y="50" width="12" height="20" rx="4" fill="#565668"/>
+        <rect x="14" y="54" width="6" height="4" rx="1" fill="#12141e"/><rect x="80" y="54" width="6" height="4" rx="1" fill="#12141e"/>
+        <path d="M40 42 L44 34 L56 34 L60 42 Z" fill="#6e6e82"/>
+        <circle cx="50" cy="40" r="2" fill="${p.cloth}"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>
