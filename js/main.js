@@ -3,9 +3,9 @@
    ============================================================ */
 (function () {
   function boot() {
-    // Require a player profile so each person keeps their own character.
-    // A remembered login goes straight to the title; otherwise, log in first.
-    if (Auth.currentUser()) showScreen('title');
+    // Require a player profile so each person keeps their own characters.
+    // A remembered login lands on the hero roster; otherwise, log in first.
+    if (Auth.currentUser()) showScreen('chars');
     else showScreen('auth');
 
     // Resume audio on the first interaction (browser autoplay policy).
