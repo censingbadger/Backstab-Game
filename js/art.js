@@ -641,6 +641,45 @@ function charBody(art, p) {
         <rect x="40" y="49" width="22" height="7" rx="2" fill="#12140c"/>
         <circle cx="46" cy="52.5" r="2.6" fill="#ffd23f"/><circle cx="56" cy="52.5" r="2.6" fill="#ffd23f"/>`;
 
+    /* ===== ACT TWO — Pyramids of Egypt ===== */
+    case 'scarab':
+      return `${shadow}
+        <g stroke="${p.cloth}" stroke-width="3" stroke-linecap="round"><line x1="30" y1="72" x2="16" y2="66"/><line x1="30" y1="80" x2="14" y2="82"/><line x1="30" y1="86" x2="18" y2="95"/><line x1="70" y1="72" x2="84" y2="66"/><line x1="70" y1="80" x2="86" y2="82"/><line x1="70" y1="86" x2="82" y2="95"/></g>
+        <ellipse cx="50" cy="78" rx="24" ry="17" fill="${p.skin}"/>
+        <path d="M50 62 L50 94" stroke="${p.cloth}" stroke-width="2.5"/>
+        <ellipse cx="42" cy="72" rx="7" ry="10" fill="rgba(255,255,255,0.16)"/>
+        <ellipse cx="50" cy="68" rx="11" ry="9" fill="${p.cloth}"/>
+        <circle cx="50" cy="56" r="8" fill="${p.cloth}"/>
+        <path d="M45 50 q-4 -6 -1 -11 M55 50 q4 -6 1 -11" stroke="${p.cloth}" stroke-width="2.5" fill="none"/>
+        <circle cx="46" cy="55" r="2" fill="#ffcf3f"/><circle cx="54" cy="55" r="2" fill="#ffcf3f"/>`;
+
+    case 'jackal':
+      return `${shadow}
+        <rect x="42" y="64" width="16" height="28" rx="4" fill="${p.cloth}"/>
+        <rect x="40" y="90" width="9" height="8" rx="2" fill="${p.skin}"/><rect x="51" y="90" width="9" height="8" rx="2" fill="${p.skin}"/>
+        <rect x="37" y="54" width="26" height="24" rx="6" fill="${p.skin}"/>
+        <rect x="37" y="56" width="26" height="4" fill="${p.cloth}"/>
+        <path d="M42 34 L38 16 L47 30 Z" fill="${p.skin}"/><path d="M58 34 L62 16 L53 30 Z" fill="${p.skin}"/>
+        <ellipse cx="50" cy="40" rx="9" ry="10" fill="${p.skin}"/>
+        <path d="M50 42 L50 52 L58 49 Z" fill="${p.skin}"/>
+        <circle cx="46" cy="40" r="1.8" fill="#ffcf3f"/><circle cx="54" cy="40" r="1.8" fill="#ffcf3f"/>
+        <path d="M62 60 Q82 52 86 40 Q80 46 70 52" stroke="#c4c4cc" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+
+    case 'anubis': // boss: the jackal-god
+      return `${shadow}
+        <rect x="40" y="60" width="20" height="34" rx="5" fill="${p.cloth}"/>
+        <rect x="36" y="90" width="12" height="9" rx="2" fill="${p.skin}"/><rect x="52" y="90" width="12" height="9" rx="2" fill="${p.skin}"/>
+        <rect x="34" y="48" width="32" height="28" rx="6" fill="${p.skin}"/>
+        <rect x="34" y="50" width="32" height="6" fill="${p.cloth}"/>
+        <path d="M40 24 L34 2 L47 18 Z" fill="${p.skin}"/><path d="M60 24 L66 2 L53 18 Z" fill="${p.skin}"/>
+        <ellipse cx="50" cy="30" rx="12" ry="13" fill="${p.skin}"/>
+        <path d="M40 22 h20" stroke="${p.cloth}" stroke-width="3"/>
+        <path d="M50 33 L50 47 L61 43 Z" fill="${p.skin}"/>
+        <circle cx="45" cy="30" r="2.4" fill="#ff5a3a"/><circle cx="55" cy="30" r="2.4" fill="#ff5a3a"/>
+        <rect x="70" y="18" width="4" height="74" rx="2" fill="${p.cloth}"/>
+        <circle cx="72" cy="15" r="6" fill="none" stroke="${p.cloth}" stroke-width="3"/>
+        <path d="M72 20 v9 M67 24 h10" stroke="${p.cloth}" stroke-width="3"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>

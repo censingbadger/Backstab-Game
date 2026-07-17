@@ -202,6 +202,19 @@ const ACT2_THEMES = {
     waypoints: [[10, 10], [10, 28], [26, 34], [26, 16], [44, 14], [46, 34], [30, 46], [46, 52], [56, 54]],
     hard: true, wider: true,                        // a wide city street (no forest canopy/traps)
   },
+  toxic_temple: {
+    name: 'Pyramids of Egypt',
+    color: '#d9b24a', emoji: '🏺',
+    sky: ['#3a2e18', '#241a0e', '#100a04'],        // torch-lit tomb gloom
+    ground: ['#caa85e', '#b8974c'],                // sandstone floor
+    speckle: 'rgba(255,224,150,0.22)',
+    edge: ['#5a4420', '#382a10'],
+    props: ['hieroglyph', 'sarcophagus', 'urn', 'torch', 'pillar', 'urn', 'hieroglyph'],
+    trail: '255,214,120',
+    enemies: ['mummy', 'scarab', 'jackal', 'mummy', 'scarab'],
+    boss: 'anubis',
+    chambers: true, hard: true, hazard: 'quicksand',   // gated tomb chambers, sinking-sand pits + spikes
+  },
 };
 // Act-aware theme lookup: Act 2 re-skin when one exists, else the Act 1 theme.
 function dungeonTheme(regionId) {
@@ -2617,6 +2630,35 @@ function drawProp(ctx, p, ox, oy) {
       ctx.fillStyle = '#17171b'; ctx.beginPath(); ctx.arc(x - 12, y, 5, 0, 7); ctx.arc(x + 12, y, 5, 0, 7); ctx.fill();
       ctx.fillStyle = '#6a6a72'; ctx.beginPath(); ctx.arc(x - 12, y, 2, 0, 7); ctx.arc(x + 12, y, 2, 0, 7); ctx.fill();
       ctx.fillStyle = '#ffe89a'; ctx.fillRect(x + 20, y - 8, 3, 3);
+      break;
+    }
+
+    /* ---- Egypt (pyramid tomb) props ---- */
+    case 'hieroglyph': {
+      ctx.fillStyle = '#c6a75c'; ctx.fillRect(x - 9, y - 42, 18, 42);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x + 4, y - 42, 5, 42);
+      ctx.fillStyle = '#e6cd82'; ctx.fillRect(x - 11, y - 46, 22, 5);
+      ctx.strokeStyle = '#7a5f2a'; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.arc(x, y - 35, 3, 0, Math.PI); ctx.moveTo(x - 3, y - 35); ctx.lineTo(x - 6, y - 31); ctx.stroke();   // eye of horus
+      ctx.beginPath(); ctx.arc(x, y - 23, 2.6, 0, 7); ctx.moveTo(x, y - 20); ctx.lineTo(x, y - 13); ctx.moveTo(x - 3, y - 17); ctx.lineTo(x + 3, y - 17); ctx.stroke();   // ankh
+      ctx.beginPath(); ctx.moveTo(x - 5, y - 7); ctx.quadraticCurveTo(x, y - 10, x + 5, y - 7); ctx.stroke();   // water glyph
+      break;
+    }
+    case 'sarcophagus': {
+      ctx.fillStyle = '#c9a24a'; roundRectPath(ctx, x - 12, y - 40, 24, 40, 11); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.16)'; roundRectPath(ctx, x + 3, y - 40, 9, 40, 11); ctx.fill();
+      ctx.fillStyle = '#2a5a8a'; ctx.beginPath(); ctx.arc(x, y - 30, 8, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#e6c060'; ctx.beginPath(); ctx.ellipse(x, y - 26, 5, 6, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#2a5a8a'; ctx.fillRect(x - 5, y - 31, 10, 2);
+      ctx.fillStyle = '#1a2a3a'; ctx.fillRect(x - 3, y - 27, 2, 2); ctx.fillRect(x + 1, y - 27, 2, 2);
+      ctx.strokeStyle = '#8a6a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 7, y - 14); ctx.lineTo(x + 7, y - 10); ctx.moveTo(x + 7, y - 14); ctx.lineTo(x - 7, y - 10); ctx.stroke();
+      break;
+    }
+    case 'urn': {
+      ctx.fillStyle = '#b98a4a'; ctx.beginPath(); ctx.moveTo(x - 9, y - 20); ctx.quadraticCurveTo(x - 13, y - 8, x - 7, y); ctx.lineTo(x + 7, y); ctx.quadraticCurveTo(x + 13, y - 8, x + 9, y - 20); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.moveTo(x + 4, y - 20); ctx.quadraticCurveTo(x + 13, y - 8, x + 7, y); ctx.lineTo(x + 3, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d0a860'; ctx.fillRect(x - 9, y - 24, 18, 5);
+      ctx.fillStyle = '#8a5a2a'; ctx.fillRect(x - 9, y - 12, 18, 3);
       break;
     }
   }

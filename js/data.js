@@ -70,6 +70,10 @@ const ENEMIES = {
   soldier:       { id:'soldier',       name:'Soldier',        hearts:3.5, attack:4, reward:12, art:'soldier',  palette:{ skin:'#c99a6a', cloth:'#4a5a3a' }, blurb:'A camo-clad grunt with an assault rifle and zero sense of humour.' },
   drone:         { id:'drone',         name:'Combat Drone',   hearts:1.5, attack:3, reward:10, art:'drone',    palette:{ skin:'#3a3a42', cloth:'#c0392b' }, blurb:'A buzzing quadcopter with a little machine gun bolted underneath.' },
   jet:           { id:'jet',           name:'F-16',           hearts:2.5, attack:5, reward:15, art:'jet',      palette:{ skin:'#9aa4b2', cloth:'#3a4656' }, blurb:'A screaming fighter jet that strafes the street with its cannon.' },
+
+  /* ===== ACT TWO — Pyramids of Egypt ===== */
+  scarab:        { id:'scarab',        name:'Giant Scarab',   hearts:1.5, attack:3, reward:9,  art:'scarab',   palette:{ skin:'#2a7a6a', cloth:'#12463a' }, blurb:'A beetle the size of a dog, its shell gleaming like spilled oil.' },
+  jackal:        { id:'jackal',        name:'Jackal Guard',   hearts:3.5, attack:4, reward:13, art:'jackal',   palette:{ skin:'#33333d', cloth:'#c9a24a' }, blurb:'A jackal-headed tomb sentinel swinging a bronze khopesh.' },
 };
 
 /* ---------- Named bosses (tougher, unique, bigger rewards) ---------- */
@@ -86,6 +90,7 @@ const BOSSES = {
   trex:       { id:'trex',       name:'The Tyrant King',   hearts:22, attack:7, reward:340, art:'trex',     palette:{ skin:'#6a8040', cloth:'#3f4f24' }, boss:true, dungeon:true, blurb:'The Brute, dragged forward in time and mutated by toxic waste into a colossal Tyrannosaurus. Its jaws could swallow a hero whole.' },
   iron_horse: { id:'iron_horse', name:'The Iron Horse',    hearts:24, attack:7, reward:380, art:'train',    palette:{ skin:'#5a5a66', cloth:'#8a2a1a' }, boss:true, dungeon:true, blurb:'Hexstraw, dragged into the Age of Steam and fused with a runaway locomotive — a roaring iron monster that belches toxic black smoke.' },
   warhound:   { id:'warhound',   name:'The Warhound',      hearts:28, attack:8, reward:440, art:'tank',     palette:{ skin:'#5a6650', cloth:'#3a4432' }, boss:true, dungeon:true, blurb:'The Alpha Werewolf, resurrected and welded inside a giant reinforced battle tank. Its cannon flattens everything in its path — bring heavy firepower.' },
+  anubis:     { id:'anubis',     name:'Anubis',            hearts:25, attack:7, reward:420, art:'anubis',   palette:{ skin:'#2a2a34', cloth:'#d4af37' }, boss:true, dungeon:true, blurb:'Venombane, reborn in the age of pharaohs as the towering jackal-god Anubis, Judge of the Dead. He weighs your heart on his scales — and finds it wanting.' },
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },
