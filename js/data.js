@@ -99,7 +99,7 @@ const BOSSES = {
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },
-  backstabber:{ id:'backstabber',name:'The Backstabber',  hearts:12, attack:6, reward:250, art:'assassin', palette:{ skin:'#2a2540', cloth:'#7a1030' }, boss:true, secret:true, blurb:'The hooded figure behind it all. So THIS is who runs the arena...' },
+  backstabber:{ id:'backstabber',name:'The Backstabber',  hearts:24, attack:9, reward:250, art:'assassin', palette:{ skin:'#2a2540', cloth:'#7a1030' }, boss:true, secret:true, blurb:'The hooded figure behind it all. So THIS is who runs the arena...' },
 };
 
 /* ---------- Weapons ----------
