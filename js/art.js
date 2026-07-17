@@ -537,6 +537,48 @@ function charBody(art, p) {
         <path d="M62 54 L52 62 L62 62 Z" fill="${p.cloth}"/>
         <path d="M40 56 L48 44 L54 56 Z" fill="${p.cloth}"/>`;
 
+    /* ===== ACT TWO — the Old West ===== */
+    case 'cowboy':
+      return `${shadow}
+        <rect x="42" y="64" width="16" height="28" rx="5" fill="#3a3a44"/>
+        <rect x="39" y="90" width="10" height="8" rx="2" fill="#4a2f1a"/><rect x="51" y="90" width="10" height="8" rx="2" fill="#4a2f1a"/>
+        <rect x="36" y="56" width="28" height="26" rx="7" fill="${p.cloth}"/>
+        <path d="M50 57 L45 78 L50 82 L55 78 Z" fill="#d8c078"/>
+        <circle cx="50" cy="42" r="12" fill="${p.skin}"/>
+        <circle cx="45" cy="41" r="2" fill="${eye}"/><circle cx="55" cy="41" r="2" fill="${eye}"/>
+        <path d="M44 47 q6 3 12 0" stroke="#5a3a22" stroke-width="2.5" fill="none"/>
+        <path d="M30 35 Q50 27 70 35 Q50 31 30 35 Z" fill="#6a4a2a"/>
+        <path d="M40 35 Q42 22 50 22 Q58 22 60 35 Z" fill="#7a5636"/>
+        <rect x="61" y="66" width="13" height="5" rx="2" fill="#3a3a40"/><rect x="70" y="68" width="4" height="8" rx="1" fill="#3a3a40"/>`;
+
+    case 'grandpa':
+      return `${shadow}
+        <rect x="42" y="64" width="16" height="28" rx="5" fill="${p.cloth}"/>
+        <rect x="39" y="90" width="10" height="8" rx="2" fill="#2a2a30"/><rect x="51" y="90" width="10" height="8" rx="2" fill="#2a2a30"/>
+        <rect x="36" y="54" width="28" height="26" rx="7" fill="#d8d2c4"/>
+        <path d="M44 54 v26 M56 54 v26" stroke="#5a4a2a" stroke-width="2"/>
+        <circle cx="50" cy="42" r="12" fill="${p.skin}"/>
+        <path d="M38 40 Q40 30 50 29 Q60 30 62 40" stroke="#e8e4da" stroke-width="3" fill="none"/>
+        <circle cx="45" cy="41" r="2" fill="${eye}"/><circle cx="55" cy="41" r="2" fill="${eye}"/>
+        <path d="M40 47 Q50 55 60 47 Q54 51 50 51 Q46 51 40 47 Z" fill="#eee"/>
+        <path d="M64 58 L74 94" stroke="#7a5028" stroke-width="3.5" stroke-linecap="round"/><path d="M74 60 q5 0 6 4" stroke="#7a5028" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+
+    case 'train': // The Iron Horse (boss locomotive)
+      return `${shadow}
+        <path d="M14 92 L4 92 L14 72 Z" fill="#6a2a1a"/>
+        <rect x="16" y="56" width="70" height="36" rx="7" fill="${p.skin}"/>
+        <rect x="16" y="56" width="70" height="10" rx="5" fill="#7c7c88"/>
+        <rect x="60" y="42" width="22" height="20" rx="4" fill="#43434c"/>
+        <rect x="62" y="46" width="16" height="9" fill="#8fd0ff"/>
+        <rect x="30" y="38" width="11" height="22" rx="2" fill="#3a3a42"/>
+        <ellipse cx="35" cy="36" rx="9" ry="4" fill="rgba(40,40,48,0.8)"/>
+        <circle cx="24" cy="72" r="7" fill="#ffcf3f"/><circle cx="24" cy="72" r="3.4" fill="#c01818"/>
+        <path d="M18 84 q10 -6 20 0" stroke="#15151a" stroke-width="3" fill="none"/>
+        <path d="M18 87 l4 -3 l4 3 l4 -3 l4 3 l4 -3 l4 3" stroke="#fff" stroke-width="1.6" fill="none"/>
+        <circle cx="30" cy="96" r="8" fill="#26262c"/><circle cx="52" cy="96" r="10" fill="#26262c"/><circle cx="74" cy="96" r="8" fill="#26262c"/>
+        <circle cx="30" cy="96" r="3" fill="#6a6a74"/><circle cx="52" cy="96" r="4" fill="#6a6a74"/><circle cx="74" cy="96" r="3" fill="#6a6a74"/>
+        <rect x="16" y="74" width="70" height="4" fill="${p.cloth}"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>

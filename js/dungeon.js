@@ -175,6 +175,19 @@ const ACT2_THEMES = {
     boss: 'trex',
     waypoints: [[8, 12], [8, 28], [22, 32], [22, 16], [38, 14], [40, 32], [28, 42], [42, 50], [54, 54]],
   },
+  barren_grasslands: {
+    name: 'The Old West',
+    color: '#c99a4a', emoji: '🤠',
+    sky: ['#f0cf8a', '#dd9a56', '#a5652f'],        // dusty sepia sunset over the frontier
+    ground: ['#cdaa66', '#bb974e'],                // dry, cracked dirt plains
+    speckle: 'rgba(255,232,170,0.35)',
+    edge: ['#7a5a2a', '#563d18'],
+    props: ['cactus', 'barrel', 'fence', 'tumbleweed', 'rock', 'cactus', 'bone'],
+    trail: '255,220,140',
+    enemies: ['outlaw', 'grandpa', 'coyote', 'outlaw', 'grandpa'],
+    boss: 'iron_horse',
+    waypoints: [[10, 10], [26, 10], [26, 24], [12, 28], [14, 44], [34, 44], [36, 28], [50, 30], [54, 50]],
+  },
 };
 // Act-aware theme lookup: Act 2 re-skin when one exists, else the Act 1 theme.
 function dungeonTheme(regionId) {
@@ -2415,6 +2428,37 @@ function drawProp(ctx, p, ox, oy) {
       ctx.strokeStyle = '#ff7a2a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(x - 3, y - 29); ctx.lineTo(x - 7, y - 14); ctx.stroke();
       for (let i = 0; i < 3; i++) { const ph = (now / 1500 + i / 3) % 1; ctx.fillStyle = `rgba(120,112,102,${0.4 * (1 - ph)})`; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + now / 600) * 4, y - 34 - ph * 26, 4 + ph * 7, 0, 7); ctx.fill(); }
+      break;
+    }
+
+    /* ---- Old West props ---- */
+    case 'cactus': {
+      ctx.fillStyle = '#4a8a3a'; ctx.strokeStyle = '#3a6f2e'; ctx.lineWidth = 1;
+      roundRectPath(ctx, x - 4, y - 34, 8, 34, 4); ctx.fill();
+      roundRectPath(ctx, x - 14, y - 24, 6, 14, 3); ctx.fill();       // left arm
+      roundRectPath(ctx, x - 14, y - 24, 6, 4, 2); ctx.fill();
+      ctx.fillRect(x - 14, y - 24, 6, 8);
+      roundRectPath(ctx, x + 8, y - 30, 6, 16, 3); ctx.fill();        // right arm
+      ctx.fillRect(x + 8, y - 30, 6, 10);
+      ctx.strokeStyle = '#2f5a24'; ctx.lineWidth = 0.8;
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(x, y - 6 - i * 10); ctx.lineTo(x, y - 12 - i * 10); ctx.stroke(); }
+      break;
+    }
+    case 'barrel': {
+      ctx.fillStyle = '#7a5230'; roundRectPath(ctx, x - 10, y - 24, 20, 24, 4); ctx.fill();
+      ctx.fillStyle = '#5f3f22'; ctx.fillRect(x - 10, y - 24, 6, 24);
+      ctx.strokeStyle = '#3a2716'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x - 10, y - 18); ctx.lineTo(x + 10, y - 18); ctx.moveTo(x - 10, y - 8); ctx.lineTo(x + 10, y - 8); ctx.stroke();
+      ctx.fillStyle = '#8a6238'; ctx.beginPath(); ctx.ellipse(x, y - 24, 10, 3, 0, 0, 7); ctx.fill();
+      break;
+    }
+    case 'tumbleweed': {
+      const roll = Math.sin(performance.now() / 300 + r) * 0.5;
+      ctx.save(); ctx.translate(x, y - 9); ctx.rotate(roll);
+      ctx.strokeStyle = '#a58a4a'; ctx.lineWidth = 1.6;
+      for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 10, Math.sin(a) * 10); ctx.stroke(); }
+      ctx.strokeStyle = '#8a6f38'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.stroke();
+      ctx.restore();
       break;
     }
   }
