@@ -215,6 +215,19 @@ const ACT2_THEMES = {
     boss: 'anubis',
     chambers: true, hard: true, hazard: 'quicksand',   // gated tomb chambers, sinking-sand pits + spikes
   },
+  sandcastle: {
+    name: 'Pompeii',
+    color: '#d0562a', emoji: '🌋',
+    sky: ['#c24a24', '#7a2c14', '#2c0f08'],         // ash-choked, blood-red volcanic sky
+    ground: ['#5a4c48', '#4a3e3a'],                 // ash-dusted stone flagstones
+    speckle: 'rgba(255,140,60,0.28)',               // drifting embers
+    edge: ['#3a1c12', '#20100a'],                   // scorched rim over the magma
+    props: ['brokencolumn', 'statue', 'brazier', 'lavacrack', 'rock', 'brokencolumn', 'statue'],
+    trail: '255,150,70',
+    enemies: ['gladiator', 'centurion', 'mummy', 'gladiator', 'centurion'],
+    boss: 'colossus',
+    chambers: true, hard: true, hazard: 'lava',     // gated temple ruins split by rivers of lava
+  },
   shatter_coast: {
     name: 'Atlantis',
     color: '#3aa8b8', emoji: '🔱',
@@ -2704,6 +2717,50 @@ function drawProp(ctx, p, ox, oy) {
       ctx.fillStyle = '#8a6238'; ctx.beginPath(); ctx.moveTo(x - 13, y - 14); ctx.quadraticCurveTo(x, y - 25, x + 13, y - 14); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#c9962f'; ctx.fillRect(x - 13, y - 11, 26, 3); ctx.fillRect(x - 2, y - 17, 4, 11);
       ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(x, y - 8, 1.7, 0, 7); ctx.fill();
+      break;
+    }
+
+    /* ---- Pompeii (doomed city) props ---- */
+    case 'brokencolumn': {
+      const ch = 24 + (r % 3) * 7;
+      ctx.fillStyle = '#b6a488'; ctx.fillRect(x - 8, y - ch, 16, ch);          // ash-stained marble shaft
+      ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x + 3, y - ch, 5, ch);
+      ctx.strokeStyle = '#8a7a60'; ctx.lineWidth = 1;
+      for (let i = -6; i <= 6; i += 4) { ctx.beginPath(); ctx.moveTo(x + i, y - ch + 1); ctx.lineTo(x + i, y - 1); ctx.stroke(); }   // fluting
+      ctx.fillStyle = '#c8b89c'; ctx.fillRect(x - 11, y - 4, 22, 4);           // base
+      ctx.fillStyle = '#9a8a6e'; ctx.beginPath(); ctx.moveTo(x - 8, y - ch); ctx.lineTo(x - 3, y - ch - 5); ctx.lineTo(x + 1, y - ch); ctx.lineTo(x + 5, y - ch - 4); ctx.lineTo(x + 8, y - ch); ctx.closePath(); ctx.fill();   // snapped-off top
+      break;
+    }
+    case 'statue': {
+      ctx.fillStyle = '#8f8574'; ctx.fillRect(x - 12, y - 6, 24, 6);           // plinth
+      ctx.fillStyle = '#a89e88'; ctx.fillRect(x - 7, y - 40, 14, 34);          // robed torso
+      ctx.beginPath(); ctx.arc(x, y - 45, 6, 0, 7); ctx.fill();                // head
+      ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(x + 2, y - 40, 5, 34);
+      ctx.strokeStyle = '#a89e88'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 5, y - 34); ctx.lineTo(x - 12, y - 42); ctx.stroke();   // raised arm
+      ctx.strokeStyle = '#5a5040'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x - 2, y - 40); ctx.lineTo(x + 2, y - 28); ctx.lineTo(x - 1, y - 16); ctx.stroke();   // crack
+      break;
+    }
+    case 'brazier': {
+      ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x - 3, y - 18); ctx.moveTo(x + 7, y); ctx.lineTo(x + 3, y - 18); ctx.moveTo(x, y); ctx.lineTo(x, y - 18); ctx.stroke();   // tripod
+      ctx.fillStyle = '#4a3524'; ctx.beginPath(); ctx.moveTo(x - 11, y - 20); ctx.lineTo(x + 11, y - 20); ctx.lineTo(x + 8, y - 26); ctx.lineTo(x - 8, y - 26); ctx.closePath(); ctx.fill();   // bowl
+      const fl = 4 + Math.sin(performance.now() / 130 + r) * 3;
+      const gg = ctx.createRadialGradient(x, y - 30, 1, x, y - 30, 16);
+      gg.addColorStop(0, 'rgba(255,200,90,0.9)'); gg.addColorStop(1, 'rgba(255,90,30,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x, y - 30, 16, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffca4a'; ctx.beginPath(); ctx.ellipse(x, y - 30, 5, 8 + fl, 0, 0, 7); ctx.fill();
+      break;
+    }
+    case 'lavacrack': {
+      const pulse = 0.5 + 0.35 * Math.sin(performance.now() / 300 + r);
+      const gg = ctx.createRadialGradient(x, y, 1, x, y, 22); gg.addColorStop(0, `rgba(255,120,40,${0.32 * pulse})`); gg.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x, y, 22, 0, 7); ctx.fill();   // ground glow
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = `rgba(255,${90 + Math.floor(70 * pulse)},30,0.85)`; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x - 16, y + 2); ctx.lineTo(x - 4, y - 4); ctx.lineTo(x + 6, y + 3); ctx.lineTo(x + 16, y - 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,225,130,${pulse})`; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(x - 16, y + 2); ctx.lineTo(x - 4, y - 4); ctx.lineTo(x + 6, y + 3); ctx.lineTo(x + 16, y - 2); ctx.stroke();
       break;
     }
   }

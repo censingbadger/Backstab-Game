@@ -712,6 +712,55 @@ function charBody(art, p) {
         <circle cx="62" cy="54" r="7" fill="#ffd23f"/><circle cx="62" cy="54" r="3" fill="#161616"/>
         <path d="M44 72 L50 82 L56 72 Z" fill="#e8e0c0"/>`;
 
+    /* ===== ACT TWO — Pompeii ===== */
+    case 'gladiator':
+      return `${shadow}
+        <rect x="42" y="64" width="16" height="26" rx="4" fill="${p.cloth}"/>
+        <rect x="40" y="88" width="9" height="9" rx="2" fill="#6a4a2a"/><rect x="51" y="88" width="9" height="9" rx="2" fill="#6a4a2a"/>
+        <rect x="37" y="54" width="26" height="24" rx="6" fill="#9a7b52"/>
+        <rect x="37" y="54" width="26" height="5" fill="${p.cloth}"/>
+        <circle cx="50" cy="40" r="11" fill="${p.skin}"/>
+        <path d="M39 40 a11 11 0 0 1 22 0 Z" fill="#b08a3a"/>
+        <path d="M39 40 h22" stroke="#8a6a2a" stroke-width="2"/>
+        <rect x="47" y="40" width="6" height="10" fill="#7a5a28"/>
+        <path d="M50 27 Q46 18 50 12 Q54 18 50 27" fill="#b83030"/>
+        <circle cx="46" cy="41" r="1.6" fill="${eye}"/><circle cx="55" cy="41" r="1.6" fill="${eye}"/>
+        <path d="M64 58 L82 48" stroke="#d8d8e0" stroke-width="3.5" stroke-linecap="round"/>
+        <rect x="62" y="57" width="5" height="4" fill="#5a3a1a"/>
+        <ellipse cx="30" cy="66" rx="8" ry="12" fill="#8a2f2f"/>
+        <ellipse cx="30" cy="66" rx="4" ry="6" fill="#c9a24a"/>`;
+
+    case 'centurion':
+      return `${shadow}
+        <rect x="42" y="64" width="16" height="26" rx="4" fill="#8a6a3a"/>
+        <rect x="40" y="88" width="9" height="9" rx="2" fill="#5a3a1a"/><rect x="51" y="88" width="9" height="9" rx="2" fill="#5a3a1a"/>
+        <rect x="37" y="54" width="26" height="24" rx="5" fill="#9a7b52"/>
+        <path d="M37 60 h26 M37 66 h26 M37 72 h26" stroke="#6a4f2a" stroke-width="1.6" opacity="0.7"/>
+        <circle cx="50" cy="40" r="11" fill="${p.skin}"/>
+        <path d="M39 40 a11 11 0 0 1 22 0 Z" fill="#c0a048"/>
+        <rect x="47" y="40" width="6" height="9" fill="#8a6a2a"/>
+        <path d="M39 30 h22 l-2 -6 h-18 Z" fill="${p.cloth}"/>
+        <circle cx="46" cy="42" r="1.6" fill="${eye}"/><circle cx="55" cy="42" r="1.6" fill="${eye}"/>
+        <rect x="20" y="50" width="16" height="34" rx="3" fill="${p.cloth}"/>
+        <rect x="20" y="50" width="16" height="34" rx="3" fill="none" stroke="#c9a24a" stroke-width="2"/>
+        <circle cx="28" cy="67" r="3" fill="#c9a24a"/>
+        <path d="M70 20 L70 90" stroke="#6a4a24" stroke-width="3"/>
+        <path d="M70 20 L66 30 L74 30 Z" fill="#c4c4cc"/>`;
+
+    case 'colossus': // boss: the molten god-statue
+      return `${shadow}
+        <rect x="30" y="70" width="16" height="28" rx="3" fill="${p.skin}"/><rect x="54" y="70" width="16" height="28" rx="3" fill="${p.skin}"/>
+        <rect x="28" y="94" width="20" height="6" rx="2" fill="#2a2420"/><rect x="52" y="94" width="20" height="6" rx="2" fill="#2a2420"/>
+        <rect x="26" y="40" width="48" height="40" rx="8" fill="${p.skin}"/>
+        <path d="M26 44 h48 M30 56 h40 M28 68 h44" stroke="#2a2420" stroke-width="2" opacity="0.6"/>
+        <rect x="14" y="44" width="14" height="34" rx="6" fill="${p.skin}"/><rect x="72" y="44" width="14" height="34" rx="6" fill="${p.skin}"/>
+        <rect x="34" y="14" width="32" height="30" rx="7" fill="${p.skin}"/>
+        <path d="M34 18 Q50 6 66 18 L66 14 Q50 2 34 14 Z" fill="#8a7a3a"/>
+        <circle cx="44" cy="28" r="4" fill="${p.cloth}"/><circle cx="58" cy="28" r="4" fill="${p.cloth}"/>
+        <path d="M50 34 L46 42 L54 42 Z" fill="#2a2420"/>
+        <path d="M40 44 L44 60 L38 74 M60 44 L57 58 L63 72 M50 46 L48 64 L52 80" stroke="${p.cloth}" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M20 54 L24 66 M80 54 L76 66" stroke="${p.cloth}" stroke-width="2.5" fill="none"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>
