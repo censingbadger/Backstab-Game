@@ -38,6 +38,8 @@ function newGame() {
     // which map regions are unlocked / cleared
     unlocked: ['dead_cliffs'],
     cleared: [],
+    // which ACT the player is in (1 = the realm of Karrowmere; 2 = through time)
+    act: 1,
     // marks that this save is on the 5-heart rebalance (see loadGame migration)
     heartsRebalanced: true,
     // extra lives — rare Legendary boss-fight boons that let you cheat death once
@@ -146,6 +148,21 @@ function isUnlocked(id) { return STATE.unlocked.includes(id); }
 function isCleared(id) { return STATE.cleared.includes(id); }
 function hasArtifact(id) { return !!(STATE.artifacts && STATE.artifacts.includes(id)); }
 
+/* ---------- Acts ----------
+   Act 1 is the realm of Karrowmere. Beating its Backstabber unlocks the time
+   machine and Act 2 — the same map & engine, re-skinned across time periods. */
+function currentAct() { return STATE.act || 1; }
+// An Act-2 region is "built" only once it has an ACT2_THEMES entry; until then
+// the time-travel path stops there ("to be continued").
+function act2Built(id) { return typeof ACT2_THEMES !== 'undefined' && !!ACT2_THEMES[id]; }
+function beginActTwo() {
+  STATE.act = 2;
+  STATE.unlocked = ['dead_cliffs'];   // Act 2 restarts the map with your Act-1 gear intact
+  STATE.cleared = [];
+  STATE.rewardedRegions = [];
+  saveGame();
+}
+
 function clearRegion(id) {
   if (!STATE.cleared.includes(id)) STATE.cleared.push(id);
   // Unlock the next region on the path — skipping any that are reachable only
@@ -153,7 +170,9 @@ function clearRegion(id) {
   let ni = REGIONS.findIndex(r => r.id === id) + 1;
   while (REGIONS[ni] && REGIONS[ni].passageOnly) ni++;
   const next = REGIONS[ni];
-  if (next && !STATE.unlocked.includes(next.id)) STATE.unlocked.push(next.id);
+  // In Act 2, only advance to eras that have actually been built yet.
+  const okForAct = next && (currentAct() !== 2 || act2Built(next.id));
+  if (okForAct && !STATE.unlocked.includes(next.id)) STATE.unlocked.push(next.id);
   saveGame();
 }
 

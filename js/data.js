@@ -55,6 +55,11 @@ const ENEMIES = {
   sandy_skeleton:{ id:'sandy_skeleton',name:'Sandy Skeleton', hearts:3.5, attack:3, reward:12, art:'skeleton', palette:{ skin:'#d9c48f', cloth:'#8a6f3a' }, blurb:'A skeleton that got lost in the desert.' },
   werewolf:      { id:'werewolf',      name:'Werewolf',       hearts:4.5, attack:5, reward:29, art:'wolf',     palette:{ skin:'#6a6258', cloth:'#3a352e' }, blurb:'The full-grown beast. Sharp claws, sharper temper.' },
   crab:          { id:'crab',          name:'Crab',           hearts:2,   attack:2, reward:4,  art:'crab',     palette:{ skin:'#e0532f', cloth:'#a8331a' }, blurb:'A snappy shore crab with two pinching claws. Scuttles sideways.' },
+
+  /* ===== ACT TWO — Cretaceous Coast (dinosaurs) ===== */
+  raptor:        { id:'raptor',        name:'Raptor',         hearts:2.5, attack:4, reward:9,  art:'raptor',   palette:{ skin:'#7a9a44', cloth:'#4a6a26' }, blurb:'A fast, vicious pack hunter with a killing sickle-claw on each foot.' },
+  stego:         { id:'stego',         name:'Stegosaurus',    hearts:4,   attack:3, reward:11, art:'dino',     palette:{ skin:'#5f8060', cloth:'#3d5340' }, blurb:'Armoured plates down its back and a spiked tail. Slow, but a wall of muscle.' },
+  ptero:         { id:'ptero',         name:'Pterodactyl',    hearts:2,   attack:4, reward:12, art:'ptero',    palette:{ skin:'#9a6a44', cloth:'#5f3f28' }, blurb:'A leathery-winged terror that shrieks down out of the sky.' },
 };
 
 /* ---------- Named bosses (tougher, unique, bigger rewards) ---------- */
@@ -67,6 +72,8 @@ const BOSSES = {
   crab_king:  { id:'crab_king',  name:'King Crab',        hearts:12, attack:5, reward:170, art:'crab',     palette:{ skin:'#ff6a2a', cloth:'#b83a12' }, boss:true, dungeon:true, blurb:'The armoured monarch of the Sandcastle — a giant crab with crushing claws.' },
   frost_titan:{ id:'frost_titan',name:'The Frost Titan',  hearts:15, attack:5, reward:210, art:'yeti',     palette:{ skin:'#e6f4ff', cloth:'#6fa8d8' }, boss:true, dungeon:true, blurb:'A towering ice giant that rules the frozen heart of Knife Mountain. The floor is ice — keep your footing.' },
   dune_worm:  { id:'dune_worm',  name:'The Dune Devourer', hearts:20, attack:6, reward:320, art:'worm',    palette:{ skin:'#d9a441', cloth:'#a8791f' }, boss:true, dungeon:true, blurb:'A colossal sandworm with a maw of jagged teeth. It burrows and erupts from below to bite — learn its rhythm, dodge the strike, and bring a powerful weapon or it will devour you in two bites.' },
+  // ACT TWO bosses — the wardens, resurrected and toxic-mutated across time
+  trex:       { id:'trex',       name:'The Tyrant King',   hearts:22, attack:7, reward:340, art:'trex',     palette:{ skin:'#6a8040', cloth:'#3f4f24' }, boss:true, dungeon:true, blurb:'The Brute, dragged forward in time and mutated by toxic waste into a colossal Tyrannosaurus. Its jaws could swallow a hero whole.' },
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },
@@ -166,6 +173,29 @@ const LORE = {
     knife_mountain:    "A frozen blade of a peak where the Frost Titan reigns. Climb its caverns — mind the ice — one warden closer to your goal.",
     desolate_dunes:    "A storm-cursed waste adrift over fire, where the Dune Devourer burrows. Hold your footing against the wind; the Lair is near.",
     secret:            "The Backstabber's Lair. Every warden you've felled has led you here. End his reign — a back stab for a back stab — and free the realm.",
+  },
+};
+
+/* ---- ACT TWO story: the time-travel chase ---- */
+const LORE_ACT2 = {
+  title: 'Act Two — Through the Ages',
+  intro: [
+    "Behind the Backstabber's throne you found a machine — a time machine, humming with stolen power. Its screen had already seen the future, and the future was rotten.",
+    "The Backstabber is not gone. His shadow slipped through time and, in an age of toxic waste, he dug up every warden you buried and drowned them in poison until they rose again — bigger, meaner, mutated. Then he scattered them across history so no single hero could ever catch them all.",
+    "So he thinks. The machine will fling you back and forth through the ages — to the age of dinosaurs, the frozen wilds, the pyramids, the sunken city, and stranger times still — to hunt down every resurrected warden.",
+    "Beat them across time, and you'll finally corner the Backstabber himself, grown monstrous on the power he stole. End him for good, and time itself is safe.",
+  ],
+  goal: 'Chase the resurrected wardens through time, then destroy the Backstabber once and for all.',
+  regions: {
+    dead_cliffs:       "The age of dinosaurs. The Brute has been reborn as a toxic Tyrannosaur. Fight through the raptors and fell the Tyrant King — your first jump through time.",
+    barren_grasslands: "A dusty frontier long ago. Somewhere in this era a warden hides — track it down and press on through history.",
+    dark_forest:       "The present day, humming with machines. A mutated warden lurks in the noise; cut it down and keep hunting through time.",
+    toxic_temple:      "Ancient Egypt, deep in a cursed pyramid. A warden waits in the dark of the tomb. End it and travel on.",
+    shatter_coast:     "The sunken city beneath the waves. A drowned warden rules these depths — beat it and follow the trail through time.",
+    sandcastle:        "A doomed city in the shadow of a volcano. A warden hides among fallen gods; unearth it and move on.",
+    knife_mountain:    "The frozen Ice Age. A warden stalks the mammoth herds. Bring it down and chase the Backstabber onward.",
+    desolate_dunes:    "The dawn of the world, when the land was molten. Even here a warden festers — survive the fire and press on.",
+    secret:            "The end of time, where the Backstabber has grown monstrous on stolen power. Every warden you've hunted led here. Destroy him, and set time right.",
   },
 };
 
