@@ -102,11 +102,21 @@ function weaponFamily(w) {
   if (id.indexOf('scythe') >= 0) return 'scythe';
   if (id === 'spiked_spear') return 'spikespear';
   if (id.indexOf('spear') >= 0) return 'spear';
+  // Act 2 "Weapons of the Ages" families (checked before the power fallbacks so
+  // e.g. the grenade doesn't render as a bazooka tube)
+  if (w.art === 'club') return 'club';
+  if (w.art === 'toothsword') return 'toothsword';
+  if (w.art === 'whip') return 'whip';
+  if (w.art === 'pickaxe') return 'pickaxe';
+  if (w.art === 'trident') return 'trident';
+  if (w.art === 'hook') return 'hook';
+  if (w.art === 'grenade') return 'grenade';
+  if (w.art === 'knife') return 'knife';
   if (w.art === 'bow') return 'bow';
   if (w.art === 'gun' || w.power === 'gun') return 'gun';
   if (w.art === 'bazooka' || w.power === 'bazooka') return 'bazooka';
   if (w.art === 'katana') return 'katana';
-  if (id.indexOf('mace') >= 0 || w.power === 'stun') return 'mace';
+  if (id.indexOf('mace') >= 0 || w.art === 'mace' || w.power === 'stun') return 'mace';
   return 'sword';
 }
 // Steel tinted toward the weapon's rarity colour (higher rarity = richer metal).
@@ -137,6 +147,7 @@ function weaponSpeed(w) {
     knife: 300, dagger: 300, twindagger: 300,
     katana: 400, masterblade: 430, sword: 470,
     spear: 520, spikespear: 540, bow: 520, scythe: 580, mace: 660,
+    club: 640, toothsword: 470, whip: 540, pickaxe: 620, trident: 520, hook: 470, grenade: 600,
   }[fam] || 470;
   return { cool, swing: Math.min(240, Math.round(cool * 0.5)) };
 }
@@ -216,6 +227,48 @@ function weaponSVG(w) {
         <rect x="10" y="12" width="6" height="5" rx="1.5" fill="#2a2a30"/>
         <rect x="16" y="25" width="5" height="8" rx="1.5" fill="${grip}"/>
         <circle cx="8" cy="20.5" r="2" fill="#1a1a20"/>`);
+    case 'club':
+      return svg(`<rect x="4" y="28" width="13" height="4.4" rx="2.2" transform="rotate(-42 10 30)" fill="${grip}"/>
+        <path d="M13 25 Q14 15 22 8 Q30 2 35 6 Q38 10 34 16 Q28 24 19 29 Q15 29 13 25 Z" fill="#8f9298" stroke="${st}" stroke-width="1.3"/>
+        <circle cx="27" cy="11" r="1.6" fill="#6a6e76"/><circle cx="31" cy="9" r="1.2" fill="#6a6e76"/><circle cx="23" cy="16" r="1.4" fill="#6a6e76"/>
+        <circle cx="25" cy="9" r="1.6" fill="rgba(255,255,255,0.4)"/>`);
+    case 'toothsword':
+      return svg(`<rect x="17.5" y="30" width="5" height="7" rx="1.5" fill="${grip}"/>
+        <circle cx="20" cy="37" r="2.2" fill="${gold}"/>
+        <rect x="11" y="27" width="18" height="3.4" rx="1.5" fill="#8a6a3a"/>
+        <path d="M20 3 L24 8 L24 27 L16 27 L16 8 Z" fill="${blade}" stroke="${st}" stroke-width="1.2"/>
+        <path d="M16 9 L13 11 L16 13 L13 16 L16 18 L13 21 L16 23 L13 25 L16 27" fill="${blade}" stroke="${st}" stroke-width="1"/>
+        <path d="M24 9 L27 11 L24 13 L27 16 L24 18 L27 21 L24 23 L27 25 L24 27" fill="${blade}" stroke="${st}" stroke-width="1"/>`);
+    case 'whip':
+      return svg(`<rect x="4" y="29" width="11" height="4.4" rx="2.2" transform="rotate(-42 9 31)" fill="${grip}"/>
+        <path d="M13 25 Q22 12 30 10 Q37 9 36 15 Q35 21 28 22 Q22 23 22 18 Q22 14 27 14" fill="none" stroke="#8a5a2a" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M13 25 Q22 12 30 10" fill="none" stroke="${mixHex('#8a5a2a', blade, 0.35)}" stroke-width="1" stroke-linecap="round"/>
+        <circle cx="27" cy="14" r="1.3" fill="${blade}"/>`);
+    case 'pickaxe':
+      return svg(`<rect x="17" y="12" width="3.4" height="26" rx="1.7" transform="rotate(-16 19 25)" fill="${wood}"/>
+        <path d="M8 12 Q20 3 34 10 Q28 8 22 8.5 Q14 9.5 8 12 Z" fill="${blade}" stroke="${st}" stroke-width="1.3"/>
+        <path d="M8 12 L5 17 L10 13.4 Z" fill="${blade}" stroke="${st}" stroke-width="1"/>
+        <path d="M34 10 L38 15 L32 11.6 Z" fill="${blade}" stroke="${st}" stroke-width="1"/>
+        <rect x="18" y="7" width="4.6" height="5" rx="1" fill="${gold}"/>`);
+    case 'trident':
+      return svg(`<rect x="18.5" y="12" width="3" height="27" rx="1.5" transform="rotate(-14 20 25)" fill="${gold}"/>
+        <path d="M23 12 L23 4 L25.5 4 L25.5 12" fill="none" stroke="${blade}" stroke-width="2.4"/>
+        <path d="M17 13 L16 5 M31 10 L32 3" stroke="${blade}" stroke-width="2.4"/>
+        <path d="M15 12 Q24 8 33 9" fill="none" stroke="${blade}" stroke-width="2.6"/>
+        <path d="M16 5 L15 2 L18 4 Z M24.2 3 L24.2 0 L27 2 Z M32 3 L33 0 L35 3 Z" fill="${blade}" stroke="${st}" stroke-width="0.8"/>`);
+    case 'hook':
+      return svg(`<rect x="5" y="28" width="11" height="4" rx="2" transform="rotate(-38 10 30)" fill="${grip}"/>
+        <path d="M14 25 Q20 15 28 9" fill="none" stroke="#c8ccd4" stroke-width="1.2" stroke-dasharray="2 1.6"/>
+        <path d="M28 9 Q34 12 33 19 Q32 26 25 25 Q20 24 21 19" fill="none" stroke="${blade}" stroke-width="3" stroke-linecap="round"/>
+        <path d="M21 19 L18 16 L23 16 Z" fill="${blade}" stroke="${st}" stroke-width="0.8"/>
+        <circle cx="28" cy="8" r="1.8" fill="${gold}"/>`);
+    case 'grenade':
+      return svg(`<ellipse cx="20" cy="24" rx="10" ry="11" fill="#3f5a34" stroke="${st}" stroke-width="1.3"/>
+        <path d="M12 20 h16 M12 26 h16 M16 14.5 v19 M24 14.5 v19" stroke="#2c4022" stroke-width="1.1"/>
+        <rect x="16.5" y="9" width="7" height="5" rx="1.4" fill="#5a6a5a" stroke="${st}" stroke-width="1"/>
+        <path d="M23 9 Q29 7 31 11" fill="none" stroke="#9aa4ae" stroke-width="2"/>
+        <circle cx="32.5" cy="12" r="2.6" fill="none" stroke="${gold}" stroke-width="1.6"/>
+        <circle cx="16" cy="19" r="2.2" fill="rgba(255,255,255,0.35)"/>`);
     default:
       return weaponSVG({ id: 'aluminum_sword', art: 'sword', rarity: 'C' });
   }

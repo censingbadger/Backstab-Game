@@ -1039,19 +1039,31 @@ function renderShop() {
     </div>`;
   }
 
-  // Buyable weapons (cheapest first), showing their special power
-  const shopWeapons = Object.keys(WEAPONS).filter(id => id !== 'old_knife').sort((a, b) => WEAPONS[a].price - WEAPONS[b].price);
-  shopWeapons.forEach(id => {
+  // Buyable weapons (cheapest first), showing their special power. The Act 2
+  // "Weapons of the Ages" are era gear — only stocked while you're in Act 2.
+  const weaponRow = id => {
     const w = WEAPONS[id];
     const owned = STATE.weapons[id] !== undefined;
     const sub = `${w.damage} dmg · ${w.durability} dur${w.power ? ' · ' + powerLabel(w.power) : ''}`;
-    html += shopRow('weapon', id, w.name, sub, w.rarity, w.price, owned, weaponSVG(w));
-  });
+    html += shopRow('weapon', id, (w.era ? w.era + ' ' : '') + w.name, sub, w.rarity, w.price, owned, weaponSVG(w));
+  };
+  const byPrice = (a, b) => WEAPONS[a].price - WEAPONS[b].price;
+  Object.keys(WEAPONS).filter(id => id !== 'old_knife' && !WEAPONS[id].act2).sort(byPrice).forEach(weaponRow);
   ['aluminum_shield'].forEach(id => {
     const s = SHIELDS[id];
     const owned = STATE.shields[id] !== undefined;
     html += shopRow('shield', id, s.name, `blocks ${Math.round(s.block * 100)}%`, s.rarity, s.price, owned, shieldIcon('#b98a3a'));
   });
+  if (currentAct() === 2) {
+    html += `<div class="shop-sep">⏳ Weapons of the Ages — by Asher &amp; Ren</div>`;
+    Object.keys(WEAPONS).filter(id => WEAPONS[id].act2).sort(byPrice).forEach(weaponRow);
+    html += `<div class="shop-sep">🛡️ Shields of the Ages</div>`;
+    Object.keys(SHIELDS).filter(id => SHIELDS[id].act2).sort((a, b) => SHIELDS[a].price - SHIELDS[b].price).forEach(id => {
+      const s = SHIELDS[id];
+      const owned = STATE.shields[id] !== undefined;
+      html += shopRow('shield', id, (s.era ? s.era + ' ' : '') + s.name, `blocks ${Math.round(s.block * 100)}% · ${s.durability} dur`, s.rarity, s.price, owned, shieldIcon(s.color || '#b98a3a'));
+    });
+  }
   ['apple', 'cliff_shrooms', 'mushroom_stew', 'strength_potion', 'cage'].forEach(id => {
     const it = ITEMS[id];
     html += shopRow('item', id, it.name, it.blurb, it.rarity, it.price, false, itemSVG(it.art));

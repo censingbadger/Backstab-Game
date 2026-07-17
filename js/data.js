@@ -157,6 +157,35 @@ const WEAPONS = {
   plasma_katana:  { id:'plasma_katana',  name:'Plasma Katana', damage:34, durability:260, rarity:'E', price:13000, repairCost:300, art:'katana', power:'sweep' },
   six_shooter:    { id:'six_shooter',    name:'Six-Shooter',   damage:17, durability:320, rarity:'R', price:7000,  repairCost:120, art:'gun',     power:'gun' },
   bazooka:        { id:'bazooka',        name:'Bazooka',       damage:46, durability:90,  rarity:'L', price:17000, repairCost:450, art:'bazooka', power:'bazooka' },
+
+  /* ===== ACT TWO — the Weapons of the Ages (designed by Asher & Ren).
+     One armoury per era, sold in the Act 2 shop. ===== */
+  // 🦕 Cretaceous Coast
+  stone_club:     { id:'stone_club',     name:'Stone Club',          damage:20, durability:240, rarity:'U', price:5500,  repairCost:90,  art:'club',      act2:true, era:'🦕' },
+  spiked_rock:    { id:'spiked_rock',    name:'Spiked Rock',         damage:24, durability:180, rarity:'U', price:7200,  repairCost:110, art:'mace',      act2:true, era:'🦕', power:'stun' },
+  megalodon_sword:{ id:'megalodon_sword',name:'Megalodon Tooth Sword', damage:28, durability:210, rarity:'R', price:9500, repairCost:150, art:'toothsword', act2:true, era:'🦕' },
+  trex_spear:     { id:'trex_spear',     name:'T-Rex Claw Spear',    damage:26, durability:190, rarity:'R', price:9000,  repairCost:140, art:'spear',     act2:true, era:'🦕', power:'reach' },
+  // 🤠 The Old West
+  sneaky_knife:   { id:'sneaky_knife',   name:'Sneaky Knife',        damage:19, durability:260, rarity:'U', price:7000,  repairCost:100, art:'knife',     act2:true, era:'🤠', power:'double' },
+  whip:           { id:'whip',           name:'Whip',                damage:22, durability:200, rarity:'U', price:8000,  repairCost:120, art:'whip',      act2:true, era:'🤠', power:'reach' },
+  reinforced_pickaxe:{ id:'reinforced_pickaxe', name:'Reinforced Pickaxe', damage:27, durability:280, rarity:'R', price:9800, repairCost:150, art:'pickaxe', act2:true, era:'🤠', power:'stun' },
+  rifle:          { id:'rifle',          name:'Rifle',               damage:26, durability:220, rarity:'R', price:10000, repairCost:170, art:'gun',       act2:true, era:'🤠', power:'gun' },
+  shotgun:        { id:'shotgun',        name:'Shotgun',             damage:30, durability:140, rarity:'R', price:11000, repairCost:190, art:'gun',       act2:true, era:'🤠', power:'gun' },
+  // 🏙️ Present Day
+  fishing_hook:   { id:'fishing_hook',   name:'Fishing Hook',        damage:24, durability:210, rarity:'U', price:8500,  repairCost:130, art:'hook',      act2:true, era:'🏙️', power:'lifesteal' },
+  soldiers_blade: { id:'soldiers_blade', name:"Soldier's Blade",     damage:32, durability:260, rarity:'R', price:12000, repairCost:200, art:'sword',     act2:true, era:'🏙️' },
+  grenade:        { id:'grenade',        name:'Grenade',             damage:38, durability:80,  rarity:'E', price:13500, repairCost:300, art:'grenade',   act2:true, era:'🏙️', power:'bazooka' },
+  sniper:         { id:'sniper',         name:'Sniper',              damage:40, durability:130, rarity:'E', price:14500, repairCost:320, art:'gun',       act2:true, era:'🏙️', power:'gun' },
+  // 🔱 Atlantis
+  coral_dagger:   { id:'coral_dagger',   name:'Coral Dagger',        damage:26, durability:190, rarity:'R', price:9800,  repairCost:150, art:'knife',     act2:true, era:'🔱', power:'double' },
+  wave_bow:       { id:'wave_bow',       name:'Wave Bow',            damage:30, durability:180, rarity:'R', price:11500, repairCost:190, art:'bow',       act2:true, era:'🔱', power:'gun' },
+  sword_of_the_sea:{ id:'sword_of_the_sea', name:'Sword of the Sea', damage:36, durability:240, rarity:'E', price:14000, repairCost:310, art:'sword',     act2:true, era:'🔱', power:'sweep' },
+  poseidon_trident:{ id:'poseidon_trident', name:"Poseidon's Trident", damage:48, durability:280, rarity:'L', price:20000, repairCost:500, art:'trident', act2:true, era:'🔱', power:'sweep' },
+  // 🏺 Pyramids of Egypt
+  spiked_whip:    { id:'spiked_whip',    name:'Spiked Whip',         damage:29, durability:190, rarity:'R', price:10500, repairCost:180, art:'whip',      act2:true, era:'🏺', power:'sweep' },
+  pharaoh_spear:  { id:'pharaoh_spear',  name:'Pharaoh Spear',       damage:31, durability:200, rarity:'R', price:11800, repairCost:200, art:'spear',     act2:true, era:'🏺', power:'reach' },
+  mummy_sword:    { id:'mummy_sword',    name:'Mummy Sword',         damage:35, durability:230, rarity:'E', price:13800, repairCost:310, art:'sword',     act2:true, era:'🏺', power:'lifesteal' },
+  sand_striker:   { id:'sand_striker',   name:'Sand Striker',        damage:50, durability:260, rarity:'L', price:21000, repairCost:520, art:'katana',    act2:true, era:'🏺', power:'sweep' },
 };
 
 /* ---------- Items (used in battle) ----------
@@ -177,6 +206,12 @@ const ITEMS = {
 const SHIELDS = {
   wood_shield:    { id:'wood_shield',    name:'Wood Shield',    block:0.5, durability:50, repairCost:12, rarity:'C', price:0,  art:'shield_wood' },
   aluminum_shield:{ id:'aluminum_shield',name:'Aluminum Shield',block:0.7, durability:75, repairCost:22, rarity:'C', price:55, art:'shield_alu'  },
+  /* ===== ACT TWO — the Shields of the Ages (designed by Asher & Ren) ===== */
+  stone_shield:   { id:'stone_shield',   name:'Stone Shield',            block:0.75, durability:90,  repairCost:60,  rarity:'U', price:4500,  art:'shield_stone',  act2:true, era:'🦕', color:'#8a8f96' },
+  metal_blocker:  { id:'metal_blocker',  name:'Metal Blocker',           block:0.8,  durability:120, repairCost:90,  rarity:'R', price:6500,  art:'shield_metal',  act2:true, era:'🤠', color:'#9aa4b0' },
+  bandaged_shield:{ id:'bandaged_shield',name:'Bandaged Shield',         block:0.82, durability:200, repairCost:100, rarity:'R', price:7500,  art:'shield_bandage', act2:true, era:'🏺', color:'#d9c48f' },
+  soldier_shield: { id:'soldier_shield', name:"Spikey Soldier's Shield", block:0.85, durability:140, repairCost:130, rarity:'E', price:9000,  art:'shield_spike',  act2:true, era:'🏙️', color:'#5a6650' },
+  ocean_blocker:  { id:'ocean_blocker',  name:'Drowning Ocean Blocker',  block:0.88, durability:160, repairCost:160, rarity:'E', price:11000, art:'shield_ocean',  act2:true, era:'🔱', color:'#3aa8b8' },
 };
 
 /* ---------- Map regions ----------
