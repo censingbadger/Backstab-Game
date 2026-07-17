@@ -128,6 +128,20 @@ const DUNGEON_THEMES = {
     boss: 'hexstraw',
     waypoints: [[10, 10], [26, 10], [26, 24], [12, 28], [14, 44], [34, 44], [36, 28], [50, 30], [54, 50]],
   },
+  desolate_dunes: {
+    name: 'Desolate Dunes',
+    sky: ['#c98a3a', '#8a4a22', '#3a1c10'],          // choking, dust-red storm sky
+    ground: ['#d9b25a', '#c79b45'],                  // wind-scoured sand
+    speckle: 'rgba(255,236,180,0.4)',
+    edge: ['#7a4a1a', '#4a2c0e'],                     // scorched chasm rim (lava below)
+    props: ['dune', 'sandpillar', 'bone', 'skull', 'sandtower', 'dune', 'rock'],
+    trail: '255,210,120',
+    enemies: ['sandy_skeleton', 'mummy', 'pirate', 'swordfish', 'colossal_squid', 'sandy_skeleton'],
+    boss: 'dune_worm',
+    // TWICE as long as other levels — a huge, winding, storm-blasted platform
+    waypoints: [[8, 8], [24, 8], [24, 20], [8, 20], [8, 32], [24, 32], [24, 44], [8, 44], [8, 54], [26, 54], [40, 50], [40, 36], [54, 34], [54, 20], [40, 18], [40, 10], [54, 10]],
+    traps: true, dunes: true, hard: true, wind: true, lava: true, enemyDmgMul: 2,
+  },
 };
 function dungeonTheme(regionId) { return DUNGEON_THEMES[regionId]; }
 
@@ -363,6 +377,41 @@ function startDungeon(regionId) {
     }
   }
 
+  /* Desolate Dunes: a storm-blasted platform over a lava chasm — EVERY hazard at
+     once (quicksand, trap doors, poison, lava rivers) plus wind, gusts, a
+     sandstorm and roaming tornadoes that can hurl you clean off the edge. */
+  const tornadoes = [];
+  if (theme.dunes) {
+    // poison pools scattered along the trail
+    for (let i = 0; i < 11; i++) {
+      const s = sampleAtCum(path, (10 + rand(i * 3.1 + 5) * (path.length - 20)));
+      const off = (rand(i * 7.7) - 0.5) * (HALF * 1.1);
+      const tx = clamp(s.x + off, 3, W - 3), ty = clamp(s.y, 3, H - 3);
+      if (tiles[Math.floor(ty)][Math.floor(tx)] === 'ground') traps.push({ x: tx, y: ty, kind: 'poison_pool', seed: i * 3 });
+    }
+    // lava rivers cross the trail — short molten bands you must jump over
+    for (let i = 0; i < 8; i++) {
+      const s = sampleAtCum(path, (14 + rand(i * 5.3 + 2) * (path.length - 26)));
+      for (let w = -1; w <= 1; w++) {
+        const px = clamp(Math.round(s.x + w), 3, W - 3), py = clamp(Math.round(s.y), 3, H - 3);
+        if (tiles[py][px] === 'ground') traps.push({ x: px, y: py, kind: 'lava', seed: i * 5 + w + 40 });
+      }
+    }
+    // extra quicksand + trap doors (in addition to the theme.traps set) for chaos
+    for (let i = 0; i < 6; i++) {
+      const s = sampleAtCum(path, (9 + rand(i * 4.9 + 3) * (path.length - 18)));
+      const off = (rand(i * 8.3) - 0.5) * (HALF * 1.1);
+      const tx = clamp(s.x + off, 3, W - 3), ty = clamp(s.y, 3, H - 3);
+      if (tiles[Math.floor(ty)][Math.floor(tx)] === 'ground') traps.push({ x: tx, y: ty, kind: rand(i * 2.7) < 0.5 ? 'quicksand' : 'trapdoor', strong: true, sprung: false, seed: i + 70 });
+    }
+    // roaming tornadoes patrolling the platform
+    for (let i = 0; i < 5; i++) {
+      const s = sampleAtCum(path, (16 + rand(i * 9.1) * (path.length - 24)));
+      const ang = rand(i * 3.7) * Math.PI * 2;
+      tornadoes.push({ x: s.x, y: s.y, vx: Math.cos(ang), vy: Math.sin(ang), spin: 0, seed: i });
+    }
+  }
+
   const hero = {
     fx: WP[0][0], fy: WP[0][1], r: 0.42,
     facing: 1, faceAngle: Math.PI / 2,      // faceAngle in world radians
@@ -378,6 +427,7 @@ function startDungeon(regionId) {
     regionId, theme, W, H, tiles, props, path, checkpoints, canopy, traps, grabbers,
     hard: !!theme.hard,
     beach: !!theme.beach, water, waves, secret, key, corridor, tide: 0,
+    dunes: !!theme.dunes, tornadoes, wind: { x: 0, y: 0, gust: false },
     hero,
     enemies: [], drops: [], fx: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET, progress: 0,
@@ -905,6 +955,8 @@ function screenDirToWorld(sx, sy) {
    DAMAGE / DROPS
    ============================================================ */
 function damageEnemy(e, dmg, back) {
+  // the sandworm is armoured underground — it can only be hurt while reared up
+  if (e.invuln) { spawnFloatText(e.fx, e.fy - 0.35, 'can\'t reach it!', '#9fb8d8'); return; }
   e.hp -= dmg;
   e.hurtUntil = performance.now() + 160;
   if (back) { e.backstabUntil = performance.now() + 260; spawnFloatText(e.fx, e.fy - 0.45, 'BACK STAB!', '#ffd23f'); Audio2.sfx.bighit(); }
@@ -955,6 +1007,9 @@ function summonBoss() {
       hp, maxhp: hp, attack: bd.attack, reward: bd.reward,
       speed: 1.5, facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, name: bd.name,
     };
+    // The Dune Devourer is a burrowing sandworm with a rhythmic dive-and-strike
+    // pattern; it can only be hurt in its brief "reared up" exposed window.
+    if (bd.id === 'dune_worm') { d.boss.worm = true; d.boss.state = 'exposed'; d.boss.invuln = false; d.boss.phaseUntil = 0; d.boss.scale = 2.6; }
     const bar = document.getElementById('boss-bar');
     bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
     bar.classList.remove('hidden');
@@ -1020,10 +1075,11 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   const f = ENEMIES[id] || ENEMIES.zombie;
   // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
   const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
-  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp));           // tougher to cut down
+  const dmgMul = d.theme.enemyDmgMul || 1;                           // Desolate Dunes = double-power foes
+  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1)));   // tougher to cut down
   let speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
   let attack = f.attack, reward = f.reward || 1, r = 0.4;
-  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1);  // heavier hitters do more, and every hit stings on 5 hearts
+  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1) * dmgMul;  // heavier hitters do more; Dunes foes hit twice as hard
   // Elite (Minecraft-Dungeons "enchanted") — an occasional tougher, glowing
   // variant worth a lot more loot. Never on the opening spawns.
   const elite = (d.spawned > 2) && rand(seed * 3.7 + 11) < (d.hard ? 0.15 : 0.09);
@@ -1075,14 +1131,15 @@ function updateDungeon(dt, t) {
   const submerged = d.beach && isSubmerged(h.fx, h.fy) && h.jumpZ < 18;
   h.submerged = submerged;
 
-  // floor hazards: quicksand, poison pools, slippery ice, spikes, trap doors, waves
-  let inQuick = false, inPoison = false, inIce = false, quickPull = null;
+  // floor hazards: quicksand, poison pools, slippery ice, lava, spikes, trap doors, waves
+  let inQuick = false, inPoison = false, inIce = false, inLava = false, quickPull = null;
   if (d.traps && !jumping) {
     for (const tr of d.traps) {
       const dd = dist(tr.x, tr.y, h.fx, h.fy);
       if (tr.kind === 'quicksand' && dd < (tr.strong ? 1.4 : 1.15)) { inQuick = true; if (tr.strong) quickPull = tr; }
       if (tr.kind === 'poison_pool' && dd < 1.2) inPoison = true;
       if (tr.kind === 'ice' && dd < 1.3) inIce = true;
+      if (tr.kind === 'lava' && dd < 1.0) inLava = true;
       if (tr.kind === 'spikes') {
         const extended = ((t / 1000 + tr.phase) % 1.8) < 0.7;     // spikes pop up ~0.7s each cycle
         if (extended && dd < 0.85 && t > (h.spikeHurtAt || 0)) {
@@ -1127,6 +1184,14 @@ function updateDungeon(dt, t) {
       h.poisonDmgAt = t + 700; h.hp = Math.max(0, h.hp - 0.5); h.hurtUntil = t + 200;
       Audio2.sfx.hurt(); spawnFloatText(h.fx, h.fy, '-½ ☠', '#8ff0a0'); updateDungeonHUD();
       if (h.hp <= 0) return loseDungeon();
+    }
+  }
+  // lava rivers: standing in molten rock sears you FAST — jump across, don't wade
+  if (inLava) {
+    if (t > (h.lavaDmgAt || 0)) {
+      h.lavaDmgAt = t + 380; h.hurtUntil = t + 200; shake();
+      spawnFloatText(h.fx, h.fy, '🔥 -1', '#ff6a2a'); Audio2.sfx.hurt();
+      hurtHero(1); if (d.over) return;
     }
   }
   // secret portal: touch it and you're PULLED DOWN into an underground corridor —
@@ -1183,6 +1248,38 @@ function updateDungeon(dt, t) {
       h.faceAngle = Math.atan2(mvy, mvx);
       h.facing = Math.cos(h.faceAngle) >= 0 ? 1 : -1;
     }
+  }
+
+  /* --- Desolate Dunes: wind, gusts, tornadoes, and being blown off the edge --- */
+  if (d.dunes) {
+    const t2 = t / 1000;
+    const ang = t2 * 0.35 + Math.sin(t2 * 0.13) * 1.5;             // wind slowly veers
+    const gusting = (t2 % 7) < 1.4;                                // a hard gust ~1.4s every 7s
+    if (gusting && !d.gustOn) { d.gustOn = true; banner('🌬️ GUST INCOMING — hold your ground!', 1000); shake(); }
+    if (!gusting) d.gustOn = false;
+    const strength = 0.85 + (gusting ? 3.6 : 0) + Math.sin(t2 * 0.9) * 0.4;
+    d.wind = { x: Math.cos(ang) * strength, y: Math.sin(ang) * strength, gust: gusting };
+    if (!jumping) {
+      const brace = dodging ? 0.25 : 1;                            // a dodge-roll braces against the wind
+      pushHeroRaw(d.wind.x * brace * dt, d.wind.y * brace * dt);
+    }
+    // roaming tornadoes: they swirl you around and fling you toward the void
+    d.tornadoes.forEach(tor => {
+      tor.spin = (tor.spin || 0) + dt * 11;
+      tor.x = clamp(tor.x + tor.vx * 1.7 * dt, 3, d.W - 3);
+      tor.y = clamp(tor.y + tor.vy * 1.7 * dt, 3, d.H - 3);
+      if (!isGroundTile(d.tiles, tor.x, tor.y, d.W, d.H)) {         // bounce back onto the platform
+        tor.vx = -tor.vx; tor.vy = -tor.vy;
+        tor.x = clamp(tor.x + tor.vx * 0.8, 3, d.W - 3); tor.y = clamp(tor.y + tor.vy * 0.8, 3, d.H - 3);
+      }
+      if (!jumping && dist(tor.x, tor.y, h.fx, h.fy) < 1.8) {
+        const dx = h.fx - tor.x, dy = h.fy - tor.y, m = Math.hypot(dx, dy) || 1;
+        pushHeroRaw((-dy / m * 3.4 + dx / m * 0.9) * dt, (dx / m * 3.4 + dy / m * 0.9) * dt);   // swirl + eject
+        if (t > (h.tornadoHitAt || 0)) { h.tornadoHitAt = t + 650; spawnFloatText(h.fx, h.fy, '🌪️', '#e8d8a0'); hurtHero(0.5); if (d.over) return; }
+      }
+    });
+    // off the platform (and not mid-jump) => you fall
+    if (!jumping && !submerged && !isGroundTile(d.tiles, h.fx, h.fy, d.W, d.H)) { heroFellOff(); if (d.over) return; }
   }
 
   // grabber trees: root the hero when close (unless jumping)
@@ -1259,17 +1356,20 @@ function updateDungeon(dt, t) {
   if (d.boss && !d.boss.dead) {
     const b = d.boss;
     tickPoison(b, t);
-    const dd = dist(b.fx, b.fy, h.fx, h.fy);
-    // bosses turn slowly — circle behind them for a big BACK STAB
-    const wantBFace = h.fx >= b.fx ? 1 : -1;
-    if (wantBFace !== b.facing && t >= (b.faceFlipReadyAt || 0)) { b.facing = wantBFace; b.faceFlipReadyAt = t + 520; }
-    if (b.stunUntil && t < b.stunUntil) { /* stunned */ }
-    else if (t < b.windUntil) {}
-    else if (dd > 1.5) { const ux = (h.fx - b.fx) / dd, uy = (h.fy - b.fy) / dd; moveEntity(b, ux * b.speed * dt, uy * b.speed * dt); }
-    else if (t >= b.attackReadyAt) {
-      b.windUntil = t + 520; b.attackReadyAt = t + 1700;
-      banner('SLAM!', 500);
-      setTimeout(() => bossSlam(b), 520);
+    if (b.worm) { updateWormBoss(b, h, dt, t); if (d.over) return; }
+    else {
+      const dd = dist(b.fx, b.fy, h.fx, h.fy);
+      // bosses turn slowly — circle behind them for a big BACK STAB
+      const wantBFace = h.fx >= b.fx ? 1 : -1;
+      if (wantBFace !== b.facing && t >= (b.faceFlipReadyAt || 0)) { b.facing = wantBFace; b.faceFlipReadyAt = t + 520; }
+      if (b.stunUntil && t < b.stunUntil) { /* stunned */ }
+      else if (t < b.windUntil) {}
+      else if (dd > 1.5) { const ux = (h.fx - b.fx) / dd, uy = (h.fy - b.fy) / dd; moveEntity(b, ux * b.speed * dt, uy * b.speed * dt); }
+      else if (t >= b.attackReadyAt) {
+        b.windUntil = t + 520; b.attackReadyAt = t + 1700;
+        banner('SLAM!', 500);
+        setTimeout(() => bossSlam(b), 520);
+      }
     }
   }
 
@@ -1308,6 +1408,46 @@ function bossSlam(b) {
   if (t < h.dodgeUntil) { spawnFloatText(h.fx, h.fy, 'dodge!', '#8ff0a0'); return; }
   if (t < h.hurtInvulnUntil) return;
   hurtHero(1.5);
+}
+
+/* The Dune Devourer's rhythm: rear up EXPOSED (your only window to hurt it) →
+   BURROW toward you (invulnerable) → ERUPT behind you and telegraph → STRIKE.
+   The beat is fixed, so an attentive player can time a jump/dodge on the bite;
+   miss it and two chomps will finish you. It only takes damage while exposed, so
+   you need a hard-hitting weapon to fell it before its rhythm wears you down. */
+function updateWormBoss(b, h, dt, t) {
+  const d = DUNGEON;
+  b.animT = (b.animT || 0) + dt * 6;
+  b.facing = h.fx >= b.fx ? 1 : -1;
+  if (!b.phaseUntil) { b.state = 'exposed'; b.invuln = false; b.phaseUntil = t + 1700; }
+  if (t < b.phaseUntil) {
+    if (b.state === 'burrow') {   // dive underground, chase the hero's position
+      const dx = h.fx - b.fx, dy = h.fy - b.fy, m = Math.hypot(dx, dy) || 1, sp = 7 * dt;
+      b.fx += dx / m * Math.min(m, sp); b.fy += dy / m * Math.min(m, sp);
+    }
+    return;
+  }
+  if (b.state === 'exposed') {
+    b.state = 'burrow'; b.invuln = true; b.phaseUntil = t + 1900;
+    banner('🕳️ The Devourer dives...', 900); Audio2.sfx.hit();
+  } else if (b.state === 'burrow') {
+    const a = h.faceAngle || 0;                                   // erupt right behind the hero
+    b.fx = clamp(h.fx - Math.cos(a) * 1.9, 3, d.W - 3);
+    b.fy = clamp(h.fy - Math.sin(a) * 1.9, 3, d.H - 3);
+    b.state = 'surface'; b.phaseUntil = t + 850;
+    banner('⚠️ It rises behind you — jump or dodge!', 850); shake(); Audio2.sfx.lose();
+  } else if (b.state === 'surface') {
+    b.state = 'strike';                                           // the bite lands on the beat
+    const jumping = t < h.jumpUntil, dodging = t < h.dodgeUntil;
+    if (dist(b.fx, b.fy, h.fx, h.fy) < 2.6 && !jumping && !dodging && t >= h.hurtInvulnUntil) {
+      spawnFloatText(h.fx, h.fy, 'CHOMP! -2½❤', '#ff5c7a'); shake(); Audio2.sfx.bighit();
+      hurtHero(2.5); if (d.over) return;
+    } else spawnFloatText(h.fx, h.fy, 'timed it!', '#8ff0a0');
+    b.phaseUntil = t + 40;
+  } else {   // strike -> exposed: your window to hit it hard
+    b.state = 'exposed'; b.invuln = false; b.phaseUntil = t + 1700;
+    banner('💥 It rears up — strike it NOW!', 800); Audio2.sfx.special();
+  }
 }
 
 function hurtHero(amount) {
@@ -1355,6 +1495,31 @@ function isSubmerged(x, y) {
 function knockbackHeroFrom(fx, fy, amt) {
   const h = DUNGEON.hero, dx = h.fx - fx, dy = h.fy - fy, m = Math.hypot(dx, dy) || 1;
   moveEntity(h, dx / m * amt, dy / m * amt);
+}
+// Move the hero WITHOUT the void-block — wind and tornadoes use this so they can
+// shove you clean off the platform (clamped only to the map bounds).
+function pushHeroRaw(dx, dy) {
+  const d = DUNGEON, h = d.hero;
+  h.fx = clamp(h.fx + dx, 0.5, d.W - 0.5);
+  h.fy = clamp(h.fy + dy, 0.5, d.H - 0.5);
+}
+// Blown off the edge: a short fall, then death — unless an Extra Life catches you
+// and drops you back on solid trail.
+function heroFellOff() {
+  const d = DUNGEON, h = d.hero;
+  if (d.over || h.blownOff) return;
+  const safe = d.path.samples[nearestSampleIndex(h.fx, h.fy)];
+  if ((STATE.extraLives || 0) > 0) {
+    STATE.extraLives = Math.max(0, STATE.extraLives - 1); saveGame();
+    h.fx = safe.x; h.fy = safe.y; h.hp = h.maxhp; h.hurtInvulnUntil = performance.now() + 2000;
+    banner('🌪️ Blown off — an Extra Life hauled you back!', 2800);
+    Audio2.sfx.win(); updateDungeonHUD();
+    return;
+  }
+  h.blownOff = true;
+  d.over = true; d.outcome = 'lose'; STATE.losses++; saveGame();
+  banner('🌪️ BLOWN OFF THE EDGE!', 1600); Audio2.sfx.lose();
+  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); });
 }
 
 /* ============================================================
@@ -1440,8 +1605,14 @@ function renderDungeon() {
     else if (item.kind === 'hero') drawHero(ctx, item.h, ox, oy);
   });
 
+  // ---- roaming tornadoes, drawn tall over the fighters ----
+  if (d.tornadoes) d.tornadoes.forEach(tor => { if (Math.abs(tor.x - d.hero.fx) < RANGE + 3 && Math.abs(tor.y - d.hero.fy) < RANGE + 3) drawTornado(ctx, tor, ox, oy); });
+
   // floating texts / swing fx
   d.fx.forEach(f => drawFx(ctx, f, ox, oy));
+
+  // ---- sandstorm haze for Desolate Dunes (thicker during a gust) ----
+  if (d.dunes) drawSandstorm(ctx, cw, ch);
 
   // ---- underwater blue overlay while the hero is swimming ----
   if (d.hero.submerged) {
@@ -1479,7 +1650,52 @@ function renderDungeon() {
   ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
 }
 
-/* A floor trap: quicksand, poison pool, spike plate, or trap door. */
+/* A roaming tornado — a swirling sand funnel that flings the hero around. */
+function drawTornado(ctx, tor, ox, oy) {
+  const s = isoToScreen(tor.x, tor.y), x = s.x + ox, y = s.y + oy, spin = tor.spin || 0;
+  ctx.save();
+  for (let i = 0; i < 9; i++) {
+    const f = i / 8, yy = y - f * 64;
+    const rw = 4 + f * 20 + Math.sin(spin + i * 0.8) * 3, rh = rw * 0.34;
+    const cx = x + Math.sin(spin * 1.4 + i) * 4;
+    ctx.fillStyle = `rgba(220,196,140,${0.15 + f * 0.16})`;
+    ctx.beginPath(); ctx.ellipse(cx, yy, rw, rh, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = `rgba(170,140,85,${0.18 + f * 0.12})`; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.ellipse(cx, yy, rw, rh, 0, spin + i, spin + i + 3.6); ctx.stroke();
+  }
+  for (let i = 0; i < 6; i++) { const a = spin * 2 + i; ctx.fillStyle = 'rgba(230,210,150,0.5)'; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 16, y - 22 + Math.sin(a * 1.3) * 12, 1.6, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+
+/* The blowing sandstorm overlay — streaks driven along the current wind, much
+   thicker during a gust so you can SEE the danger coming. */
+function drawSandstorm(ctx, cw, ch) {
+  const d = DUNGEON, t = performance.now() / 1000, gust = !!(d.wind && d.wind.gust);
+  ctx.fillStyle = gust ? 'rgba(200,150,80,0.34)' : 'rgba(200,160,90,0.15)';
+  ctx.fillRect(0, 0, cw, ch);
+  const wx = d.wind ? d.wind.x : 1, wy = d.wind ? d.wind.y : 0, wm = Math.hypot(wx, wy) || 1;
+  const dx = wx / wm, dy = wy / wm, n = gust ? 70 : 34, L = gust ? 26 : 16;
+  ctx.strokeStyle = gust ? 'rgba(240,220,170,0.5)' : 'rgba(235,215,165,0.3)'; ctx.lineWidth = 1.2;
+  const mod = (v, m) => ((v % m) + m) % m;
+  for (let i = 0; i < n; i++) {
+    const seed = i * 12.9, sp = 240 * (0.5 + (i % 5) * 0.2);
+    const px = mod((Math.sin(seed) * 0.5 + 0.5) * cw + t * sp * dx, cw);
+    const py = mod((Math.cos(seed) * 0.5 + 0.5) * ch + t * sp * dy, ch);
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - dx * L, py - dy * L); ctx.stroke();
+  }
+  if (gust) { ctx.fillStyle = 'rgba(160,90,40,0.12)'; ctx.fillRect(0, 0, cw, ch); }
+}
+
+/* The sandworm while burrowed — just a travelling mound of disturbed sand. */
+function drawWormMound(ctx, x, y, scale, e) {
+  const now = performance.now();
+  shadowOval(ctx, x, y, 24 * scale, 9 * scale);
+  ctx.fillStyle = '#c79b45'; ctx.beginPath(); ctx.moveTo(x - 26 * scale, y); ctx.quadraticCurveTo(x, y - 22 * scale, x + 26 * scale, y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#dcb85e'; ctx.beginPath(); ctx.moveTo(x - 26 * scale, y); ctx.quadraticCurveTo(x - 4 * scale, y - 22 * scale, x + 2 * scale, y - 18 * scale); ctx.quadraticCurveTo(x - 6 * scale, y - 6 * scale, x - 26 * scale, y); ctx.closePath(); ctx.fill();
+  for (let i = 0; i < 7; i++) { const a = now / 260 + i, r = 10 + (i % 3) * 8; ctx.fillStyle = `rgba(210,180,110,${0.5 - (i % 3) * 0.12})`; ctx.beginPath(); ctx.arc(x + Math.cos(a) * r * scale, y - 4 - Math.abs(Math.sin(a)) * 10, 2.4, 0, 7); ctx.fill(); }
+}
+
+/* A floor trap: quicksand, poison pool, spike plate, lava, or trap door. */
 function drawTrap(ctx, tr, ox, oy) {
   const s = isoToScreen(tr.x, tr.y), x = s.x + ox, y = s.y + oy, t = performance.now() / 1000;
   if (tr.kind === 'poison_pool') {
@@ -1510,6 +1726,21 @@ function drawTrap(ctx, tr, ox, oy) {
       // retracted: little holes
       ctx.fillStyle = 'rgba(10,16,8,0.8)';
       for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { ctx.beginPath(); ctx.arc(x + i * 8, y + j * 4, 1.6, 0, 7); ctx.fill(); }
+    }
+    return;
+  }
+  if (tr.kind === 'lava') {
+    // molten rock — a glowing, bubbling pool you must jump across
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const gl = ctx.createRadialGradient(x, y, 2, x, y, 30); gl.addColorStop(0, 'rgba(255,140,40,0.5)'); gl.addColorStop(1, 'rgba(255,80,0,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(x, y, 30, 17, 0, 0, 7); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#5a1a08'; ctx.beginPath(); ctx.ellipse(x, y, 27, 14, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ff5a1a'; ctx.beginPath(); ctx.ellipse(x, y, 23, 11, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.ellipse(x - 3, y - 1, 14, 6, 0, 0, 7); ctx.fill();
+    for (let i = 0; i < 4; i++) {                       // molten crust cracks + bubbles
+      const ph = (t * 0.8 + i * 0.29) % 1, bx = x + Math.sin(i * 2.3 + t) * 13, by = y + Math.cos(i * 1.7 + t) * 6;
+      ctx.fillStyle = `rgba(60,20,10,${0.5})`; ctx.beginPath(); ctx.arc(bx, by, 3 + Math.sin(t * 3 + i) * 1.4, 0, 7); ctx.fill();
+      ctx.fillStyle = `rgba(255,180,60,${0.7 * (1 - ph)})`; ctx.beginPath(); ctx.arc(x + Math.sin(i * 4.1) * 10, y - ph * 8, 1.6, 0, 7); ctx.fill();
     }
     return;
   }
@@ -2022,11 +2253,22 @@ function drawCombatant(ctx, e, ox, oy) {
   const x = s.x + ox, y = s.y + oy;
   const scale = e.scale || 1;
   const now = performance.now();
+  // sandworm boss: while burrowed it's just a mound of moving sand (no sprite)
+  if (e.worm && e.state === 'burrow') { drawWormMound(ctx, x, y, scale, e); return; }
   shadowOval(ctx, x, y, 20 * scale, 8 * scale);
   const img = getSprite(e.fighter.id, e.fighter, e.facing || -1);
   const hurt = now < (e.hurtUntil || 0);
   const bob = Math.sin((e.animT || 0)) * 2 * scale;
   const w = 66 * scale, h = 80 * scale;
+  // sandworm reared up and vulnerable — a bright gold aura marks your window to strike
+  if (e.worm && !e.invuln) {
+    const pulse = 0.5 + 0.4 * Math.sin(now / 150);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.55 * pulse;
+    const gr = ctx.createRadialGradient(x, y - h * 0.5, 6, x, y - h * 0.5, 46 * scale);
+    gr.addColorStop(0, '#ffd23f'); gr.addColorStop(1, 'rgba(255,210,60,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y - h * 0.5, 42 * scale, 50 * scale, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
   // Elite aura — a pulsing enchanted glow so tougher mobs stand out
   if (e.elite) {
     const pulse = 0.5 + 0.35 * Math.sin(now / 240 + e.fx);
