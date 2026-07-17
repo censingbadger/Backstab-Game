@@ -84,7 +84,32 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .hexbtn:hover{ transform:translateY(-2px) scale(1.02); }
 .hexbtn:active{ transform:scale(.97); }
 .hexbtn:nth-child(2){ background:linear-gradient(180deg,#ff8a5c,var(--red)); color:#fff; }
-.hexbtn:nth-child(3){ background:linear-gradient(180deg,#7fd0ff,var(--blue)); color:#08243a; }
+.hexbtn:nth-child(3){ background:linear-gradient(180deg,#c98af0,#8a4ad0); color:#fff; }
+.hexbtn:nth-child(4){ background:linear-gradient(180deg,#7fd0ff,var(--blue)); color:#08243a; }
+
+/* Story page */
+.screen-story{ overflow-y:auto; }
+.story-page{ max-width:600px; margin:0 auto; padding:8px 18px 44px; text-align:center; }
+.story-emblem{ font-size:44px; margin:6px 0 2px; }
+.story-title{ font-size:24px; color:var(--gold); margin-bottom:12px; letter-spacing:1px; }
+.story-page p{ text-align:left; line-height:1.6; font-size:15px; color:#e6ddc8; margin:12px 0; }
+.story-goal{ text-align:left; margin:18px 0; padding:12px 14px; border-radius:12px;
+  background:rgba(255,210,90,.1); border:1px solid rgba(255,210,90,.35); color:#ffe0a0; font-size:14px; }
+.story-page .wide-btn{ margin-top:12px; }
+.arena-story{ font-size:13px; line-height:1.45; color:var(--muted); margin:2px 4px 10px; font-style:italic; }
+
+/* Level-start reminder card (non-blocking; taps pass through to the game) */
+.level-intro{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+  z-index:40; pointer-events:none; opacity:0; transition:opacity .4s; padding:16px; }
+.level-intro.show{ opacity:1; }
+.li-card{ max-width:440px; width:100%; pointer-events:auto; cursor:pointer;
+  background:linear-gradient(180deg,rgba(30,22,44,.96),rgba(16,10,26,.96));
+  border:2px solid var(--gold); border-radius:16px; padding:16px 20px; text-align:center;
+  box-shadow:0 12px 40px rgba(0,0,0,.6); transform:translateY(10px) scale(.96); transition:transform .4s; }
+.level-intro.show .li-card{ transform:translateY(0) scale(1); }
+.li-name{ font-size:22px; font-weight:900; color:var(--gold); letter-spacing:1px; margin-bottom:6px; }
+.li-line{ font-size:15px; line-height:1.5; color:#eadfc8; margin:6px 0 10px; }
+.li-goal{ font-size:12px; color:var(--muted); border-top:1px solid rgba(255,255,255,.12); padding-top:8px; }
 .link-reset{ background:none; color:var(--muted); text-decoration:underline; font-size:13px; margin-top:6px; }
 .title-mute{ position:absolute; top:10px; right:10px; }
 .copyright{ margin-top:24px; color:var(--muted); font-size:12px; letter-spacing:.5px; }
