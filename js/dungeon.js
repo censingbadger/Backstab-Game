@@ -142,6 +142,18 @@ const DUNGEON_THEMES = {
     waypoints: [[8, 8], [24, 8], [24, 20], [8, 20], [8, 32], [24, 32], [24, 44], [8, 44], [8, 54], [26, 54], [40, 50], [40, 36], [54, 34], [54, 20], [40, 18], [40, 10], [54, 10]],
     traps: true, dunes: true, hard: true, wind: true, lava: true, enemyDmgMul: 2,
   },
+  secret: {
+    name: "Backstabber's Lair",
+    sky: ['#160c1e', '#0c0812', '#040207'],          // near-black shadow vault
+    ground: ['#241a2e', '#1b1424'],                  // dark violet flagstone
+    speckle: 'rgba(150,40,90,0.22)',
+    edge: ['#170f22', '#0c0714'],
+    props: ['torch', 'skull', 'bone', 'pillar', 'tomb', 'torch', 'skull'],
+    trail: '210,40,100',
+    enemies: ['phantom', 'werewolf', 'skeleton', 'mummy'],   // filler adds in the final arena
+    boss: 'backstabber',
+    chambers: true, hard: true, lair: true,          // boss-rush chambers + a stealth finale in the dark
+  },
 };
 function dungeonTheme(regionId) { return DUNGEON_THEMES[regionId]; }
 
@@ -210,8 +222,29 @@ const KNIFE_MOUNTAIN_CAVES = {
     { from: 4, to: 5, ax: 20, ay: 50, bx: 26, by: 50, gate: { x: 23, y: 50, hw: 1.4, hh: 2.2 }, stair: 'up' },
   ],
 };
+/* The Backstabber's Lair: a BOSS-RUSH gauntlet — each chamber resurrects one of
+   the realm's fallen bosses — capped by the multi-phase Backstabber himself. */
+const BACKSTAB_LAIR = {
+  chambers: [
+    { cx: 12, cy: 12, hw: 6, hh: 5, rush: 'brute' },
+    { cx: 30, cy: 12, hw: 6, hh: 5, rush: 'hexstraw' },
+    { cx: 48, cy: 12, hw: 6, hh: 5, rush: 'alpha_werewolf' },
+    { cx: 48, cy: 32, hw: 6, hh: 5, rush: 'frost_titan' },
+    { cx: 30, cy: 32, hw: 7, hh: 5, rush: 'crab_king' },
+    { cx: 14, cy: 32, hw: 6, hh: 5, rush: 'gorton' },
+    { cx: 14, cy: 52, hw: 9, hh: 6, boss: true },      // the Backstabber's arena
+  ],
+  corridors: [
+    { from: 0, to: 1, ax: 18, ay: 12, bx: 24, by: 12, gate: { x: 21, y: 12, hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 1, to: 2, ax: 36, ay: 12, bx: 42, by: 12, gate: { x: 39, y: 12, hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 2, to: 3, ax: 48, ay: 17, bx: 48, by: 27, gate: { x: 48, y: 22, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 3, to: 4, ax: 37, ay: 32, bx: 42, by: 32, gate: { x: 39, y: 32, hw: 1.4, hh: 2.2 }, stair: 'up' },
+    { from: 4, to: 5, ax: 20, ay: 32, bx: 23, by: 32, gate: { x: 21, y: 32, hw: 1.4, hh: 2.2 }, stair: 'up' },
+    { from: 5, to: 6, ax: 14, ay: 37, bx: 14, by: 46, gate: { x: 14, y: 41, hw: 2.2, hh: 1.4 }, stair: 'down' },
+  ],
+};
 // Which hand-built chamber layout each chamber-mode region uses.
-const CHAMBER_LAYOUTS = { toxic_temple: TEMPLE, sandcastle: SANDCASTLE_CAVES, knife_mountain: KNIFE_MOUNTAIN_CAVES };
+const CHAMBER_LAYOUTS = { toxic_temple: TEMPLE, sandcastle: SANDCASTLE_CAVES, knife_mountain: KNIFE_MOUNTAIN_CAVES, secret: BACKSTAB_LAIR };
 
 let DUNGEON = null;
 
@@ -463,7 +496,7 @@ function startTempleDungeon(regionId, theme) {
   // carve each chamber room
   const chambers = LAYOUT.chambers.map((c, i) => {
     carve(c.cx - c.hw, c.cy - c.hh, c.cx + c.hw, c.cy + c.hh);
-    return { cx: c.cx, cy: c.cy, hw: c.hw, hh: c.hh, boss: !!c.boss, index: i, active: false, cleared: false, spawned: false };
+    return { cx: c.cx, cy: c.cy, hw: c.hw, hh: c.hh, boss: !!c.boss, rush: c.rush || null, index: i, active: false, cleared: false, spawned: false };
   });
   // carve corridors (3-wide) and build gates + stairs
   const doors = [], stairs = [];
@@ -486,10 +519,11 @@ function startTempleDungeon(regionId, theme) {
   });
 
   // hazard pools (poison in the Temple, sucking quicksand in the sand caves) +
-  // spike traps in the combat chambers (skip the gentle first room)
+  // spike traps in the combat chambers (skip the gentle first room). The
+  // Backstabber's Lair has no floor hazards — its danger is the boss rush + dark.
   const traps = [];
   chambers.forEach((c, ci) => {
-    if (ci === 0 || c.boss) return;
+    if (ci === 0 || c.boss || theme.lair) return;
     const nPools = 1 + Math.floor(rand(ci * 4.2) * 2), nSpikes = 1 + Math.floor(rand(ci * 6.6 + 1) * 2);
     for (let k = 0; k < nPools; k++) {
       const x = c.cx + (rand(ci * 2.1 + k) - 0.5) * c.hw * 1.4, y = c.cy + (rand(ci * 3.3 + k) - 0.5) * c.hh * 1.4;
@@ -502,7 +536,7 @@ function startTempleDungeon(regionId, theme) {
   });
   // ring the boss chamber with hazard pools for atmosphere + danger
   const bc = chambers[chambers.length - 1];
-  for (let a = 0; a < 6; a++) {
+  if (!theme.lair) for (let a = 0; a < 6; a++) {
     const x = bc.cx + Math.cos(a) * (bc.hw - 1.5), y = bc.cy + Math.sin(a) * (bc.hh - 1.5);
     if (isGroundTile(tiles, x, y, W, H)) traps.push({ x, y, kind: hazardKind, strong: hazardKind === 'quicksand', sprung: false, seed: 90 + a });
   }
@@ -577,10 +611,44 @@ function activateChamber(c, t) {
   const d = DUNGEON;
   d.activeIndex = c.index; c.active = true;
   if (c.boss) { summonBossChamber(); return; }
+  if (c.rush) { spawnMiniBoss(c); c.spawned = true; return; }   // boss-rush chamber
   const count = 5 + c.index * 3;   // a denser horde guards every chamber gate
   for (let k = 0; k < count; k++) spawnInChamber(c, k);
   c.spawned = true;
   if (c.index > 0) banner('⚔️ CHAMBER GATE ' + (c.index + 1) + ' — defeat the horde!', 1600);
+}
+
+/* Boss-rush chamber: resurrect one of the realm's fallen bosses as a tough
+   mini-boss (in the swarm, so the gate opens when it and its guards fall). */
+function spawnMiniBoss(c) {
+  const d = DUNGEON, bd = BOSSES[c.rush];
+  if (!bd) return;
+  const hp = Math.round(bd.hearts * 16);   // a real wall, but below the true finale boss
+  d.enemies.push({
+    fighter: bd, art: bd.art, palette: bd.palette,
+    fx: c.cx, fy: c.cy - c.hh * 0.4, r: 0.7, scale: 1.8,
+    hp, maxhp: hp, speed: 1.6, elite: false, miniboss: true,
+    attack: bd.attack, reward: bd.reward, contact: (bd.attack >= 5 ? 1.4 : 1.1),
+    facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: 0,
+  });
+  d.spawned++;
+  for (let k = 0; k < 3; k++) spawnInChamber(c, k + 50);   // a few guards alongside it
+  banner('☠️ BOSS RUSH — ' + bd.name.toUpperCase() + ' RISES AGAIN!', 2000);
+  Audio2.sfx.lose();
+}
+
+/* A shadow clone of the Backstabber — a fast, fragile decoy that harries you. */
+function spawnShadowClone(b, k) {
+  const d = DUNGEON, bd = BOSSES.backstabber;
+  const ang = rand(k * 5.3 + performance.now() * 0.001) * Math.PI * 2, rr = 2.6;
+  d.enemies.push({
+    fighter: bd, art: bd.art, palette: { skin: '#221c38', cloth: '#3a1030' },
+    fx: clamp(b.fx + Math.cos(ang) * rr, 3, d.W - 3), fy: clamp(b.fy + Math.sin(ang) * rr, 3, d.H - 3),
+    r: 0.4, scale: 1, hp: 16, maxhp: 16, speed: 2.5, elite: false, shadow: true,
+    attack: 5, reward: 0, contact: 1.0,
+    facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: 0,
+  });
+  d.spawned++;
 }
 
 function spawnInChamber(c, k) {
@@ -630,10 +698,13 @@ function summonBossChamber() {
     const hp = Math.round(bd.hearts * 24);
     d.boss = {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
-      fx: c.cx, fy: c.cy - c.hh * 0.5, r: 0.9, scale: 2.3, poison: true,
+      fx: c.cx, fy: c.cy - c.hh * 0.5, r: 0.9, scale: 2.3, poison: !!d.theme.poison,
       hp, maxhp: hp, attack: bd.attack, reward: bd.reward,
       speed: 1.4, facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, name: bd.name,
     };
+    // The Backstabber fights in the dark: he vanishes and strikes from behind,
+    // splits into shadow clones, and rages in three phases.
+    if (bd.id === 'backstabber') { Object.assign(d.boss, { backstabber: true, state: 'chase', stateUntil: 0, vanished: false, invuln: false, phaseNum: 1, scale: 2.0, speed: 2.2 }); }
     const bar = document.getElementById('boss-bar');
     bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
     bar.classList.remove('hidden');
@@ -1357,6 +1428,7 @@ function updateDungeon(dt, t) {
     const b = d.boss;
     tickPoison(b, t);
     if (b.worm) { updateWormBoss(b, h, dt, t); if (d.over) return; }
+    else if (b.backstabber) { updateBackstabberBoss(b, h, dt, t); if (d.over) return; }
     else {
       const dd = dist(b.fx, b.fy, h.fx, h.fy);
       // bosses turn slowly — circle behind them for a big BACK STAB
@@ -1448,6 +1520,62 @@ function updateWormBoss(b, h, dt, t) {
     b.state = 'exposed'; b.invuln = false; b.phaseUntil = t + 1700;
     banner('💥 It rears up — strike it NOW!', 800); Audio2.sfx.special();
   }
+}
+
+/* The Backstabber — the finale. Three phases, and his signature: he VANISHES
+   into the dark, glides behind you, and strikes from your blind side. Watch for
+   his glowing eyes, then turn and dodge/jump on the beat. Phase 2 splits off
+   shadow clones; phase 3 he rages — faster vanishes, heavier backstabs. */
+function updateBackstabberBoss(b, h, dt, t) {
+  const d = DUNGEON;
+  b.animT = (b.animT || 0) + dt * 6;
+  const frac = b.hp / Math.max(1, b.maxhp);
+  const phase = frac > 0.66 ? 1 : frac > 0.33 ? 2 : 3;
+  if (phase !== b.phaseNum) { b.phaseNum = phase; onBackstabberPhase(b, h, t, phase); }
+  const spd = 2.1 + phase * 0.45;
+  if (!b.stateUntil) { b.state = 'chase'; b.stateUntil = t + 2400; b.vanished = false; b.invuln = false; }
+
+  if (t < b.stateUntil) {
+    if (b.state === 'chase') {
+      b.facing = h.fx >= b.fx ? 1 : -1;
+      const dd = dist(b.fx, b.fy, h.fx, h.fy) || 1;
+      if (dd > 1.3) moveEntity(b, (h.fx - b.fx) / dd * spd * dt, (h.fy - b.fy) / dd * spd * dt);
+      else if (t >= (b.slashAt || 0)) { b.slashAt = t + 950; setTimeout(() => backstabberSlash(b), 200); }
+    } else if (b.state === 'vanish') {                       // invisible, sliding behind the hero
+      const a = h.faceAngle || 0;
+      const tx = clamp(h.fx - Math.cos(a) * 1.5, 3, d.W - 3), ty = clamp(h.fy - Math.sin(a) * 1.5, 3, d.H - 3);
+      b.fx += (tx - b.fx) * Math.min(1, 6 * dt); b.fy += (ty - b.fy) * Math.min(1, 6 * dt);
+      b.facing = h.fx >= b.fx ? 1 : -1;
+    }
+    return;
+  }
+  if (b.state === 'chase') {
+    b.state = 'vanish'; b.vanished = true; b.invuln = true; b.stateUntil = t + (1500 - phase * 260);
+    banner('🌑 The Backstabber melts into shadow...', 850); Audio2.sfx.dodge();
+  } else if (b.state === 'vanish') {
+    b.state = 'reappear'; b.vanished = false; b.invuln = true; b.stateUntil = t + (620 - phase * 90);
+    shake(); Audio2.sfx.lose(); spawnFloatText(b.fx, b.fy - 0.7, '!!!', '#ff2d5a');
+  } else if (b.state === 'reappear') {                       // the BACKSTAB lands on the beat
+    const jumping = t < h.jumpUntil, dodging = t < h.dodgeUntil;
+    const dmg = phase >= 3 ? 2 : 1.5;
+    if (dist(b.fx, b.fy, h.fx, h.fy) < 2.4 && !jumping && !dodging && t >= h.hurtInvulnUntil) {
+      spawnFloatText(h.fx, h.fy, 'BACKSTAB! -' + dmg + '❤', '#ff2d5a'); shake(); Audio2.sfx.bighit();
+      hurtHero(dmg); if (d.over) return;
+    } else spawnFloatText(h.fx, h.fy, 'evaded!', '#8ff0a0');
+    b.state = 'chase'; b.invuln = false; b.stateUntil = t + (2200 - phase * 450);
+  }
+}
+function onBackstabberPhase(b, h, t, phase) {
+  if (phase === 2) { banner('🗡️ PHASE 2 — shadow clones!', 1800); for (let k = 0; k < 3; k++) spawnShadowClone(b, k); }
+  else if (phase === 3) { banner('🔥 PHASE 3 — the Backstabber is ENRAGED!', 2000); for (let k = 0; k < 2; k++) spawnShadowClone(b, k + 10); }
+}
+function backstabberSlash(b) {
+  const d = DUNGEON; if (!d || d.over || d.paused || b.dead || b.vanished) return;
+  const h = d.hero, t = performance.now();
+  if (dist(b.fx, b.fy, h.fx, h.fy) > 1.9) return;
+  if (t < h.dodgeUntil) { spawnFloatText(h.fx, h.fy, 'dodge!', '#8ff0a0'); return; }
+  if (t < h.hurtInvulnUntil) return;
+  hurtHero(1);
 }
 
 function hurtHero(amount) {
@@ -1643,9 +1771,14 @@ function renderDungeon() {
     });
   }
 
-  // vignette (darker for shadowy forests / the murky temple)
-  const dark = d.theme.canopy ? 0.82 : d.poison ? 0.7 : 0.55;
-  const vg = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.22, cw / 2, ch / 2, ch * 0.72);
+  // vignette (darker for shadowy forests / the murky temple / the pitch-black lair)
+  let dark = d.theme.canopy ? 0.82 : d.poison ? 0.7 : 0.55;
+  let vgInner = ch * 0.22, vgOuter = ch * 0.72;
+  if (d.theme.lair) {                                        // the Backstabber's Lair is nearly pitch black
+    dark = 0.87; vgInner = ch * 0.13; vgOuter = ch * 0.58;
+    if (d.boss && d.boss.vanished) { dark = 0.96; vgInner = ch * 0.07; vgOuter = ch * 0.48; }   // he's stalking — the dark closes in
+  }
+  const vg = ctx.createRadialGradient(cw / 2, ch / 2, vgInner, cw / 2, ch / 2, vgOuter);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${dark})`);
   ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
 }
@@ -2255,6 +2388,8 @@ function drawCombatant(ctx, e, ox, oy) {
   const now = performance.now();
   // sandworm boss: while burrowed it's just a mound of moving sand (no sprite)
   if (e.worm && e.state === 'burrow') { drawWormMound(ctx, x, y, scale, e); return; }
+  // Backstabber vanished into shadow: only a faint shimmer + glowing eyes show
+  if (e.backstabber && e.vanished) { drawBackstabberShimmer(ctx, x, y, scale, now); return; }
   shadowOval(ctx, x, y, 20 * scale, 8 * scale);
   const img = getSprite(e.fighter.id, e.fighter, e.facing || -1);
   const hurt = now < (e.hurtUntil || 0);
@@ -2278,6 +2413,14 @@ function drawCombatant(ctx, e, ox, oy) {
     ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y - h * 0.45, 30 * scale, 40 * scale, 0, 0, 7); ctx.fill();
     ctx.restore();
   }
+  // Shadow clone — a dark, smoky aura so the decoys read as shadow, not the real one
+  if (e.shadow) {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.4 + 0.2 * Math.sin(now / 200 + e.fx);
+    const gr = ctx.createRadialGradient(x, y - h * 0.45, 4, x, y - h * 0.45, 30 * scale);
+    gr.addColorStop(0, 'rgba(150,40,110,0.8)'); gr.addColorStop(1, 'rgba(90,20,70,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(x, y - h * 0.45, 26 * scale, 36 * scale, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
   // Poison boss — a sickly green aura and venom dripping off its bones
   if (e.poison) {
     ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 + 0.3 * Math.sin(now / 260);
@@ -2292,7 +2435,7 @@ function drawCombatant(ctx, e, ox, oy) {
     }
   }
   if (img.complete && img.naturalWidth) {
-    ctx.globalAlpha = hurt ? 0.6 : 1;
+    ctx.globalAlpha = (hurt ? 0.6 : 1) * (e.shadow ? 0.5 : 1);   // clones are translucent shadows
     ctx.drawImage(img, x - w / 2, y - h + 10 - bob, w, h);
     ctx.globalAlpha = 1;
     // additive gold flash on a BACK STAB
@@ -2304,8 +2447,23 @@ function drawCombatant(ctx, e, ox, oy) {
   }
   // elite crown marker
   if (e.elite && !e.boss) { ctx.fillStyle = '#ffd23f'; ctx.font = `${Math.round(14 * scale)}px serif`; ctx.textAlign = 'center'; ctx.fillText('✦', x, y - h - 2 - bob); }
-  // mini health bar for boss / hurt enemies
-  if (e.boss) return drawBossFloatingBar(ctx, e, x, y - h - 4 * scale);
+  // floating health bar for the true boss and the boss-rush mini-bosses
+  if (e.boss || e.miniboss) return drawBossFloatingBar(ctx, e, x, y - h - 4 * scale);
+}
+
+/* The Backstabber while cloaked — a barely-there heat-shimmer and two red eyes.
+   Spotting him early is the difference between a dodge and a backstab. */
+function drawBackstabberShimmer(ctx, x, y, scale, now) {
+  const h = 80 * scale;
+  ctx.save();
+  ctx.globalAlpha = 0.16 + 0.06 * Math.sin(now / 120);
+  ctx.fillStyle = '#4a2050';
+  ctx.beginPath(); ctx.ellipse(x, y - h * 0.5, 16 * scale, h * 0.5, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+  const blink = (now % 2600) < 2300 ? 1 : 0.2;               // eyes flicker so you can catch them
+  ctx.fillStyle = `rgba(255,40,70,${0.85 * blink})`;
+  ctx.beginPath(); ctx.arc(x - 4 * scale, y - h * 0.62, 2 * scale, 0, 7); ctx.arc(x + 4 * scale, y - h * 0.62, 2 * scale, 0, 7); ctx.fill();
+  ctx.restore();
 }
 
 function drawHero(ctx, h, ox, oy) {

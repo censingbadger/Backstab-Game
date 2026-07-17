@@ -468,11 +468,13 @@ function charBody(art, p) {
         <path d="M80 56 Q88 52 84 46 Q78 44 76 52 Z" fill="${p.cloth}"/>
         <ellipse cx="50" cy="78" rx="26" ry="19" fill="${p.skin}"/>
         <ellipse cx="50" cy="73" rx="26" ry="14" fill="rgba(255,255,255,0.12)"/>
-        <path d="M34 74 Q50 84 66 74" stroke="${p.cloth}" stroke-width="2.5" fill="none" opacity="0.5"/>
+        <path d="M34 76 Q50 70 66 76" stroke="${p.cloth}" stroke-width="2.5" fill="none" opacity="0.5"/>
+        <path d="M37 49 L48 55 M63 49 L52 55" stroke="${p.cloth}" stroke-width="4" stroke-linecap="round"/>
         <rect x="41" y="58" width="4" height="9" rx="2" fill="${p.skin}"/><rect x="55" y="58" width="4" height="9" rx="2" fill="${p.skin}"/>
-        <circle cx="43" cy="56" r="4" fill="#fff"/><circle cx="43" cy="56" r="2.2" fill="${eye}"/>
-        <circle cx="57" cy="56" r="4" fill="#fff"/><circle cx="57" cy="56" r="2.2" fill="${eye}"/>
-        <path d="M44 84 l3 3 l3 -3 l3 3 l3 -3" stroke="rgba(0,0,0,0.35)" stroke-width="2" fill="none"/>`;
+        <circle cx="43" cy="56" r="4.2" fill="#fff"/><circle cx="44.5" cy="57.5" r="2.4" fill="${eye}"/>
+        <circle cx="57" cy="56" r="4.2" fill="#fff"/><circle cx="55.5" cy="57.5" r="2.4" fill="${eye}"/>
+        <path d="M40 88 Q50 82 60 88" stroke="rgba(0,0,0,0.55)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M43 86 l2.6 3 l3 -3 l3 3 l3 -3 l2.6 3" stroke="rgba(0,0,0,0.45)" stroke-width="1.8" fill="none"/>`;
 
     case 'shark':
       return `${shadow}
