@@ -142,6 +142,33 @@ const REGIONS = [
   { id:'secret',           name:'???',               x:62, y:12, enemies:['phantom','werewolf','icius'],                                 boss:'backstabber', color:'#7a1030', secret:true },
 ];
 
+/* ============================================================
+   STORY — the realm's backstory (read in full from the home screen) plus a
+   short one-line reminder shown at the start of each level.
+   ============================================================ */
+const LORE = {
+  title: 'The Tale of Back Stab',
+  intro: [
+    "Long ago the realm of Karrowmere was whole and green, watched over by nine guardians who kept its lands in balance.",
+    "Then came the Backstabber — a hooded figure who won the great arena not by honour but by treachery, sinking a blade into the back of every champion who ever trusted him. With the arena's crown came a dark power, and he twisted the nine guardians into monstrous wardens. One by one the lands soured: cliffs went cold with the walking dead, forests drowned in endless night, a temple rotted with poison, coasts shattered, a mountain froze, and the dunes rose up in fire and storm.",
+    "From a lair of pure shadow the Backstabber rules it all — and no challenger who has gone to face him has ever come back.",
+    "You are the last to try. Cross every broken land and free it by felling the warden who corrupts it, then cut your way to the Backstabber's Lair. There you'll beat him at his own game — a back stab for a back stab — and give Karrowmere back its dawn.",
+  ],
+  goal: 'Free each land by beating its warden, then end the Backstabber and restore the realm.',
+  // one short line per region — a reminder of why you're here and where it leads
+  regions: {
+    dead_cliffs:       "The realm's edge, where the dead have risen from cold graves. Put them to rest — your first step on the long road to the Backstabber.",
+    barren_grasslands: "Golden fields gone to withered dust. Cut through the warden's thralls; every land you free brings the Backstabber closer.",
+    dark_forest:       "A wood swallowed by endless night, ruled by the pack's alpha. Clear a path — the Backstabber waits far beyond the trees.",
+    toxic_temple:      "A holy place drowned in the Rotking's venom. Cleanse its chambers and press on toward the one who loosed the rot.",
+    shatter_coast:     "Drowned shores prowled by the Great White. Beat the tide and the shark — the road onward runs through the deep.",
+    sandcastle:        "A fortress lost beneath the waves, hoarded by the King Crab. Take its key of sand; the finale draws nearer.",
+    knife_mountain:    "A frozen blade of a peak where the Frost Titan reigns. Climb its caverns — mind the ice — one warden closer to your goal.",
+    desolate_dunes:    "A storm-cursed waste adrift over fire, where the Dune Devourer burrows. Hold your footing against the wind; the Lair is near.",
+    secret:            "The Backstabber's Lair. Every warden you've felled has led you here. End his reign — a back stab for a back stab — and free the realm.",
+  },
+};
+
 /* Helper to look up any fighter (enemy or boss) by id */
 function getFighter(id) {
   return ENEMIES[id] || BOSSES[id] || null;

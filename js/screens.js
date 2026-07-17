@@ -48,6 +48,7 @@ function showScreen(name, param) {
     case 'arena':    return renderArena(param);
     case 'stats':    return renderStats();
     case 'enemies':  return renderEnemies();
+    case 'story':    return renderStory();
     default:         return renderTitle();
   }
 }
@@ -223,6 +224,7 @@ function renderTitle() {
       <div class="menu-hex">
         <button class="hexbtn" data-nav="map"><span>🗺️</span>Map</button>
         <button class="hexbtn" data-nav="arena"><span>⚔️</span>Arena</button>
+        <button class="hexbtn" data-nav="story"><span>📖</span>Story</button>
         <button class="hexbtn" data-nav="stats"><span>📊</span>Stats</button>
       </div>
       <div class="who-bar">${Auth.currentName() ? `<span class="who-name">👤 ${escapeHtml(Auth.currentName())}</span><button class="link-btn" data-action="logout">Log out</button>` : ''}</div>
@@ -238,6 +240,44 @@ function renderTitle() {
   });
   const out = el.querySelector('[data-action="logout"]');
   if (out) out.addEventListener('click', () => { Auth.logout(); Audio2.sfx.click(); showScreen('auth'); });
+}
+
+/* ================= STORY (the full backstory) ================= */
+function renderStory() {
+  Audio2.playMusic('menu');
+  const el = app();
+  el.className = 'screen screen-story';
+  el.innerHTML = `
+    ${topBar('The Story', { back: 'title' })}
+    <div class="story-page">
+      <div class="story-emblem">🗡️</div>
+      <h2 class="story-title">${LORE.title}</h2>
+      ${LORE.intro.map(p => `<p>${p}</p>`).join('')}
+      <div class="story-goal"><b>Your quest:</b> ${LORE.goal}</div>
+      <button class="wide-btn" data-nav="map">🗺️ Begin the journey</button>
+    </div>`;
+  wireCommon(el);
+}
+
+/* A brief "why am I here" reminder card shown at the start of a level. It fades
+   on its own after a few seconds (tap to skip) and never blocks the action. */
+function levelIntro(regionId) {
+  const line = LORE.regions[regionId];
+  if (!line) return;
+  const region = regionById(regionId);
+  const card = document.createElement('div');
+  card.className = 'level-intro';
+  card.innerHTML = `
+    <div class="li-card">
+      <div class="li-name">${region ? region.name : ''}</div>
+      <p class="li-line">${line}</p>
+      <div class="li-goal">🗡️ ${LORE.goal}</div>
+    </div>`;
+  app().appendChild(card);
+  requestAnimationFrame(() => card.classList.add('show'));
+  const kill = () => { card.classList.remove('show'); setTimeout(() => card.remove(), 400); };
+  card.querySelector('.li-card').addEventListener('click', kill);   // tap the card to skip
+  setTimeout(kill, 5000);
 }
 
 /* ================= MAP (illustrated continent) ================= */
@@ -509,9 +549,10 @@ function renderArena(regionId) {
   el.innerHTML = `
     ${topBar('The Arena', { home: true })}
     <div class="arena-region" style="--rc:${region.color}">
-      <span>📍 ${region.secret && !isCleared(region.id) ? region.name : region.name}</span>
+      <span>📍 ${region.name}</span>
       <span class="record">🏆 ${STATE.wins} won &nbsp;·&nbsp; 💀 ${STATE.losses} lost</span>
     </div>
+    ${LORE.regions[region.id] ? `<p class="arena-story">${LORE.regions[region.id]}</p>` : ''}
     <h2 class="arena-q">Who do you want to fight?</h2>
     <div class="fighter-grid">${cards}${bossCard}</div>
     <div class="crowd-meter">

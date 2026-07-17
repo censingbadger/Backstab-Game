@@ -475,6 +475,7 @@ function startDungeon(regionId) {
 
   buildDungeonDOM();
   bindDungeonInput();
+  levelIntro(regionId);   // remind the player why they're here
   DUNGEON.raf = requestAnimationFrame(dungeonLoop);
 }
 
@@ -579,6 +580,7 @@ function startTempleDungeon(regionId, theme) {
   };
   buildDungeonDOM();
   bindDungeonInput();
+  levelIntro(regionId);   // remind the player why they're here
   banner('CHAMBER 1 — clear it to open the gate!', 1800);
   DUNGEON.raf = requestAnimationFrame(dungeonLoop);
 }
