@@ -226,7 +226,7 @@ const ACT2_THEMES = {
     trail: '255,150,70',
     enemies: ['gladiator', 'centurion', 'mummy', 'gladiator', 'centurion'],
     boss: 'colossus',
-    chambers: true, hard: true, hazard: 'lava',     // gated temple ruins split by rivers of lava
+    chambers: true, hard: true, hazard: 'lava', volcano: true,   // gated ruins split by lava, with Vesuvius raining lava bombs
   },
   shatter_coast: {
     name: 'Atlantis',
@@ -555,6 +555,7 @@ function startDungeon(regionId) {
     hard: !!theme.hard,
     beach: !!theme.beach, water, waves, secret, key, corridor, tide: 0,
     dunes: !!theme.dunes, tornadoes, wind: { x: 0, y: 0, gust: false },
+    volcano: !!theme.volcano, eruptions: [], eruptTimer: 3.5,
     hero,
     enemies: [], drops: [], fx: [], shots: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET, progress: 0,
@@ -663,6 +664,7 @@ function startTempleDungeon(regionId, theme) {
     checkpoints: [], canopy: [], traps, grabbers: [],
     chamberMode: true, chamberList: chambers, doors, stairs, artifacts, activeIndex: -1, chambersCleared: 0,
     hard: true, poison: !!theme.poison,
+    volcano: !!theme.volcano, eruptions: [], eruptTimer: 3.5,
     hero, enemies: [], drops: [], fx: [], shots: [],
     kills: 0, spawned: 0, progress: 0,
     boss: null, bossIntro: false,
@@ -724,7 +726,7 @@ function spawnMiniBoss(c) {
     fighter: bd, art: bd.art, palette: bd.palette,
     fx: c.cx, fy: c.cy - c.hh * 0.4, r: 0.7, scale: 1.8,
     hp, maxhp: hp, speed: 1.6, elite: false, miniboss: true,
-    attack: bd.attack, reward: bd.reward, contact: (bd.attack >= 5 ? 1.4 : 1.1),
+    attack: bd.attack, reward: bd.reward, contact: bossDmg(bd.attack >= 5 ? 1.4 : 1.1),
     facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: 0,
   });
   d.spawned++;
@@ -1297,11 +1299,12 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
   const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
   const dmgMul = d.theme.enemyDmgMul || 1;                           // Desolate Dunes = double-power foes
-  const actMul = currentAct() === 2 ? 1.5 : 1;                       // Act 2 foes are markedly tougher — more HP and harder hits
-  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1) * actMul));   // tougher to cut down
+  const actHpMul = currentAct() === 2 ? 1.5 : 1;                     // Act 2 foes have markedly more HP
+  const actDmgMul = currentAct() === 2 ? 2 : 1;                      // ...and hit TWICE as hard
+  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1) * actHpMul));   // tougher to cut down
   let speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
   let attack = f.attack, reward = f.reward || 1, r = 0.4;
-  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1) * dmgMul * actMul;  // heavier hitters do more; Dunes foes hit twice as hard
+  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1) * dmgMul * actDmgMul;  // heavier hitters do more; Dunes foes hit twice as hard
   // Elite (Minecraft-Dungeons "enchanted") — an occasional tougher, glowing
   // variant worth a lot more loot. Never on the opening spawns.
   const elite = (d.spawned > 2) && rand(seed * 3.7 + 11) < (d.hard ? 0.15 : 0.09);
@@ -1523,6 +1526,9 @@ function updateDungeon(dt, t) {
     if (!jumping && !submerged && !isGroundTile(d.tiles, h.fx, h.fy, d.W, d.H)) { heroFellOff(); if (d.over) return; }
   }
 
+  /* --- Pompeii: Vesuvius rains telegraphed lava bombs that erupt underfoot --- */
+  if (d.volcano) { updateVolcano(dt, t); if (d.over) return; }
+
   // grabber trees: root the hero when close (unless jumping)
   if (d.grabbers) d.grabbers.forEach(g => {
     if (g.dead) return;
@@ -1645,6 +1651,10 @@ function enemyStrikeHero(e) {
   hurtHero(e.contact || 0.5);
 }
 
+// Act 2 wardens are resurrected and monstrous — every hit lands for a full
+// two hearts minimum (Act 1 bosses keep their tuned values).
+function bossDmg(base) { return currentAct() === 2 ? Math.max(2, base) : base; }
+
 function bossSlam(b) {
   const d = DUNGEON; if (!d || d.over || d.paused || b.dead) return;
   const h = d.hero, t = performance.now();
@@ -1652,7 +1662,7 @@ function bossSlam(b) {
   if (dist(b.fx, b.fy, h.fx, h.fy) > 2.2) return;
   if (t < h.dodgeUntil) { spawnFloatText(h.fx, h.fy, 'dodge!', '#8ff0a0'); return; }
   if (t < h.hurtInvulnUntil) return;
-  hurtHero(1.5);
+  hurtHero(bossDmg(1.5));
 }
 
 /* The Dune Devourer's rhythm: rear up EXPOSED (your only window to hurt it) →
@@ -1686,7 +1696,7 @@ function updateWormBoss(b, h, dt, t) {
     const jumping = t < h.jumpUntil, dodging = t < h.dodgeUntil;
     if (dist(b.fx, b.fy, h.fx, h.fy) < 2.6 && !jumping && !dodging && t >= h.hurtInvulnUntil) {
       spawnFloatText(h.fx, h.fy, 'CHOMP! -2½❤', '#ff5c7a'); shake(); Audio2.sfx.bighit();
-      hurtHero(2.5); if (d.over) return;
+      hurtHero(bossDmg(2.5)); if (d.over) return;
     } else spawnFloatText(h.fx, h.fy, 'timed it!', '#8ff0a0');
     b.phaseUntil = t + 40;
   } else {   // strike -> exposed: your window to hit it hard
@@ -1730,7 +1740,7 @@ function updateBackstabberBoss(b, h, dt, t) {
     shake(); Audio2.sfx.lose(); spawnFloatText(b.fx, b.fy - 0.7, '!!!', '#ff2d5a');
   } else if (b.state === 'reappear') {                       // the BACKSTAB lands on the beat
     const jumping = t < h.jumpUntil, dodging = t < h.dodgeUntil;
-    const dmg = phase >= 3 ? 2 : 1.5;
+    const dmg = bossDmg(phase >= 3 ? 2 : 1.5);
     if (dist(b.fx, b.fy, h.fx, h.fy) < 2.4 && !jumping && !dodging && t >= h.hurtInvulnUntil) {
       spawnFloatText(h.fx, h.fy, 'BACKSTAB! -' + dmg + '❤', '#ff2d5a'); shake(); Audio2.sfx.bighit();
       hurtHero(dmg); if (d.over) return;
@@ -1748,7 +1758,7 @@ function backstabberSlash(b) {
   if (dist(b.fx, b.fy, h.fx, h.fy) > 1.9) return;
   if (t < h.dodgeUntil) { spawnFloatText(h.fx, h.fy, 'dodge!', '#8ff0a0'); return; }
   if (t < h.hurtInvulnUntil) return;
-  hurtHero(1);
+  hurtHero(bossDmg(1));
 }
 
 function hurtHero(amount) {
@@ -1823,6 +1833,51 @@ function heroFellOff() {
   showGameOverOverlay(() => { stopDungeon(); showScreen('title'); });
 }
 
+/* Pompeii's Vesuvius: on a cycle it hurls molten bombs at telegraphed spots.
+   Each shows a shrinking warning ring for ~1s (jump or run clear), then erupts
+   — a direct hit is deadly, and the glowing splat keeps burning for a moment. */
+function updateVolcano(dt, t) {
+  const d = DUNGEON, h = d.hero;
+  d.eruptTimer -= dt;
+  if (d.eruptTimer <= 0) {
+    d.eruptTimer = 2.7 + rand(t * 0.0013) * 1.8;                // next salvo in ~2.7-4.5s
+    const n = 1 + Math.floor(rand(t * 0.0021) * 3);            // 1-3 bombs
+    for (let i = 0; i < n; i++) {
+      const aimHero = i === 0 || rand(t + i * 7.3) < 0.6;       // most bombs chase the hero
+      let tx, ty;
+      if (aimHero) {
+        const a = rand(t + i * 3.1) * Math.PI * 2, rr = rand(t * 0.7 + i) * 2.4;
+        tx = h.fx + Math.cos(a) * rr; ty = h.fy + Math.sin(a) * rr;
+      } else { tx = 4 + rand(t + i * 5.7) * (d.W - 8); ty = 4 + rand(t + i * 9.1) * (d.H - 8); }
+      d.eruptions.push({ x: clamp(tx, 2, d.W - 2), y: clamp(ty, 2, d.H - 2), born: t, warn: 950, radius: 1.7, state: 'warn' });
+    }
+    if (!d._eruptBannerUntil || t > d._eruptBannerUntil) {
+      banner('🌋 VESUVIUS ERUPTS — dodge the lava!', 1000); shake(); Audio2.sfx.lose();
+      d._eruptBannerUntil = t + 2200;
+    }
+  }
+  const jumping = t < h.jumpUntil, dodging = t < h.dodgeUntil;
+  d.eruptions = d.eruptions.filter(e => {
+    const age = t - e.born;
+    if (e.state === 'warn' && age >= e.warn) {                  // the bomb lands
+      e.state = 'blast'; e.blastAt = t; shake(); Audio2.sfx.bighit();
+      if (dist(e.x, e.y, h.fx, h.fy) < e.radius + h.r && !jumping && !dodging && t >= h.hurtInvulnUntil) {
+        spawnFloatText(h.fx, h.fy, '🌋 -2❤', '#ff7a2a');
+        hurtHero(2); if (d.over) return false;
+      }
+    }
+    if (e.state === 'blast') {                                  // molten splat lingers and burns
+      const bage = t - e.blastAt;
+      if (bage < 850 && dist(e.x, e.y, h.fx, h.fy) < e.radius && !jumping && t >= h.hurtInvulnUntil && t > (h.lavaDmgAt || 0)) {
+        h.lavaDmgAt = t + 380; h.hurtUntil = t + 200;
+        spawnFloatText(h.fx, h.fy, '🔥 -1', '#ff6a2a'); hurtHero(1); if (d.over) return false;
+      }
+      return bage < 1100;
+    }
+    return true;
+  });
+}
+
 /* ============================================================
    RENDER
    ============================================================ */
@@ -1881,6 +1936,8 @@ function renderDungeon() {
   if (d.traps) d.traps.forEach(tr => { if (Math.abs(tr.x - d.hero.fx) < RANGE && Math.abs(tr.y - d.hero.fy) < RANGE) drawTrap(ctx, tr, ox, oy); });
   // ---- rolling wave traps ----
   if (d.waves) d.waves.forEach(wv => { if (Math.abs(wv.x - d.hero.fx) < RANGE && Math.abs(wv.y - d.hero.fy) < RANGE) drawWave(ctx, wv, ox, oy); });
+  // ---- Vesuvius lava-bomb warning rings + molten splats sit on the ground ----
+  if (d.eruptions) d.eruptions.forEach(e => drawEruptGround(ctx, e, ox, oy));
 
   // ---- collect depth-sorted sprites (props + entities + drops + checkpoints + grabbers) ----
   const draws = [];
@@ -1908,6 +1965,8 @@ function renderDungeon() {
 
   // ---- roaming tornadoes, drawn tall over the fighters ----
   if (d.tornadoes) d.tornadoes.forEach(tor => { if (Math.abs(tor.x - d.hero.fx) < RANGE + 3 && Math.abs(tor.y - d.hero.fy) < RANGE + 3) drawTornado(ctx, tor, ox, oy); });
+  // ---- lava-bomb eruption columns, drawn tall over the fighters ----
+  if (d.eruptions) d.eruptions.forEach(e => { if (e.state === 'blast') drawEruptBlast(ctx, e, ox, oy); });
 
   // ---- hero bullets / rockets ----
   if (d.shots) d.shots.forEach(s => drawHeroShot(ctx, s, ox, oy));
@@ -2006,6 +2065,49 @@ function drawTornado(ctx, tor, ox, oy) {
     ctx.beginPath(); ctx.ellipse(cx, yy, rw, rh, 0, spin + i, spin + i + 3.6); ctx.stroke();
   }
   for (let i = 0; i < 6; i++) { const a = spin * 2 + i; ctx.fillStyle = 'rgba(230,210,150,0.5)'; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 16, y - 22 + Math.sin(a * 1.3) * 12, 1.6, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+
+/* A lava-bomb's ground signature: a shrinking warning ring while it falls, then
+   a glowing molten splat once it lands. */
+function drawEruptGround(ctx, e, ox, oy) {
+  const s = isoToScreen(e.x, e.y), x = s.x + ox, y = s.y + oy, now = performance.now();
+  const rw = e.radius * 26, rh = rw * 0.5;
+  if (e.state === 'warn') {
+    const f = clamp((now - e.born) / e.warn, 0, 1);             // 0 -> 1 as impact nears
+    const pulse = 0.4 + 0.4 * Math.abs(Math.sin(now / 90));
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,90,30,${0.5 + 0.4 * f})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(x, y, rw, rh, 0, 0, 7); ctx.stroke();
+    ctx.strokeStyle = `rgba(255,220,120,${pulse})`; ctx.setLineDash([6, 6]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x, y, rw * (1 - f * 0.6), rh * (1 - f * 0.6), 0, 0, 7); ctx.stroke();   // ring closes in
+    ctx.setLineDash([]);
+    ctx.fillStyle = `rgba(255,60,20,${0.12 + 0.14 * f})`; ctx.beginPath(); ctx.ellipse(x, y, rw, rh, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  } else if (e.state === 'blast') {
+    const bage = now - e.blastAt, fade = clamp(1 - bage / 1100, 0, 1);
+    const gg = ctx.createRadialGradient(x, y, 2, x, y, rw); gg.addColorStop(0, `rgba(255,180,60,${0.8 * fade})`); gg.addColorStop(0.6, `rgba(240,80,20,${0.6 * fade})`); gg.addColorStop(1, 'rgba(120,20,10,0)');
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(x, y, rw, rh, 0, 0, 7); ctx.fill();
+    for (let i = 0; i < 5; i++) { const a = i * 1.3 + e.born; ctx.fillStyle = `rgba(60,30,24,${0.5 * fade})`; ctx.beginPath(); ctx.arc(x + Math.cos(a) * rw * 0.6, y + Math.sin(a) * rh * 0.6, 3, 0, 7); ctx.fill(); }
+  }
+}
+
+/* The eruption itself: a brief column of molten rock and fire bursting upward. */
+function drawEruptBlast(ctx, e, ox, oy) {
+  const s = isoToScreen(e.x, e.y), x = s.x + ox, y = s.y + oy, now = performance.now();
+  const bage = now - e.blastAt, f = clamp(bage / 500, 0, 1), fade = clamp(1 - bage / 700, 0, 1);
+  if (fade <= 0) return;
+  ctx.save();
+  const H = 74 * Math.sin(Math.min(1, f) * Math.PI);            // rises then falls
+  const gg = ctx.createLinearGradient(x, y, x, y - H);
+  gg.addColorStop(0, `rgba(255,220,120,${fade})`); gg.addColorStop(0.5, `rgba(255,110,30,${fade})`); gg.addColorStop(1, `rgba(180,30,20,0)`);
+  ctx.fillStyle = gg;
+  ctx.beginPath(); ctx.moveTo(x - 14, y); ctx.quadraticCurveTo(x - 8, y - H * 0.7, x, y - H); ctx.quadraticCurveTo(x + 8, y - H * 0.7, x + 14, y); ctx.closePath(); ctx.fill();
+  for (let i = 0; i < 7; i++) {                                 // flung molten globs
+    const a = i * 0.9 + e.born, sp = (0.4 + (i % 3) * 0.3);
+    const gx = x + Math.cos(a) * 26 * f * sp, gy = y - H * 0.7 * f - Math.sin(a) * 14 + f * 20;
+    ctx.fillStyle = `rgba(255,${120 + (i % 3) * 40},50,${fade})`; ctx.beginPath(); ctx.arc(gx, gy, 3 - (i % 2), 0, 7); ctx.fill();
+  }
   ctx.restore();
 }
 
