@@ -333,7 +333,13 @@ function levelIntro(regionId) {
     </div>`;
   app().appendChild(card);
   requestAnimationFrame(() => card.classList.add('show'));
-  const kill = () => { card.classList.remove('show'); setTimeout(() => card.remove(), 400); };
+  const kill = () => {
+    card.classList.remove('show'); setTimeout(() => card.remove(), 400);
+    // skipping the intro also ends the mob-spawn grace (with a short breath)
+    if (typeof DUNGEON !== 'undefined' && DUNGEON && DUNGEON.introUntil) {
+      DUNGEON.introUntil = Math.min(DUNGEON.introUntil, performance.now() + 700);
+    }
+  };
   card.querySelector('.li-card').addEventListener('click', kill);   // tap the card to skip
   setTimeout(kill, 5000);
 }

@@ -618,6 +618,8 @@ function startDungeon(regionId) {
     attackHeld: false, paused: false,
     lastT: performance.now(), raf: null,
     spawnTimer: 0,
+    // grace period: no mobs spawn or attack until the level-intro banner is gone
+    introUntil: performance.now() + 5200,
   };
 
   buildDungeonDOM();
@@ -725,11 +727,14 @@ function startTempleDungeon(regionId, theme) {
     keys: {}, mouse: { x: 0, y: 0, down: false }, joy: { active: false, dx: 0, dy: 0 },
     attackHeld: false, paused: false,
     lastT: performance.now(), raf: null, spawnTimer: 0,
+    // grace period: no mobs spawn or attack until the level-intro banner is gone
+    introUntil: performance.now() + 5200,
   };
   buildDungeonDOM();
   bindDungeonInput();
   levelIntro(regionId);   // remind the player why they're here
-  banner('CHAMBER 1 — clear it to open the gate!', 1800);
+  // shown once the intro card clears, right as the first horde appears
+  setTimeout(() => { if (DUNGEON && !DUNGEON.over) banner('CHAMBER 1 — clear it to open the gate!', 1800); }, 5300);
   DUNGEON.raf = requestAnimationFrame(dungeonLoop);
 }
 
@@ -745,6 +750,7 @@ function chamberContains(c, fx, fy) {
    the onward gate once it's cleared. The final chamber summons the boss. */
 function updateChambers(dt, t) {
   const d = DUNGEON, h = d.hero;
+  if (t < (d.introUntil || 0)) return;   // let the player read the intro before the first horde spawns
   const here = d.chamberList.find(c => chamberContains(c, h.fx, h.fy));
   if (here && !here.active && !here.cleared) activateChamber(here, t);
 
@@ -1641,7 +1647,7 @@ function updateDungeon(dt, t) {
   const capMax = (d.hard ? 13 : DUN.MAX_ENEMIES) + Math.floor(regionTier(d.regionId) / 3);   // later regions field bigger packs
   const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.floor(regionTier(d.regionId) / 4) + Math.round((d.progress || 0) * (d.hard ? 8 : 5)));
   const spawnGap = Math.max(d.hard ? 0.34 : 0.55, (d.hard ? 0.95 : 1.15) - (d.progress || 0) * 0.6);
-  if (!d.chamberMode && !d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap) {
+  if (!d.chamberMode && !d.bossIntro && t >= (d.introUntil || 0) && d.enemies.filter(e => !e.dead).length < swarmCap) {
     d.spawnTimer -= dt;
     if (d.spawnTimer <= 0) { spawnEnemy(); d.spawnTimer = spawnGap; }
   }
@@ -1652,6 +1658,7 @@ function updateDungeon(dt, t) {
     tickPoison(e, t);
     if (e.dead) return;
     e.animT = (e.animT || 0) + dt * 8;
+    if (t < (d.introUntil || 0)) return;                // mobs hold still until the intro is read
     if (e.stunUntil && t < e.stunUntil) return;         // stunned: can't move or attack
     const dd = dist(e.fx, e.fy, h.fx, h.fy);
     // Turn to face the hero, but not instantly — this brief lag is the window
