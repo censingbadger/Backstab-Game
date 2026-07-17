@@ -618,6 +618,8 @@ function startDungeon(regionId) {
     attackHeld: false, paused: false,
     lastT: performance.now(), raf: null,
     spawnTimer: 0,
+    // grace period: no mobs spawn or attack until the level-intro banner is gone
+    introUntil: performance.now() + 5200,
   };
 
   buildDungeonDOM();
@@ -725,11 +727,14 @@ function startTempleDungeon(regionId, theme) {
     keys: {}, mouse: { x: 0, y: 0, down: false }, joy: { active: false, dx: 0, dy: 0 },
     attackHeld: false, paused: false,
     lastT: performance.now(), raf: null, spawnTimer: 0,
+    // grace period: no mobs spawn or attack until the level-intro banner is gone
+    introUntil: performance.now() + 5200,
   };
   buildDungeonDOM();
   bindDungeonInput();
   levelIntro(regionId);   // remind the player why they're here
-  banner('CHAMBER 1 — clear it to open the gate!', 1800);
+  // shown once the intro card clears, right as the first horde appears
+  setTimeout(() => { if (DUNGEON && !DUNGEON.over) banner('CHAMBER 1 — clear it to open the gate!', 1800); }, 5300);
   DUNGEON.raf = requestAnimationFrame(dungeonLoop);
 }
 
@@ -745,6 +750,7 @@ function chamberContains(c, fx, fy) {
    the onward gate once it's cleared. The final chamber summons the boss. */
 function updateChambers(dt, t) {
   const d = DUNGEON, h = d.hero;
+  if (t < (d.introUntil || 0)) return;   // let the player read the intro before the first horde spawns
   const here = d.chamberList.find(c => chamberContains(c, h.fx, h.fy));
   if (here && !here.active && !here.cleared) activateChamber(here, t);
 
@@ -1641,7 +1647,7 @@ function updateDungeon(dt, t) {
   const capMax = (d.hard ? 13 : DUN.MAX_ENEMIES) + Math.floor(regionTier(d.regionId) / 3);   // later regions field bigger packs
   const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.floor(regionTier(d.regionId) / 4) + Math.round((d.progress || 0) * (d.hard ? 8 : 5)));
   const spawnGap = Math.max(d.hard ? 0.34 : 0.55, (d.hard ? 0.95 : 1.15) - (d.progress || 0) * 0.6);
-  if (!d.chamberMode && !d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap) {
+  if (!d.chamberMode && !d.bossIntro && t >= (d.introUntil || 0) && d.enemies.filter(e => !e.dead).length < swarmCap) {
     d.spawnTimer -= dt;
     if (d.spawnTimer <= 0) { spawnEnemy(); d.spawnTimer = spawnGap; }
   }
@@ -1652,6 +1658,7 @@ function updateDungeon(dt, t) {
     tickPoison(e, t);
     if (e.dead) return;
     e.animT = (e.animT || 0) + dt * 8;
+    if (t < (d.introUntil || 0)) return;                // mobs hold still until the intro is read
     if (e.stunUntil && t < e.stunUntil) return;         // stunned: can't move or attack
     const dd = dist(e.fx, e.fy, h.fx, h.fy);
     // Turn to face the hero, but not instantly — this brief lag is the window
@@ -3320,6 +3327,65 @@ function drawBladeShape(ctx, w) {
       poly([[34, -8], [46, -3], [46, 3], [34, 8]], '#7a2a1a');     // wide muzzle
       ctx.fillStyle = '#2a2a30'; ctx.beginPath(); ctx.arc(-10, 0, 4, 0, 7); ctx.fill();
       ctx.fillStyle = metal; ctx.fillRect(4, -11, 6, 5);          // sight
+      break;
+    case 'club':
+      bar(-8, 0, 14, 0, 6, grip);                       // haft into a stone head
+      ctx.beginPath(); ctx.moveTo(12, -5); ctx.quadraticCurveTo(26, -12, 38, -6);
+      ctx.quadraticCurveTo(44, 0, 38, 6); ctx.quadraticCurveTo(26, 12, 12, 5); ctx.closePath();
+      ctx.fillStyle = '#8f9298'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
+      ctx.fillStyle = '#6a6e76';
+      [[26, -4], [33, 1], [24, 5]].forEach(([px, py]) => { ctx.beginPath(); ctx.arc(px, py, 1.8, 0, 7); ctx.fill(); });
+      ctx.beginPath(); ctx.arc(24, -5, 2.4, 0, 7); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fill();
+      break;
+    case 'toothsword':
+      bar(-9, 0, 6, 0, 6, grip);
+      bar(6, -8, 6, 8, 4, '#8a6a3a');                   // bone crossguard
+      poly([[7, -4], [42, -3], [50, 0], [42, 3], [7, 4]], metal);
+      ctx.fillStyle = metal; ctx.strokeStyle = dark; ctx.lineWidth = 1.2;
+      for (let tx = 10; tx <= 40; tx += 6) { ctx.beginPath(); ctx.moveTo(tx, 3.5); ctx.lineTo(tx + 2.6, 8); ctx.lineTo(tx + 5.2, 3.5); ctx.closePath(); ctx.fill(); ctx.stroke(); }   // shark teeth edge
+      break;
+    case 'whip':
+      bar(-8, 0, 6, 0, 6, grip);
+      ctx.strokeStyle = '#8a5a2a'; ctx.lineCap = 'round';
+      ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(6, 0); ctx.quadraticCurveTo(20, -10, 32, -4); ctx.stroke();
+      ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(32, -4); ctx.quadraticCurveTo(44, 3, 52, -2); ctx.stroke();
+      ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(52, -2); ctx.quadraticCurveTo(58, -5, 62, -10); ctx.stroke();
+      ctx.fillStyle = metal; ctx.beginPath(); ctx.arc(62, -10, 2, 0, 7); ctx.fill();   // stinger tip
+      break;
+    case 'pickaxe':
+      bar(-9, 0, 26, 0, 5, wood);
+      ctx.beginPath(); ctx.moveTo(16, -3); ctx.quadraticCurveTo(30, -14, 46, -8);   // curved head
+      ctx.quadraticCurveTo(31, -8, 18, 1); ctx.closePath();
+      ctx.fillStyle = metal; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
+      poly([[46, -8], [54, -2], [45, -5]], metal);      // fore point
+      poly([[16, -3], [6, -12], [14, -8]], metal);      // back point
+      bar(20, -4, 24, 2, 3, gold);                      // binding
+      break;
+    case 'trident':
+      bar(-10, 0, 40, 0, 4, gold);                      // golden shaft
+      bar(40, -8, 40, 8, 3, metal);                     // crossbar
+      poly([[40, -8], [56, -7], [40, -5]], metal);      // upper prong
+      poly([[40, -1.6], [60, 0], [40, 1.6]], metal);    // centre prong
+      poly([[40, 8], [56, 7], [40, 5]], metal);         // lower prong
+      ctx.fillStyle = '#7fe0ff'; ctx.beginPath(); ctx.arc(40, 0, 2.6, 0, 7); ctx.fill();   // sea-gem
+      break;
+    case 'hook':
+      bar(-8, 0, 6, 0, 6, grip);                        // rod grip
+      bar(6, 0, 26, -6, 3, wood);                       // rod
+      ctx.strokeStyle = '#c8ccd4'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(26, -6); ctx.quadraticCurveTo(36, -6, 40, 0); ctx.stroke();   // line
+      ctx.strokeStyle = metal; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(44, 2, 7, -1.4, 2.6); ctx.stroke();                              // big hook
+      poly([[38, 6], [34, 3], [39, 2]], metal);                                                 // barb
+      break;
+    case 'grenade':
+      bar(-6, 0, 4, 0, 6, grip);                        // gripped in the fist
+      ctx.beginPath(); ctx.ellipse(12, -2, 7, 8, 0, 0, 7);
+      ctx.fillStyle = '#3f5a34'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
+      ctx.strokeStyle = '#2c4022'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(6, -5); ctx.lineTo(18, -5); ctx.moveTo(6, 1); ctx.lineTo(18, 1); ctx.moveTo(12, -10); ctx.lineTo(12, 6); ctx.stroke();
+      ctx.fillStyle = '#5a6a5a'; ctx.fillRect(9, -13, 6, 4);                                    // cap
+      ctx.strokeStyle = gold; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(18, -13, 2.6, 0, 7); ctx.stroke();   // pin
       break;
     default:
       bar(-6, 0, 6, 0, 6, grip);
