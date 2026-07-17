@@ -96,6 +96,31 @@ function showTimeMachine() {
   });
 }
 
+/* The grand finale: the Backstabber Prime is destroyed at the End of Time.
+   Roll the epilogue — the saga is complete (both acts stay open to replay). */
+function showVictoryEpilogue() {
+  const overlay = document.createElement('div');
+  overlay.className = 'result-overlay';
+  overlay.innerHTML = `
+    <div class="result-card win timemachine">
+      <h2>🏆 TIME IS SAFE</h2>
+      <p>The Backstabber Prime crumbles into the dark he came from. Every warden he raised is beaten, every age he poisoned runs clean again — from the first molten dawn to the last machine night.</p>
+      <p>Karrowmere has its realm back. History has its heroes.</p>
+      <div class="tm-panel">
+        <div class="tm-screen"><span>◄ ◙ ►</span> SAGA&nbsp;COMPLETE <span>◄ ◙ ►</span></div>
+        <button class="tm-button" id="ep-go">RETURN A LEGEND</button>
+      </div>
+      <p class="tip">By Jing &amp; Ash Games · © Asher and Ren, 2026 — thanks for playing!</p>
+    </div>`;
+  app().appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('show'));
+  overlay.querySelector('#ep-go').addEventListener('click', () => {
+    Audio2.sfx.win();
+    if (typeof stopDungeon === 'function') stopDungeon();
+    showScreen('title');
+  });
+}
+
 // Extra lives are the rarest prize in the game: a small chance at the END of a
 // boss fight to win a Legendary Extra Life. Deliberately transcendently rare.
 function maybeGrantExtraLife() {

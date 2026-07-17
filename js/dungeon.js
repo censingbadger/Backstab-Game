@@ -242,6 +242,48 @@ const ACT2_THEMES = {
     waypoints: [[10, 12], [24, 12], [24, 28], [10, 32], [14, 46], [34, 46], [36, 30], [50, 32], [54, 52]],
     beach: true, tide: true, hard: true, wider: true,   // tidal swims + a deep-water boss arena + hidden passage
   },
+  knife_mountain: {
+    name: 'The Ice Age',
+    color: '#9ac8e8', emoji: '🦣',
+    sky: ['#20344e', '#14223a', '#0a1220'],         // deep-frozen glacier night
+    ground: ['#d8e8f2', '#c2d6e6'],                 // hard-packed glacier ice
+    speckle: 'rgba(255,255,255,0.5)',
+    edge: ['#6a86a0', '#48607a'],
+    props: ['icespike', 'snowpile', 'campfire', 'mammothskull', 'frozenrock', 'icespike', 'campfire'],
+    trail: '170,225,255',
+    enemies: ['caveman', 'sabertooth', 'yeti', 'caveman', 'sabertooth'],
+    boss: 'mammoth_king',
+    chambers: true, hard: true, hazard: 'ice',      // the glacier cave crawl, still slippery underfoot
+  },
+  desolate_dunes: {
+    name: 'The Dawn of Time',
+    color: '#ff6a2a', emoji: '🌍',
+    sky: ['#ff8a3a', '#a83418', '#38100a'],          // a molten newborn sky, thick with ash
+    ground: ['#5a4038', '#4a332c'],                  // barely-cooled crust
+    speckle: 'rgba(255,150,70,0.35)',                // ember glow in every crack
+    edge: ['#7a2a10', '#3a1408'],                    // white-hot chasm rim
+    props: ['volcano', 'lavacrack', 'meteor', 'rock', 'volcano', 'lavacrack', 'meteor'],
+    trail: '255,170,90',
+    enemies: ['amoeba', 'trilobite', 'amoeba', 'trilobite', 'amoeba'],
+    boss: 'magma_worm',
+    // Same colossal storm-blasted platform as the Dunes — but at the dawn of the
+    // world: primordial gales, fire tornadoes, and magma below instead of lava.
+    waypoints: [[8, 8], [24, 8], [24, 20], [8, 20], [8, 32], [24, 32], [24, 44], [8, 44], [8, 54], [26, 54], [40, 50], [40, 36], [54, 34], [54, 20], [40, 18], [40, 10], [54, 10]],
+    traps: true, dunes: true, hard: true, wind: true, lava: true, enemyDmgMul: 1.5,
+  },
+  secret: {
+    name: 'The End of Time',
+    color: '#8a4aff', emoji: '🤖',
+    sky: ['#1a0a33', '#100626', '#050213'],          // the last night, lit by machine glow
+    ground: ['#242438', '#1c1c2e'],                  // seamless alloy floor
+    speckle: 'rgba(120,220,255,0.22)',
+    edge: ['#10101f', '#080814'],
+    props: ['hologram', 'powercore', 'antenna', 'hologram', 'powercore', 'antenna', 'hologram'],
+    trail: '80,240,200',
+    enemies: ['robot', 'mech', 'drone', 'robot'],     // filler adds in the final arena
+    boss: 'backstabber_prime',
+    chambers: true, hard: true, lair: true,           // boss-rush of resurrected wardens + the stealth finale
+  },
 };
 // Act-aware theme lookup: Act 2 re-skin when one exists, else the Act 1 theme.
 function dungeonTheme(regionId) {
@@ -717,9 +759,13 @@ function activateChamber(c, t) {
 }
 
 /* Boss-rush chamber: resurrect one of the realm's fallen bosses as a tough
-   mini-boss (in the swarm, so the gate opens when it and its guards fall). */
+   mini-boss (in the swarm, so the gate opens when it and its guards fall).
+   In Act 2's End of Time, each chamber raises the era-warden you already beat. */
+const ACT2_RUSH = { brute: 'trex', hexstraw: 'iron_horse', alpha_werewolf: 'warhound', frost_titan: 'mammoth_king', crab_king: 'colossus', gorton: 'kraken' };
 function spawnMiniBoss(c) {
-  const d = DUNGEON, bd = BOSSES[c.rush];
+  const d = DUNGEON;
+  const rushId = (currentAct() === 2 && ACT2_RUSH[c.rush]) ? ACT2_RUSH[c.rush] : c.rush;
+  const bd = BOSSES[rushId];
   if (!bd) return;
   const hp = Math.round(bd.hearts * 16);   // a real wall, but below the true finale boss
   d.enemies.push({
@@ -803,6 +849,9 @@ function summonBossChamber() {
     // The Backstabber fights in the dark: he vanishes and strikes from behind,
     // splits into shadow clones, and rages in three phases.
     if (bd.id === 'backstabber') { Object.assign(d.boss, { backstabber: true, state: 'chase', stateUntil: 0, vanished: false, invuln: false, phaseNum: 1, scale: 2.0, speed: 2.2 }); }
+    // The Backstabber PRIME — the Act 2 finale. Same shadow game, but he's far
+    // bigger, faster on every beat, hits harder, and raises more clones.
+    if (bd.id === 'backstabber_prime') { Object.assign(d.boss, { backstabber: true, prime: true, state: 'chase', stateUntil: 0, vanished: false, invuln: false, phaseNum: 1, scale: 2.8, speed: 2.7 }); }
     const bar = document.getElementById('boss-bar');
     bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
     bar.classList.remove('hidden');
@@ -1232,7 +1281,7 @@ function summonBoss() {
     };
     // The Dune Devourer is a burrowing sandworm with a rhythmic dive-and-strike
     // pattern; it can only be hurt in its brief "reared up" exposed window.
-    if (bd.id === 'dune_worm') { d.boss.worm = true; d.boss.state = 'exposed'; d.boss.invuln = false; d.boss.phaseUntil = 0; d.boss.scale = 2.6; }
+    if (bd.id === 'dune_worm' || bd.id === 'magma_worm') { d.boss.worm = true; d.boss.state = 'exposed'; d.boss.invuln = false; d.boss.phaseUntil = 0; d.boss.scale = bd.id === 'magma_worm' ? 2.9 : 2.6; }
     const bar = document.getElementById('boss-bar');
     bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
     bar.classList.remove('hidden');
@@ -1715,7 +1764,7 @@ function updateBackstabberBoss(b, h, dt, t) {
   const frac = b.hp / Math.max(1, b.maxhp);
   const phase = frac > 0.66 ? 1 : frac > 0.33 ? 2 : 3;
   if (phase !== b.phaseNum) { b.phaseNum = phase; onBackstabberPhase(b, h, t, phase); }
-  const spd = 2.1 + phase * 0.45;
+  const spd = 2.1 + phase * 0.45 + (b.prime ? 0.5 : 0);   // Prime is a blur
   if (!b.stateUntil) { b.state = 'chase'; b.stateUntil = t + 2400; b.vanished = false; b.invuln = false; }
 
   if (t < b.stateUntil) {
@@ -1723,7 +1772,7 @@ function updateBackstabberBoss(b, h, dt, t) {
       b.facing = h.fx >= b.fx ? 1 : -1;
       const dd = dist(b.fx, b.fy, h.fx, h.fy) || 1;
       if (dd > 1.3) moveEntity(b, (h.fx - b.fx) / dd * spd * dt, (h.fy - b.fy) / dd * spd * dt);
-      else if (t >= (b.slashAt || 0)) { b.slashAt = t + 950; setTimeout(() => backstabberSlash(b), 200); }
+      else if (t >= (b.slashAt || 0)) { b.slashAt = t + (b.prime ? 700 : 950); setTimeout(() => backstabberSlash(b), 200); }
     } else if (b.state === 'vanish') {                       // invisible, sliding behind the hero
       const a = h.faceAngle || 0;
       const tx = clamp(h.fx - Math.cos(a) * 1.5, 3, d.W - 3), ty = clamp(h.fy - Math.sin(a) * 1.5, 3, d.H - 3);
@@ -1733,24 +1782,25 @@ function updateBackstabberBoss(b, h, dt, t) {
     return;
   }
   if (b.state === 'chase') {
-    b.state = 'vanish'; b.vanished = true; b.invuln = true; b.stateUntil = t + (1500 - phase * 260);
-    banner('🌑 The Backstabber melts into shadow...', 850); Audio2.sfx.dodge();
+    b.state = 'vanish'; b.vanished = true; b.invuln = true; b.stateUntil = t + (1500 - phase * 260) - (b.prime ? 220 : 0);
+    banner(b.prime ? '🌑 The Prime dissolves into the dark...' : '🌑 The Backstabber melts into shadow...', 850); Audio2.sfx.dodge();
   } else if (b.state === 'vanish') {
-    b.state = 'reappear'; b.vanished = false; b.invuln = true; b.stateUntil = t + (620 - phase * 90);
+    b.state = 'reappear'; b.vanished = false; b.invuln = true; b.stateUntil = t + (620 - phase * 90) - (b.prime ? 110 : 0);
     shake(); Audio2.sfx.lose(); spawnFloatText(b.fx, b.fy - 0.7, '!!!', '#ff2d5a');
   } else if (b.state === 'reappear') {                       // the BACKSTAB lands on the beat
     const jumping = t < h.jumpUntil, dodging = t < h.dodgeUntil;
-    const dmg = bossDmg(phase >= 3 ? 2 : 1.5);
+    const dmg = bossDmg(b.prime ? (phase >= 3 ? 3 : 2.5) : (phase >= 3 ? 2 : 1.5));
     if (dist(b.fx, b.fy, h.fx, h.fy) < 2.4 && !jumping && !dodging && t >= h.hurtInvulnUntil) {
       spawnFloatText(h.fx, h.fy, 'BACKSTAB! -' + dmg + '❤', '#ff2d5a'); shake(); Audio2.sfx.bighit();
       hurtHero(dmg); if (d.over) return;
     } else spawnFloatText(h.fx, h.fy, 'evaded!', '#8ff0a0');
-    b.state = 'chase'; b.invuln = false; b.stateUntil = t + (2200 - phase * 450);
+    b.state = 'chase'; b.invuln = false; b.stateUntil = t + (2200 - phase * 450) - (b.prime ? 300 : 0);
   }
 }
 function onBackstabberPhase(b, h, t, phase) {
-  if (phase === 2) { banner('🗡️ PHASE 2 — shadow clones!', 1800); for (let k = 0; k < 3; k++) spawnShadowClone(b, k); }
-  else if (phase === 3) { banner('🔥 PHASE 3 — the Backstabber is ENRAGED!', 2000); for (let k = 0; k < 2; k++) spawnShadowClone(b, k + 10); }
+  const extra = b.prime ? 2 : 0;   // the Prime raises a bigger shadow pack
+  if (phase === 2) { banner('🗡️ PHASE 2 — shadow clones!', 1800); for (let k = 0; k < 3 + extra; k++) spawnShadowClone(b, k); }
+  else if (phase === 3) { banner(b.prime ? '💀 FINAL PHASE — the Prime is UNLEASHED!' : '🔥 PHASE 3 — the Backstabber is ENRAGED!', 2000); for (let k = 0; k < 2 + extra; k++) spawnShadowClone(b, k + 10); }
 }
 function backstabberSlash(b) {
   const d = DUNGEON; if (!d || d.over || d.paused || b.dead || b.vanished) return;
@@ -2865,6 +2915,76 @@ function drawProp(ctx, p, ox, oy) {
       ctx.beginPath(); ctx.moveTo(x - 16, y + 2); ctx.lineTo(x - 4, y - 4); ctx.lineTo(x + 6, y + 3); ctx.lineTo(x + 16, y - 2); ctx.stroke();
       break;
     }
+
+    /* ---- Ice Age props ---- */
+    case 'campfire': {
+      ctx.strokeStyle = '#6a4a2a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 10, y - 2); ctx.lineTo(x + 10, y - 6); ctx.moveTo(x - 10, y - 6); ctx.lineTo(x + 10, y - 2); ctx.stroke();   // crossed logs
+      const fl = 4 + Math.sin(performance.now() / 120 + r) * 3;
+      const gg = ctx.createRadialGradient(x, y - 12, 1, x, y - 12, 20);
+      gg.addColorStop(0, 'rgba(255,200,90,0.85)'); gg.addColorStop(1, 'rgba(255,90,30,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x, y - 12, 20, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ffca4a'; ctx.beginPath(); ctx.ellipse(x, y - 12, 6, 9 + fl, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.ellipse(x, y - 9, 3.6, 6, 0, 0, 7); ctx.fill();
+      break;
+    }
+    case 'mammothskull': {
+      ctx.fillStyle = '#e0d8c8'; ctx.beginPath(); ctx.ellipse(x, y - 14, 13, 11, 0, 0, 7); ctx.fill();   // dome
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.beginPath(); ctx.ellipse(x + 4, y - 14, 8, 10, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#141821'; ctx.beginPath(); ctx.arc(x - 5, y - 14, 3, 0, 7); ctx.arc(x + 5, y - 14, 3, 0, 7); ctx.fill();   // sockets
+      ctx.strokeStyle = '#d0c4ac'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 9, y - 6); ctx.quadraticCurveTo(x - 22, y - 2, x - 22, y - 16); ctx.stroke();   // curling tusks
+      ctx.beginPath(); ctx.moveTo(x + 9, y - 6); ctx.quadraticCurveTo(x + 22, y - 2, x + 22, y - 16); ctx.stroke();
+      break;
+    }
+
+    /* ---- Dawn of Time props ---- */
+    case 'meteor': {
+      const pulse = 0.5 + 0.3 * Math.sin(performance.now() / 260 + r);
+      ctx.fillStyle = '#3a2c26'; ctx.beginPath(); ctx.ellipse(x, y - 8, 13, 10, 0.3, 0, 7); ctx.fill();   // half-buried space rock
+      ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x + 4, y - 8, 7, 9, 0.3, 0, 7); ctx.fill();
+      ctx.strokeStyle = `rgba(255,140,60,${pulse})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x - 8, y - 12); ctx.lineTo(x - 2, y - 6); ctx.lineTo(x + 6, y - 12); ctx.stroke();   // glowing fissures
+      ctx.strokeStyle = `rgba(255,120,40,${0.5 * pulse})`; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.ellipse(x, y - 2, 17, 5, 0, 0, 7); ctx.stroke();   // impact ring
+      break;
+    }
+
+    /* ---- End of Time (machine future) props ---- */
+    case 'hologram': {
+      const now = performance.now(), flick = 0.55 + 0.25 * Math.sin(now / 160 + r);
+      ctx.fillStyle = '#30323f'; ctx.beginPath(); ctx.ellipse(x, y - 3, 10, 4, 0, 0, 7); ctx.fill();   // projector base
+      ctx.fillStyle = `rgba(80,240,200,${0.16 * flick})`;
+      ctx.beginPath(); ctx.moveTo(x - 3, y - 5); ctx.lineTo(x - 13, y - 44); ctx.lineTo(x + 13, y - 44); ctx.lineTo(x + 3, y - 5); ctx.closePath(); ctx.fill();   // light cone
+      ctx.strokeStyle = `rgba(90,250,210,${flick})`; ctx.lineWidth = 1.6;
+      const gy = y - 30 + Math.sin(now / 420 + r) * 3;
+      ctx.beginPath(); ctx.arc(x, gy, 8, 0, 7); ctx.stroke();                 // spinning globe
+      ctx.beginPath(); ctx.ellipse(x, gy, 8, 3, 0, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x, gy, 3.2 + 3 * Math.abs(Math.sin(now / 600 + r)), 8, 0, 0, 7); ctx.stroke();
+      break;
+    }
+    case 'powercore': {
+      const now = performance.now(), pulse = 0.5 + 0.4 * Math.sin(now / 220 + r);
+      ctx.fillStyle = '#2c2c3c'; ctx.fillRect(x - 8, y - 30, 16, 30);          // housing
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + 2, y - 30, 6, 30);
+      ctx.fillStyle = '#3c3c50'; ctx.fillRect(x - 10, y - 34, 20, 5); ctx.fillRect(x - 10, y - 3, 20, 4);
+      const gg = ctx.createRadialGradient(x, y - 17, 1, x, y - 17, 13);
+      gg.addColorStop(0, `rgba(120,255,220,${0.9 * pulse})`); gg.addColorStop(1, 'rgba(60,220,180,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(x, y - 17, 13, 0, 7); ctx.fill();
+      ctx.fillStyle = `rgba(190,255,240,${pulse})`; ctx.beginPath(); ctx.ellipse(x, y - 17, 3.4, 8, 0, 0, 7); ctx.fill();   // energy column
+      break;
+    }
+    case 'antenna': {
+      const now = performance.now(), blink = (now / 700 + r) % 1 < 0.5;
+      ctx.strokeStyle = '#4a4a5e'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x, y - 40); ctx.lineTo(x + 8, y); ctx.stroke();   // lattice mast
+      ctx.beginPath(); ctx.moveTo(x - 5, y - 12); ctx.lineTo(x + 5, y - 12); ctx.moveTo(x - 3, y - 24); ctx.lineTo(x + 3, y - 24); ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,220,255,0.5)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(x, y - 44, 7, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();   // broadcast arcs
+      ctx.beginPath(); ctx.arc(x, y - 44, 11, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke();
+      ctx.fillStyle = blink ? '#ff4a6a' : '#5a2030'; ctx.beginPath(); ctx.arc(x, y - 42, 2.4, 0, 7); ctx.fill();   // beacon
+      break;
+    }
   }
 }
 
@@ -3233,7 +3353,7 @@ function updateDungeonHUD() {
   if (fill) fill.style.width = clamp((d.progress || 0) * 100, 0, 100) + '%';
   if (d.chamberMode) {
     const label = document.querySelector('.obj-label');
-    if (label) label.textContent = 'Descend the ' + d.theme.name;
+    if (label) label.textContent = /^the /i.test(d.theme.name) ? 'Descend ' + d.theme.name : 'Descend the ' + d.theme.name;   // no "the The Ice Age"
     if (cnt) cnt.textContent = 'Chamber ' + Math.min(d.chambersCleared + 1, d.chamberList.length) + ' / ' + d.chamberList.length;
   } else {
     const reached = d.checkpoints.filter(c => c.reached).length;
@@ -3295,6 +3415,8 @@ function winDungeon() {
   Audio2.sfx.win();
   // Beating the Act 1 finale (the Backstabber) reveals his time machine → Act 2.
   if (d.regionId === 'secret' && currentAct() === 1) { showTimeMachine(); return; }
+  // Beating the Act 2 finale (the Backstabber Prime) ends the saga — roll the epilogue.
+  if (d.regionId === 'secret' && currentAct() === 2) { showVictoryEpilogue(); return; }
   showDungeonResult(true, bonus, mods, gotLife);
 }
 // Falling to 0 hearts is DEATH. An Extra Life (if you have one) cheats it; else

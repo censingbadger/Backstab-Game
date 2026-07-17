@@ -82,6 +82,18 @@ const ENEMIES = {
   /* ===== ACT TWO — Pompeii (the doomed city of the gods) ===== */
   gladiator:     { id:'gladiator',     name:'Gladiator',      hearts:3,   attack:4, reward:12, art:'gladiator', palette:{ skin:'#c98a5a', cloth:'#8a2f2f' }, blurb:'A doomed arena champion in a plumed helm, still swinging his gladius as the ash rains down.' },
   centurion:     { id:'centurion',     name:'Centurion',      hearts:4,   attack:4, reward:15, art:'centurion', palette:{ skin:'#caa06a', cloth:'#b8342a' }, blurb:'A Roman legionnaire behind a great red shield, marching on through the burning streets.' },
+
+  /* ===== ACT TWO — The Ice Age (mammoth country) ===== */
+  caveman:       { id:'caveman',       name:'Caveman',        hearts:4,   attack:4, reward:14, art:'caveman',  palette:{ skin:'#c99a6a', cloth:'#8a5a30' }, blurb:'A fur-clad hunter with a heavy stone club and absolutely no manners.' },
+  sabertooth:    { id:'sabertooth',    name:'Sabertooth',     hearts:3.5, attack:5, reward:16, art:'sabertooth', palette:{ skin:'#d9a45a', cloth:'#8a5a24' }, blurb:'A prowling cat with fangs like carving knives. It pounces before you blink.' },
+
+  /* ===== ACT TWO — The Dawn of Time (the molten world) ===== */
+  amoeba:        { id:'amoeba',        name:'Mega Amoeba',    hearts:3,   attack:4, reward:15, art:'amoeba',   palette:{ skin:'#7ad9a0', cloth:'#2a8a5a' }, blurb:'The very first life — grown huge, hungry, and wobbling straight at you.' },
+  trilobite:     { id:'trilobite',     name:'Trilobite',      hearts:4.5, attack:5, reward:18, art:'trilobite',palette:{ skin:'#8a6a4a', cloth:'#4a3520' }, blurb:'An armoured sea-bug the size of a dog, skittering across the cooling rock.' },
+
+  /* ===== ACT TWO — The End of Time (the machine future) ===== */
+  robot:         { id:'robot',         name:'Sentry Bot',     hearts:5,   attack:5, reward:20, art:'robot',    palette:{ skin:'#7a8a9a', cloth:'#30ffb0' }, blurb:'A clanking security robot with one glowing eye and zero patience for heroes.' },
+  mech:          { id:'mech',          name:'War Mech',       hearts:6,   attack:6, reward:24, art:'mech',     palette:{ skin:'#5a5a6a', cloth:'#ff4a6a' }, blurb:'A walking weapons platform on hydraulic legs. It was built for exactly this.' },
 };
 
 /* ---------- Named bosses (tougher, unique, bigger rewards) ---------- */
@@ -101,6 +113,9 @@ const BOSSES = {
   anubis:     { id:'anubis',     name:'Anubis',            hearts:25, attack:7, reward:420, art:'anubis',   palette:{ skin:'#2a2a34', cloth:'#d4af37' }, boss:true, dungeon:true, blurb:'Venombane, reborn in the age of pharaohs as the towering jackal-god Anubis, Judge of the Dead. He weighs your heart on his scales — and finds it wanting.' },
   kraken:     { id:'kraken',     name:'The Kraken',        hearts:27, attack:8, reward:460, art:'kraken',   palette:{ skin:'#6a3a7a', cloth:'#3a1f4a' }, boss:true, dungeon:true, aquatic:true, blurb:'The Great White, reborn in the sunken city as a colossal kraken — a mountain of tentacles and beak that drags heroes down to the crushing deep.' },
   colossus:   { id:'colossus',   name:'The Molten Colossus', hearts:26, attack:8, reward:480, art:'colossus', palette:{ skin:'#4a4038', cloth:'#ff6a2a' }, boss:true, dungeon:true, blurb:'The King Crab, reborn in the shadow of Vesuvius as a towering statue of a fallen god — its stone skin split by rivers of molten lava, and every footfall cracks the earth.' },
+  mammoth_king:{ id:'mammoth_king', name:'The Mammoth King', hearts:30, attack:9, reward:520, art:'mammoth', palette:{ skin:'#8a6a48', cloth:'#e8e0d0' }, boss:true, dungeon:true, blurb:'The Frost Titan, resurrected in the deep freeze as a colossal woolly mammoth with tusks of black ice. The glacier shakes with every step it takes.' },
+  magma_worm: { id:'magma_worm', name:'The Magma Leviathan', hearts:32, attack:9, reward:560, art:'worm',    palette:{ skin:'#ff7a2a', cloth:'#8a2410' }, boss:true, dungeon:true, blurb:'The Dune Devourer, dragged back to the dawn of the world and reborn in liquid rock — a burrowing leviathan of magma that erupts from the molten crust to feed.' },
+  backstabber_prime:{ id:'backstabber_prime', name:'The Backstabber Prime', hearts:44, attack:10, reward:1000, art:'assassin', palette:{ skin:'#1a1430', cloth:'#30ffb0' }, boss:true, dungeon:true, blurb:'At the end of time the Backstabber waits — swollen monstrous on every drop of power he stole, faster and crueller than he ever was. The last back stab in history belongs to one of you.' },
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },
