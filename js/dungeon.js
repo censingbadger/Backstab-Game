@@ -291,6 +291,16 @@ function dungeonTheme(regionId) {
   return DUNGEON_THEMES[regionId];
 }
 
+/* Progressive difficulty: every region has a TIER — its position along the
+   journey. Act 1 runs tiers 0-8; Act 2 picks up mid-curve (4-12) so each era
+   keeps climbing past where Act 1 left off. Enemies, swarms and bosses all
+   scale off this, so the game gets steadily harder from first cliff to the
+   End of Time. */
+function regionTier(regionId) {
+  const i = Math.max(0, REGIONS.findIndex(r => r.id === regionId));
+  return i + (currentAct() === 2 ? 4 : 0);
+}
+
 /* Poison artifacts earned in the Toxic Temple — permanent powers for your weapon. */
 const ARTIFACTS = {
   venom_fang:  { id: 'venom_fang',  name: 'Venom Fang',  icon: '🐍', desc: 'Your strikes poison enemies.' },
@@ -839,7 +849,7 @@ function summonBossChamber() {
   setTimeout(() => {
     if (!DUNGEON) return;
     const c = d.chamberList[d.chamberList.length - 1];
-    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1));   // resurrected Act 2 wardens are tougher
+    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1) * (1 + regionTier(d.regionId) * 0.08));   // resurrected Act 2 wardens are tougher; all bosses climb the tier curve
     d.boss = {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
       fx: c.cx, fy: c.cy - c.hh * 0.5, r: 0.9, scale: 2.3, poison: !!d.theme.poison,
@@ -937,6 +947,15 @@ function buildDungeonDOM() {
     </div>
     <div id="dun-banner" class="dun-banner"></div>
   `;
+  // One-time controls hint on the very first crawl, so new players aren't lost.
+  if (!STATE.seenControls) {
+    STATE.seenControls = true; saveGame();
+    const hint = document.createElement('div');
+    hint.className = 'controls-hint';
+    hint.innerHTML = '🎮 <b>WASD</b> move &nbsp;·&nbsp; <b>K</b>/click attack &nbsp;·&nbsp; <b>Shift</b> dodge &nbsp;·&nbsp; <b>Space</b> jump &nbsp;·&nbsp; <b>Q</b> heal &nbsp;·&nbsp; <b>E</b> gear';
+    el.appendChild(hint);
+    setTimeout(() => { hint.classList.add('fade'); setTimeout(() => hint.remove(), 700); }, 9000);
+  }
   const canvas = document.getElementById('dun-canvas');
   resizeDungeonCanvas();
   updateDungeonHUD();
@@ -1066,7 +1085,7 @@ function heroAttack() {
   const power = bare ? null : weaponPower(wid);
   // BACK STAB: striking an enemy from behind its facing deals double damage.
   const behind = e => e.facing !== 0 && Math.sign(h.fx - e.fx) !== 0 && Math.sign(h.fx - e.fx) !== e.facing;
-  const dmg = bare ? 2 : (weaponDamage(wid) + (STATE.dmgBonus || 0));   // upgrades + Power modifier
+  const dmg = Math.round((bare ? 2 : (weaponDamage(wid) + (STATE.dmgBonus || 0))) * levelMastery() * 10) / 10;   // upgrades + Power modifier + level mastery
   const hits = power === 'double' ? 2 : 1;
   let reach = 2.4, arc = Math.PI * 1.15;
   if (power === 'reach') reach += 1.2;                 // spears/bow strike from further
@@ -1122,7 +1141,7 @@ function fireHeroShot(kind, wid, now) {
   updateHeroFacing();
   const ang = h.faceAngle;
   const speed = kind === 'bazooka' ? 10 : 17;
-  const dmg = weaponDamage(wid) + (STATE.dmgBonus || 0);
+  const dmg = Math.round((weaponDamage(wid) + (STATE.dmgBonus || 0)) * levelMastery() * 10) / 10;
   d.shots.push({ kind, x: h.fx + Math.cos(ang) * 0.5, y: h.fy + Math.sin(ang) * 0.5, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, dmg, born: now, life: 1300 });
   Audio2.sfx[kind === 'bazooka' ? 'bighit' : 'special']();
   h.swingUntil = now + 130;
@@ -1272,7 +1291,7 @@ function summonBoss() {
     const h = d.hero;
     const pi = nearestSampleIndex(h.fx, h.fy);
     const bs = d.path.samples[Math.min(d.path.samples.length - 1, pi + 10)];
-    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1));   // resurrected Act 2 wardens are tougher
+    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1) * (1 + regionTier(d.regionId) * 0.08));   // resurrected Act 2 wardens are tougher; all bosses climb the tier curve
     d.boss = {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
       fx: bs.x, fy: bs.y, r: 0.9, scale: 2.1,
@@ -1350,10 +1369,12 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   const dmgMul = d.theme.enemyDmgMul || 1;                           // Desolate Dunes = double-power foes
   const actHpMul = currentAct() === 2 ? 1.5 : 1;                     // Act 2 foes have markedly more HP
   const actDmgMul = currentAct() === 2 ? 2 : 1;                      // ...and hit TWICE as hard
-  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1) * actHpMul));   // tougher to cut down
+  const tier = regionTier(d.regionId);                               // the journey's difficulty curve
+  const tierHp = 1 + tier * 0.12, tierDmg = 1 + tier * 0.07, tierLoot = 1 + tier * 0.10;
+  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1) * actHpMul * tierHp));   // tougher to cut down
   let speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
-  let attack = f.attack, reward = f.reward || 1, r = 0.4;
-  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1) * dmgMul * actDmgMul;  // heavier hitters do more; Dunes foes hit twice as hard
+  let attack = f.attack, reward = Math.max(1, Math.round((f.reward || 1) * tierLoot)), r = 0.4;
+  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1) * dmgMul * actDmgMul * tierDmg;  // heavier hitters do more; Dunes foes hit twice as hard
   // Elite (Minecraft-Dungeons "enchanted") — an occasional tougher, glowing
   // variant worth a lot more loot. Never on the opening spawns.
   const elite = (d.spawned > 2) && rand(seed * 3.7 + 11) < (d.hard ? 0.15 : 0.09);
@@ -1617,8 +1638,8 @@ function updateDungeon(dt, t) {
 
   /* --- keep the swarm populated (path mode only; chambers spawn fixed waves) --- */
   // difficulty scales with geographic progress (harder the further you go)
-  const capMax = d.hard ? 13 : DUN.MAX_ENEMIES;
-  const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.round((d.progress || 0) * (d.hard ? 8 : 5)));
+  const capMax = (d.hard ? 13 : DUN.MAX_ENEMIES) + Math.floor(regionTier(d.regionId) / 3);   // later regions field bigger packs
+  const swarmCap = Math.min(capMax, (d.hard ? 5 : 3) + Math.floor(regionTier(d.regionId) / 4) + Math.round((d.progress || 0) * (d.hard ? 8 : 5)));
   const spawnGap = Math.max(d.hard ? 0.34 : 0.55, (d.hard ? 0.95 : 1.15) - (d.progress || 0) * 0.6);
   if (!d.chamberMode && !d.bossIntro && d.enemies.filter(e => !e.dead).length < swarmCap) {
     d.spawnTimer -= dt;
@@ -1880,7 +1901,7 @@ function heroFellOff() {
   h.blownOff = true;
   d.over = true; d.outcome = 'lose'; STATE.losses++; saveGame();
   banner('🌪️ BLOWN OFF THE EDGE!', 1600); Audio2.sfx.lose();
-  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); });
+  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); }, () => { const rid = DUNGEON.regionId; stopDungeon(); startDungeon(rid); });
 }
 
 /* Pompeii's Vesuvius: on a cycle it hurls molten bombs at telegraphed spots.
@@ -2066,6 +2087,14 @@ function renderDungeon() {
   const vg = ctx.createRadialGradient(cw / 2, ch / 2, vgInner, cw / 2, ch / 2, vgOuter);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${dark})`);
   ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+
+  // ---- last-heart warning: the screen edges pulse red like a heartbeat ----
+  if (d.hero.hp > 0 && d.hero.hp <= 1) {
+    const beat = 0.22 + 0.16 * Math.abs(Math.sin(performance.now() / 280));
+    const rv = ctx.createRadialGradient(cw / 2, ch / 2, ch * 0.3, cw / 2, ch / 2, ch * 0.75);
+    rv.addColorStop(0, 'rgba(200,20,40,0)'); rv.addColorStop(1, `rgba(200,20,40,${beat})`);
+    ctx.fillStyle = rv; ctx.fillRect(0, 0, cw, ch);
+  }
 
   // ---- flight-fuel meter (only when you own the Wings) ----
   if (hasArtifact('wings')) {
@@ -3409,7 +3438,16 @@ function winDungeon() {
   if (!STATE.rewardedRegions) STATE.rewardedRegions = [];
   const firstClear = !STATE.rewardedRegions.includes(d.regionId);
   let mods = null;
-  if (firstClear) { STATE.rewardedRegions.push(d.regionId); mods = rollModifiers(3); }
+  if (firstClear) {
+    STATE.rewardedRegions.push(d.regionId);
+    mods = rollModifiers(3);
+    // Milestone hearts: every 3rd region you conquer for the first time grows
+    // your heart bar (cap 12) — steady player growth to meet the rising tiers.
+    if (STATE.rewardedRegions.length % 3 === 0 && STATE.maxHearts < 12) {
+      STATE.maxHearts++;
+      banner('💖 MILESTONE — your max hearts grew to ' + STATE.maxHearts + '!', 3000);
+    }
+  }
   const gotLife = maybeGrantExtraLife();   // transcendently-rare Legendary boss boon
   saveGame();
   Audio2.sfx.win();
@@ -3427,7 +3465,7 @@ function loseDungeon() {
   d.over = true; d.outcome = 'lose';
   STATE.losses++; saveGame();
   Audio2.sfx.lose();
-  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); });
+  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); }, () => { const rid = DUNGEON.regionId; stopDungeon(); startDungeon(rid); });
 }
 function reviveDungeon() {
   const d = DUNGEON, h = d.hero;
