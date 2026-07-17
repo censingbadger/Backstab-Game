@@ -680,6 +680,38 @@ function charBody(art, p) {
         <circle cx="72" cy="15" r="6" fill="none" stroke="${p.cloth}" stroke-width="3"/>
         <path d="M72 20 v9 M67 24 h10" stroke="${p.cloth}" stroke-width="3"/>`;
 
+    /* ===== ACT TWO — Atlantis ===== */
+    case 'merman':
+      return `${shadow}
+        <path d="M42 70 Q38 92 30 100 L46 96 Q50 88 50 78 Q50 88 54 96 L70 100 Q62 92 58 70 Z" fill="${p.skin}"/>
+        <path d="M28 100 L46 96 L38 108 Z" fill="${p.cloth}"/><path d="M72 100 L54 96 L62 108 Z" fill="${p.cloth}"/>
+        <rect x="38" y="52" width="24" height="24" rx="7" fill="${p.skin}"/>
+        <path d="M40 57 h20 M40 63 h20 M40 69 h20" stroke="#2a6a5a" stroke-width="1.4" opacity="0.55"/>
+        <circle cx="50" cy="40" r="11" fill="${p.skin}"/>
+        <path d="M40 36 q-6 -2 -8 -8 q7 3 11 5 Z" fill="${p.cloth}"/><path d="M60 36 q6 -2 8 -8 q-7 3 -11 5 Z" fill="${p.cloth}"/>
+        <circle cx="46" cy="40" r="2" fill="${eye}"/><circle cx="55" cy="40" r="2" fill="${eye}"/>
+        <path d="M70 28 L70 78 M64 32 L70 27 L76 32 M66 30 v7 M74 30 v7" stroke="${p.cloth}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+
+    case 'jellyfish':
+      return `${shadow}
+        <path d="M28 66 Q28 44 50 44 Q72 44 72 66 Q60 60 50 66 Q40 60 28 66 Z" fill="${p.skin}" opacity="0.72"/>
+        <path d="M32 62 Q32 47 50 47 Q68 47 68 62" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+        <g stroke="${p.cloth}" stroke-width="2" fill="none" stroke-linecap="round">
+          <path d="M34 64 q-2 14 2 26"/><path d="M42 66 q2 16 -2 28"/><path d="M50 66 q-1 18 1 30"/><path d="M58 66 q-2 16 2 28"/><path d="M66 64 q2 14 -2 26"/></g>
+        <circle cx="44" cy="56" r="2" fill="rgba(255,255,255,0.75)"/><circle cx="56" cy="56" r="2" fill="rgba(255,255,255,0.75)"/>`;
+
+    case 'kraken': // boss: the sunken-city sea monster
+      return `${shadow}
+        <g stroke="${p.skin}" stroke-width="7" fill="none" stroke-linecap="round">
+          <path d="M40 78 Q20 82 14 66 Q10 54 22 52"/><path d="M60 78 Q80 82 86 66 Q90 54 78 52"/>
+          <path d="M36 84 Q22 96 30 108"/><path d="M64 84 Q78 96 70 108"/></g>
+        <g fill="${p.cloth}"><circle cx="18" cy="60" r="3"/><circle cx="82" cy="60" r="3"/></g>
+        <ellipse cx="50" cy="58" rx="30" ry="30" fill="${p.skin}"/>
+        <ellipse cx="50" cy="44" rx="22" ry="14" fill="${p.cloth}" opacity="0.45"/>
+        <circle cx="38" cy="54" r="7" fill="#ffd23f"/><circle cx="38" cy="54" r="3" fill="#161616"/>
+        <circle cx="62" cy="54" r="7" fill="#ffd23f"/><circle cx="62" cy="54" r="3" fill="#161616"/>
+        <path d="M44 72 L50 82 L56 72 Z" fill="#e8e0c0"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>

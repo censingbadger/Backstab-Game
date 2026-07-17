@@ -215,6 +215,20 @@ const ACT2_THEMES = {
     boss: 'anubis',
     chambers: true, hard: true, hazard: 'quicksand',   // gated tomb chambers, sinking-sand pits + spikes
   },
+  shatter_coast: {
+    name: 'Atlantis',
+    color: '#3aa8b8', emoji: '🔱',
+    sky: ['#2f86a4', '#1c5f80', '#0a2c46'],         // deep teal ocean gloom
+    ground: ['#3a8a86', '#2f7472'],                 // algae-slick seabed stone
+    speckle: 'rgba(160,240,225,0.28)',
+    edge: ['#1a4a58', '#0d2c38'],
+    props: ['coral', 'seaweed', 'column', 'shell', 'chest', 'coral', 'seaweed'],
+    trail: '150,240,230',
+    enemies: ['merman', 'jellyfish', 'colossal_squid', 'merman', 'jellyfish'],
+    boss: 'kraken',
+    waypoints: [[10, 12], [24, 12], [24, 28], [10, 32], [14, 46], [34, 46], [36, 30], [50, 32], [54, 52]],
+    beach: true, tide: true, hard: true, wider: true,   // tidal swims + a deep-water boss arena + hidden passage
+  },
 };
 // Act-aware theme lookup: Act 2 re-skin when one exists, else the Act 1 theme.
 function dungeonTheme(regionId) {
@@ -1426,12 +1440,16 @@ function updateDungeon(dt, t) {
     });
     updateDungeonHUD();
   }
-  // reach the Key at the far end of the corridor to unlock the Sandcastle
+  // reach the Key at the far end of the corridor to unlock the hidden passage
+  // region (the Sandcastle in Act 1; the same secret slot — Pompeii — in Act 2)
   if (d.key && !d.key.taken && d.secret && d.secret.found && dist(d.key.x, d.key.y, h.fx, h.fy) < 1.3) {
     d.key.taken = true;
-    if (typeof unlockRegion === 'function') unlockRegion('sandcastle');
-    banner('🗝️ You claimed the Key to the Sandcastle!', 3000);
-    Audio2.sfx.win(); spawnFloatText(h.fx, h.fy, '🗝️ Sandcastle Key!', '#ffd23f');
+    const inAct2 = currentAct() === 2;
+    const destName = inAct2 ? (typeof ACT2_THEMES !== 'undefined' && ACT2_THEMES.sandcastle ? ACT2_THEMES.sandcastle.name : 'a lost age') : 'the Sandcastle';
+    const canOpen = !inAct2 || (typeof act2Built === 'function' && act2Built('sandcastle'));
+    if (canOpen && typeof unlockRegion === 'function') unlockRegion('sandcastle');
+    banner(canOpen ? ('🗝️ You found the hidden passage to ' + destName + '!') : '🗝️ A sealed passage... its age has not yet come.', 3000);
+    Audio2.sfx.win(); spawnFloatText(h.fx, h.fy, '🗝️ Secret Key!', '#ffd23f');
   }
 
   const dodging = t < h.dodgeUntil;
@@ -2659,6 +2677,33 @@ function drawProp(ctx, p, ox, oy) {
       ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.beginPath(); ctx.moveTo(x + 4, y - 20); ctx.quadraticCurveTo(x + 13, y - 8, x + 7, y); ctx.lineTo(x + 3, y); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#d0a860'; ctx.fillRect(x - 9, y - 24, 18, 5);
       ctx.fillStyle = '#8a5a2a'; ctx.fillRect(x - 9, y - 12, 18, 3);
+      break;
+    }
+
+    /* ---- Atlantis (sunken city) props ---- */
+    case 'seaweed': {
+      const sway = Math.sin(performance.now() / 600 + r) * 5;
+      ctx.lineWidth = 4; ctx.lineCap = 'round';
+      for (let i = -1; i <= 1; i++) {
+        ctx.strokeStyle = i ? '#2f8a5a' : '#3aa86a';
+        ctx.beginPath(); ctx.moveTo(x + i * 6, y); ctx.quadraticCurveTo(x + i * 6 + sway, y - 16, x + i * 6 + sway * 1.4, y - 32); ctx.stroke();
+      }
+      break;
+    }
+    case 'column': {
+      ctx.fillStyle = '#9ab0b0'; ctx.fillRect(x - 8, y - 34, 16, 34);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(x + 3, y - 34, 5, 34);
+      ctx.strokeStyle = '#7a9090'; ctx.lineWidth = 1;
+      for (let i = -6; i <= 6; i += 4) { ctx.beginPath(); ctx.moveTo(x + i, y - 33); ctx.lineTo(x + i, y - 1); ctx.stroke(); }
+      ctx.fillStyle = '#b0c4c4'; ctx.fillRect(x - 11, y - 38, 22, 5); ctx.fillRect(x - 11, y - 3, 22, 4);
+      ctx.fillStyle = 'rgba(60,150,90,0.5)'; ctx.beginPath(); ctx.ellipse(x - 5, y - 9, 5, 3, 0, 0, 7); ctx.ellipse(x + 6, y - 26, 4, 2.4, 0, 0, 7); ctx.fill();
+      break;
+    }
+    case 'chest': {
+      ctx.fillStyle = '#7a5230'; ctx.fillRect(x - 13, y - 14, 26, 14);
+      ctx.fillStyle = '#8a6238'; ctx.beginPath(); ctx.moveTo(x - 13, y - 14); ctx.quadraticCurveTo(x, y - 25, x + 13, y - 14); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c9962f'; ctx.fillRect(x - 13, y - 11, 26, 3); ctx.fillRect(x - 2, y - 17, 4, 11);
+      ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(x, y - 8, 1.7, 0, 7); ctx.fill();
       break;
     }
   }
