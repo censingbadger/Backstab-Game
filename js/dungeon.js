@@ -106,15 +106,18 @@ const DUNGEON_THEMES = {
   },
   knife_mountain: {
     name: 'Knife Mountain',
-    sky: ['#1a2740', '#101a2e', '#070d18'],         // cold, dark frozen-peak interior
-    ground: ['#cfe0ee', '#b7cde1'],                 // pale-blue glacier ice floor
-    speckle: 'rgba(255,255,255,0.5)',
-    edge: ['#7f97b0', '#586c84'],                   // frosted rock walls
-    props: ['icespike', 'snowpile', 'frozenrock', 'pine', 'icespike', 'snowpile'],
-    trail: '180,230,255',
+    sky: ['#a8c4de', '#7690ac', '#3a4a60'],         // thin high-altitude sky fading to the valley haze far below
+    ground: ['#8b939f', '#79828e'],                 // bare grey summit rock
+    speckle: 'rgba(255,255,255,0.45)',              // wind-blown snow dust
+    edge: ['#565d68', '#33383f'],                   // grey mountain faces dropping away beneath the ridge
+    props: ['frozenrock', 'icespike', 'pine', 'rock', 'snowpile', 'frozenrock', 'icespike'],
+    trail: '220,235,250',
     enemies: ['polar_bear', 'baby_werewolf', 'yeti', 'bear', 'polar_bear', 'yeti'],
     boss: 'frost_titan',
-    chambers: true, hard: true, hazard: 'ice',      // temple-style chambers on a slippery ice floor
+    // a knife-thin summit ridge: switchbacks along the mountain tops, with the
+    // grey rock faces falling away under the player's feet
+    waypoints: [[10, 54], [22, 48], [16, 36], [26, 26], [16, 16], [30, 10], [42, 16], [36, 28], [46, 38], [38, 50], [52, 54], [56, 40], [54, 24]],
+    hard: true,
   },
   barren_grasslands: {
     name: 'Barren Grasslands',
@@ -245,15 +248,17 @@ const ACT2_THEMES = {
   knife_mountain: {
     name: 'The Ice Age',
     color: '#9ac8e8', emoji: '🦣',
-    sky: ['#20344e', '#14223a', '#0a1220'],         // deep-frozen glacier night
-    ground: ['#d8e8f2', '#c2d6e6'],                 // hard-packed glacier ice
-    speckle: 'rgba(255,255,255,0.5)',
-    edge: ['#6a86a0', '#48607a'],
-    props: ['icespike', 'snowpile', 'campfire', 'mammothskull', 'frozenrock', 'icespike', 'campfire'],
-    trail: '170,225,255',
+    sky: ['#dceaf4', '#b8d0e2', '#88a6c0'],         // a pale arctic sky over endless white
+    ground: ['#f2f8fc', '#e2edf5'],                 // wind-packed tundra snow
+    speckle: 'rgba(255,255,255,0.75)',
+    edge: ['#b0c6d6', '#8ba4b8'],                   // snow-drift banks at the tundra's edge
+    props: ['snowpile', 'icespike', 'pine', 'mammothskull', 'campfire', 'snowpile', 'frozenrock'],
+    trail: '170,205,235',
     enemies: ['caveman', 'sabertooth', 'yeti', 'caveman', 'sabertooth'],
     boss: 'mammoth_king',
-    chambers: true, hard: true, hazard: 'ice',      // the glacier cave crawl, still slippery underfoot
+    // a wide-open white tundra trek — a long wandering trail across the snow
+    waypoints: [[8, 12], [22, 10], [30, 20], [18, 28], [10, 40], [24, 46], [38, 40], [34, 26], [46, 16], [54, 26], [48, 40], [54, 52]],
+    hard: true, wider: true,
   },
   desolate_dunes: {
     name: 'The Dawn of Time',

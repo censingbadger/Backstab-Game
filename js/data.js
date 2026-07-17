@@ -251,7 +251,7 @@ const LORE = {
     toxic_temple:      "A holy place drowned in the Rotking's venom. Cleanse its chambers and press on toward the one who loosed the rot.",
     shatter_coast:     "Drowned shores prowled by the Great White. Beat the tide and the shark — the road onward runs through the deep.",
     sandcastle:        "A fortress lost beneath the waves, hoarded by the King Crab. Take its key of sand; the finale draws nearer.",
-    knife_mountain:    "A frozen blade of a peak where the Frost Titan reigns. Climb its caverns — mind the ice — one warden closer to your goal.",
+    knife_mountain:    "A frozen blade of a peak where the Frost Titan reigns. Walk the knife-edge ridge above the clouds — mind the drop — one warden closer to your goal.",
     desolate_dunes:    "A storm-cursed waste adrift over fire, where the Dune Devourer burrows. Hold your footing against the wind; the Lair is near.",
     secret:            "The Backstabber's Lair. Every warden you've felled has led you here. End his reign — a back stab for a back stab — and free the realm.",
   },
