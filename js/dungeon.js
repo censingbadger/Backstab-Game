@@ -778,7 +778,7 @@ function summonBossChamber() {
   setTimeout(() => {
     if (!DUNGEON) return;
     const c = d.chamberList[d.chamberList.length - 1];
-    const hp = Math.round(bd.hearts * 24);
+    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1));   // resurrected Act 2 wardens are tougher
     d.boss = {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
       fx: c.cx, fy: c.cy - c.hh * 0.5, r: 0.9, scale: 2.3, poison: !!d.theme.poison,
@@ -1208,7 +1208,7 @@ function summonBoss() {
     const h = d.hero;
     const pi = nearestSampleIndex(h.fx, h.fy);
     const bs = d.path.samples[Math.min(d.path.samples.length - 1, pi + 10)];
-    const hp = Math.round(bd.hearts * 24);
+    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1));   // resurrected Act 2 wardens are tougher
     d.boss = {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
       fx: bs.x, fy: bs.y, r: 0.9, scale: 2.1,
@@ -1284,7 +1284,7 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
   const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
   const dmgMul = d.theme.enemyDmgMul || 1;                           // Desolate Dunes = double-power foes
-  const actMul = currentAct() === 2 ? 1.15 : 1;                      // Act 2 foes are a notch tougher
+  const actMul = currentAct() === 2 ? 1.5 : 1;                       // Act 2 foes are markedly tougher — more HP and harder hits
   let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1) * actMul));   // tougher to cut down
   let speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
   let attack = f.attack, reward = f.reward || 1, r = 0.4;

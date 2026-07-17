@@ -40,6 +40,10 @@ function newGame() {
     cleared: [],
     // which ACT the player is in (1 = the realm of Karrowmere; 2 = through time)
     act: 1,
+    // set true once the time machine is used — lets you hop between acts freely
+    act2Unlocked: false,
+    // per-act map progress snapshots so each act remembers its own unlocked/cleared
+    actProgress: {},
     // marks that this save is on the 5-heart rebalance (see loadGame migration)
     heartsRebalanced: true,
     // extra lives — rare Legendary boss-fight boons that let you cheat death once
@@ -155,12 +159,39 @@ function currentAct() { return STATE.act || 1; }
 // An Act-2 region is "built" only once it has an ACT2_THEMES entry; until then
 // the time-travel path stops there ("to be continued").
 function act2Built(id) { return typeof ACT2_THEMES !== 'undefined' && !!ACT2_THEMES[id]; }
-function beginActTwo() {
-  STATE.act = 2;
-  STATE.unlocked = ['dead_cliffs'];   // Act 2 restarts the map with your Act-1 gear intact
-  STATE.cleared = [];
-  STATE.rewardedRegions = [];
+// Stash the current act's map progress so we can restore it if the player hops
+// back to it later. Gear, weapons, artifacts and hearts are shared across acts.
+function snapshotActProgress() {
+  STATE.actProgress = STATE.actProgress || {};
+  STATE.actProgress[currentAct()] = {
+    unlocked: (STATE.unlocked || []).slice(),
+    cleared: (STATE.cleared || []).slice(),
+    rewardedRegions: (STATE.rewardedRegions || []).slice(),
+  };
+}
+
+// Move to an act, remembering where you left the one you came from. First time
+// into an act, its map starts fresh at the Dead Cliffs.
+function switchToAct(n) {
+  if (currentAct() === n) return;
+  snapshotActProgress();
+  STATE.act = n;
+  const saved = STATE.actProgress && STATE.actProgress[n];
+  if (saved) {
+    STATE.unlocked = saved.unlocked.slice();
+    STATE.cleared = saved.cleared.slice();
+    STATE.rewardedRegions = saved.rewardedRegions.slice();
+  } else {
+    STATE.unlocked = ['dead_cliffs'];   // fresh map, but your Act-1 gear comes with you
+    STATE.cleared = [];
+    STATE.rewardedRegions = [];
+  }
   saveGame();
+}
+
+function beginActTwo() {
+  STATE.act2Unlocked = true;   // the time machine now lets you travel between acts
+  switchToAct(2);              // snapshots Act 1's completed map on the way in
 }
 
 function clearRegion(id) {

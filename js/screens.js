@@ -547,8 +547,17 @@ function renderMap() {
         ${nodes}
       </div>
     </div>
-    <div class="map-hint">${act2 ? '⏳ Chase the resurrected wardens through time — clear an era to leap to the next.' : 'Journey across the realm — beat a region to travel onward and unlock the next.'}</div>`;
+    <div class="map-hint">${act2 ? '⏳ Chase the resurrected wardens through time — clear an era to leap to the next.' : 'Journey across the realm — beat a region to travel onward and unlock the next.'}</div>
+    ${STATE.act2Unlocked ? `<div class="act-switch-row">
+      <button class="act-switch" id="actSwitch">${act2 ? '↩️ Return to Act I · Karrowmere' : '⏳ Travel to Act II · Through Time'}</button>
+    </div>` : ''}`;
   wireCommon(el);
+  const swBtn = el.querySelector('#actSwitch');
+  if (swBtn) swBtn.addEventListener('click', () => {
+    Audio2.sfx.click();
+    switchToAct(currentAct() === 2 ? 1 : 2);
+    renderMap();
+  });
   el.querySelectorAll('.map-node:not(.locked)').forEach(node => {
     node.addEventListener('click', () => {
       Audio2.sfx.click();
