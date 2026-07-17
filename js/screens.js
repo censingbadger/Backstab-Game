@@ -71,6 +71,31 @@ function showGameOverOverlay(onBack) {
   overlay.querySelector('#go-start').addEventListener('click', () => { Audio2.sfx.click(); onBack(); });
 }
 
+/* Beating the Act 1 Backstabber reveals his TIME MACHINE — press the button to
+   be flung into Act 2 (the time-travel chase). */
+function showTimeMachine() {
+  const overlay = document.createElement('div');
+  overlay.className = 'result-overlay';
+  overlay.innerHTML = `
+    <div class="result-card win timemachine">
+      <h2>⏳ A STRANGE MACHINE</h2>
+      <p>The Backstabber is beaten — but behind his throne hums a machine unlike anything in the realm. Its screen flickers with lands that don't exist yet... and one blinking button.</p>
+      <div class="tm-panel">
+        <div class="tm-screen"><span>◄ ◙ ►</span> TEMPORAL&nbsp;DRIVE <span>◄ ◙ ►</span></div>
+        <button class="tm-button" id="tm-go">PRESS THIS BUTTON</button>
+      </div>
+      <p class="tip">Do you dare?</p>
+    </div>`;
+  app().appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('show'));
+  overlay.querySelector('#tm-go').addEventListener('click', () => {
+    Audio2.sfx.special();
+    if (typeof stopDungeon === 'function') stopDungeon();
+    beginActTwo();
+    showScreen('story');   // straight into the Act 2 intro
+  });
+}
+
 // Extra lives are the rarest prize in the game: a small chance at the END of a
 // boss fight to win a Legendary Extra Life. Deliberately transcendently rare.
 function maybeGrantExtraLife() {
@@ -245,16 +270,18 @@ function renderTitle() {
 /* ================= STORY (the full backstory) ================= */
 function renderStory() {
   Audio2.playMusic('menu');
+  const L = currentLore();
+  const act2 = currentAct() === 2;
   const el = app();
   el.className = 'screen screen-story';
   el.innerHTML = `
     ${topBar('The Story', { back: 'title' })}
     <div class="story-page">
-      <div class="story-emblem">🗡️</div>
-      <h2 class="story-title">${LORE.title}</h2>
-      ${LORE.intro.map(p => `<p>${p}</p>`).join('')}
-      <div class="story-goal"><b>Your quest:</b> ${LORE.goal}</div>
-      <button class="wide-btn" data-nav="map">🗺️ Begin the journey</button>
+      <div class="story-emblem">${act2 ? '⏳' : '🗡️'}</div>
+      <h2 class="story-title">${L.title}</h2>
+      ${L.intro.map(p => `<p>${p}</p>`).join('')}
+      <div class="story-goal"><b>Your quest:</b> ${L.goal}</div>
+      <button class="wide-btn" data-nav="map">${act2 ? '⏳ Enter the time stream' : '🗺️ Begin the journey'}</button>
     </div>`;
   wireCommon(el);
 }
@@ -262,16 +289,17 @@ function renderStory() {
 /* A brief "why am I here" reminder card shown at the start of a level. It fades
    on its own after a few seconds (tap to skip) and never blocks the action. */
 function levelIntro(regionId) {
-  const line = LORE.regions[regionId];
+  const L = currentLore();
+  const line = L.regions[regionId];
   if (!line) return;
-  const region = regionById(regionId);
+  const v = regionView(regionId);
   const card = document.createElement('div');
   card.className = 'level-intro';
   card.innerHTML = `
     <div class="li-card">
-      <div class="li-name">${region ? region.name : ''}</div>
+      <div class="li-name">${v.name}</div>
       <p class="li-line">${line}</p>
-      <div class="li-goal">🗡️ ${LORE.goal}</div>
+      <div class="li-goal">${currentAct() === 2 ? '⏳' : '🗡️'} ${L.goal}</div>
     </div>`;
   app().appendChild(card);
   requestAnimationFrame(() => card.classList.add('show'));
@@ -291,6 +319,18 @@ const BIOME_EMOJI = {
   dead_cliffs: '🪨', barren_grasslands: '🌾', dark_forest: '🌲', toxic_temple: '🛕',
   shatter_coast: '🏖️', sandcastle: '🏰', knife_mountain: '⛰️', desolate_dunes: '🏜️', secret: '💀',
 };
+// The story text for the current act (Act 2 = the time-travel chase).
+function currentLore() { return currentAct() === 2 ? LORE_ACT2 : LORE; }
+// Act-aware display for a region pin: Act 2 swaps in the era's name/colour/icon.
+function regionView(id) {
+  const t = currentAct() === 2 && typeof ACT2_THEMES !== 'undefined' && ACT2_THEMES[id];
+  const r = regionById(id);
+  return {
+    name: t ? t.name : r.name,
+    color: t ? t.color : r.color,
+    emoji: t ? (t.emoji || '⚔️') : (BIOME_EMOJI[id] || '⚔️'),
+  };
+}
 function mrand(n) { const s = Math.sin(n * 91.7 + 13.1) * 43758.5453; return s - Math.floor(s); }
 
 /* ---- little terrain glyphs, drawn in 0..100 map space ---- */
@@ -484,28 +524,30 @@ function renderMap() {
   Audio2.playMusic('map');
   const el = app();
   el.className = 'screen screen-map';
+  const act2 = currentAct() === 2;
   let nodes = '';
   REGIONS.forEach(r => {
     const unlocked = isUnlocked(r.id);
     const cleared = isCleared(r.id);
-    const label = (r.secret && !unlocked) ? '???' : r.name;
-    const emoji = (r.secret && !unlocked) ? '❓' : unlocked ? BIOME_EMOJI[r.id] || '⚔️' : '🔒';
+    const v = regionView(r.id);
+    const label = (r.secret && !unlocked) ? '???' : v.name;
+    const emoji = (r.secret && !unlocked) ? '❓' : unlocked ? v.emoji : '🔒';
     nodes += `<button class="map-node ${unlocked ? '' : 'locked'} ${cleared ? 'cleared' : ''} ${r.secret ? 'secret' : ''}"
-        style="left:${r.x}%;top:${r.y}%; --rc:${r.color}"
+        style="left:${r.x}%;top:${r.y}%; --rc:${v.color}"
         data-region="${r.id}" ${unlocked ? '' : 'disabled'}>
         <span class="node-pin">${emoji}${cleared ? '<span class="node-crown">👑</span>' : ''}</span>
         <span class="node-label">${label}</span>
       </button>`;
   });
   el.innerHTML = `
-    ${topBar('World Map', { home: true })}
+    ${topBar(act2 ? 'Time Map · Act II' : 'World Map', { home: true })}
     <div class="map-frame">
       <div class="map-canvas">
         ${continentSVG()}
         ${nodes}
       </div>
     </div>
-    <div class="map-hint">Journey across the realm — beat a region to travel onward and unlock the next.</div>`;
+    <div class="map-hint">${act2 ? '⏳ Chase the resurrected wardens through time — clear an era to leap to the next.' : 'Journey across the realm — beat a region to travel onward and unlock the next.'}</div>`;
   wireCommon(el);
   el.querySelectorAll('.map-node:not(.locked)').forEach(node => {
     node.addEventListener('click', () => {
@@ -548,11 +590,11 @@ function renderArena(regionId) {
   el.className = 'screen screen-arena';
   el.innerHTML = `
     ${topBar('The Arena', { home: true })}
-    <div class="arena-region" style="--rc:${region.color}">
-      <span>📍 ${region.name}</span>
+    <div class="arena-region" style="--rc:${regionView(region.id).color}">
+      <span>📍 ${regionView(region.id).name}</span>
       <span class="record">🏆 ${STATE.wins} won &nbsp;·&nbsp; 💀 ${STATE.losses} lost</span>
     </div>
-    ${LORE.regions[region.id] ? `<p class="arena-story">${LORE.regions[region.id]}</p>` : ''}
+    ${currentLore().regions[region.id] ? `<p class="arena-story">${currentLore().regions[region.id]}</p>` : ''}
     <h2 class="arena-q">Who do you want to fight?</h2>
     <div class="fighter-grid">${cards}${bossCard}</div>
     <div class="crowd-meter">
@@ -564,7 +606,7 @@ function renderArena(regionId) {
     </div>
     <div class="region-switch">
       ${REGIONS.filter(r => isUnlocked(r.id)).map(r =>
-        `<button class="chip ${r.id === region.id ? 'on' : ''}" data-region="${r.id}">${r.name}</button>`).join('')}
+        `<button class="chip ${r.id === region.id ? 'on' : ''}" data-region="${r.id}">${regionView(r.id).name}</button>`).join('')}
     </div>`;
   wireCommon(el);
   el.querySelectorAll('.fighter-card:not(.disabled)').forEach(card => {

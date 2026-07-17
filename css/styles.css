@@ -396,6 +396,18 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
   animation:lifepulse 1s ease-in-out infinite; }
 @keyframes lifepulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.05); } }
 .result-card.gameover h2{ font-size:40px; letter-spacing:1px; }
+/* Time machine (Act 1 → Act 2) */
+.result-card.timemachine h2{ color:#7fe0ff; }
+.tm-panel{ margin:14px 0; padding:14px; border-radius:14px; background:#0c1420; border:2px solid #2a4a6a; }
+.tm-screen{ font-family:monospace; font-size:13px; color:#6fe0c0; background:#04120e; border:1px solid #1a4a3a;
+  border-radius:8px; padding:8px; letter-spacing:1px; margin-bottom:12px; animation:tmflicker 1.4s infinite; }
+.tm-screen span{ color:#e0c060; }
+@keyframes tmflicker{ 0%,100%{ opacity:1; } 48%{ opacity:.85; } 50%{ opacity:.4; } 52%{ opacity:.9; } }
+.tm-button{ width:100%; padding:16px; font-size:18px; font-weight:900; letter-spacing:2px; color:#fff;
+  border:none; border-radius:12px; cursor:pointer; background:linear-gradient(180deg,#ff5a5a,#c01818);
+  box-shadow:0 0 18px rgba(255,60,60,.6), 0 6px 0 #7a0e0e; animation:tmpulse 1s infinite; }
+.tm-button:active{ transform:translateY(4px); box-shadow:0 0 18px rgba(255,60,60,.6), 0 2px 0 #7a0e0e; }
+@keyframes tmpulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.25); } }
 .unlock{ color:var(--green); font-weight:800; }
 .tip{ color:var(--muted); font-size:13px; }
 .result-btns{ display:flex; gap:10px; margin-top:16px; }

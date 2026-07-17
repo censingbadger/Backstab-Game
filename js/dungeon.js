@@ -155,7 +155,32 @@ const DUNGEON_THEMES = {
     chambers: true, hard: true, lair: true,          // boss-rush chambers + a stealth finale in the dark
   },
 };
-function dungeonTheme(regionId) { return DUNGEON_THEMES[regionId]; }
+
+/* ============================================================
+   ACT TWO themes — the SAME level structures (waypoints, chamber flags, beach
+   rules…) re-skinned for a different time period: new colours, props, enemy
+   roster and boss. Each region falls back to its Act 1 theme until its Act 2
+   era is built. */
+const ACT2_THEMES = {
+  dead_cliffs: {
+    name: 'Cretaceous Coast',
+    color: '#5a8a3a', emoji: '🦖',                 // map pin tint + icon
+    sky: ['#9ad6ea', '#8fbf6a', '#c9a95a'],        // steamy prehistoric jungle horizon
+    ground: ['#6d8f47', '#5e7f3c'],                // fern-green jungle floor
+    speckle: 'rgba(150,200,90,0.30)',
+    edge: ['#3a4a22', '#273318'],                  // dark jungle chasm
+    props: ['fern', 'bone', 'palm', 'volcano', 'rock', 'fern', 'tree'],
+    trail: '210,240,150',
+    enemies: ['raptor', 'stego', 'ptero', 'raptor', 'stego'],
+    boss: 'trex',
+    waypoints: [[8, 12], [8, 28], [22, 32], [22, 16], [38, 14], [40, 32], [28, 42], [42, 50], [54, 54]],
+  },
+};
+// Act-aware theme lookup: Act 2 re-skin when one exists, else the Act 1 theme.
+function dungeonTheme(regionId) {
+  if (currentAct() === 2 && ACT2_THEMES[regionId]) return ACT2_THEMES[regionId];
+  return DUNGEON_THEMES[regionId];
+}
 
 /* Poison artifacts earned in the Toxic Temple — permanent powers for your weapon. */
 const ARTIFACTS = {
@@ -1149,10 +1174,11 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
   const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
   const dmgMul = d.theme.enemyDmgMul || 1;                           // Desolate Dunes = double-power foes
-  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1)));   // tougher to cut down
+  const actMul = currentAct() === 2 ? 1.15 : 1;                      // Act 2 foes are a notch tougher
+  let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1) * actMul));   // tougher to cut down
   let speed = (f.hearts < 2 ? 2.5 : f.hearts < 3 ? 2.0 : 1.5) * (d.hard ? 1.08 : 1);
   let attack = f.attack, reward = f.reward || 1, r = 0.4;
-  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1) * dmgMul;  // heavier hitters do more; Dunes foes hit twice as hard
+  let contact = (f.attack >= 3 ? 0.95 : 0.65) * (d.hard ? 1.4 : 1) * dmgMul * actMul;  // heavier hitters do more; Dunes foes hit twice as hard
   // Elite (Minecraft-Dungeons "enchanted") — an occasional tougher, glowing
   // variant worth a lot more loot. Never on the opening spawns.
   const elite = (d.spawned > 2) && rand(seed * 3.7 + 11) < (d.hard ? 0.15 : 0.09);
@@ -2369,6 +2395,28 @@ function drawProp(ctx, p, ox, oy) {
       ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(x - 5, y - 13, 6, 4, 0, 0, 7); ctx.fill();
       break;
     }
+
+    /* ---- Prehistoric / dinosaur props ---- */
+    case 'fern': {
+      const sway = Math.sin(performance.now() / 700 + r) * 2;
+      ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      for (let i = -3; i <= 3; i++) {
+        const a = i * 0.34, x2 = x + Math.sin(a) * 19 + sway, y2 = y - Math.cos(a) * 27;
+        ctx.strokeStyle = i % 2 ? '#57a03f' : '#3c722e';
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.sin(a) * 8, y - 15, x2, y2); ctx.stroke();
+      }
+      break;
+    }
+    case 'volcano': {
+      const now = performance.now();
+      ctx.fillStyle = '#5a4636'; ctx.beginPath(); ctx.moveTo(x - 26, y); ctx.lineTo(x - 8, y - 30); ctx.lineTo(x + 8, y - 30); ctx.lineTo(x + 26, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(30,22,14,0.45)'; ctx.beginPath(); ctx.moveTo(x + 26, y); ctx.lineTo(x + 8, y - 30); ctx.lineTo(x + 2, y - 30); ctx.lineTo(x + 12, y); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff6a1a'; ctx.beginPath(); ctx.ellipse(x, y - 30, 8, 3, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#ff7a2a'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 3, y - 29); ctx.lineTo(x - 7, y - 14); ctx.stroke();
+      for (let i = 0; i < 3; i++) { const ph = (now / 1500 + i / 3) % 1; ctx.fillStyle = `rgba(120,112,102,${0.4 * (1 - ph)})`; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + now / 600) * 4, y - 34 - ph * 26, 4 + ph * 7, 0, 7); ctx.fill(); }
+      break;
+    }
   }
 }
 
@@ -2784,6 +2832,8 @@ function winDungeon() {
   const gotLife = maybeGrantExtraLife();   // transcendently-rare Legendary boss boon
   saveGame();
   Audio2.sfx.win();
+  // Beating the Act 1 finale (the Backstabber) reveals his time machine → Act 2.
+  if (d.regionId === 'secret' && currentAct() === 1) { showTimeMachine(); return; }
   showDungeonResult(true, bonus, mods, gotLife);
 }
 // Falling to 0 hearts is DEATH. An Extra Life (if you have one) cheats it; else

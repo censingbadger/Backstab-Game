@@ -489,6 +489,54 @@ function charBody(art, p) {
         <circle cx="30" cy="58" r="3.4" fill="#10151a"/><circle cx="29" cy="57" r="1.1" fill="#fff"/>
         <path d="M40 66 q3 3 6 0 M50 68 q3 3 6 0" stroke="rgba(0,0,0,0.25)" stroke-width="1.6" fill="none"/>`;
 
+    /* ===== ACT TWO — dinosaurs ===== */
+    case 'raptor':
+      return `${shadow}
+        <path d="M14 70 Q4 66 4 56 Q14 62 24 64 Z" fill="${p.skin}"/>
+        <ellipse cx="44" cy="72" rx="24" ry="14" fill="${p.skin}"/>
+        <path d="M34 82 L30 108 L38 108 L42 84 Z" fill="${p.cloth}"/>
+        <path d="M54 82 L50 108 L58 108 L62 84 Z" fill="${p.skin}"/>
+        <path d="M60 62 Q80 52 92 44 L92 54 L98 58 L90 64 Q82 68 66 68 Z" fill="${p.skin}"/>
+        <path d="M70 65 l4 0 l-1 4 l-4 0 Z M78 64 l4 0 l-1 4 l-4 0 Z M85 61 l4 0 l-1 4 l-4 0 Z" fill="#fff"/>
+        <circle cx="78" cy="54" r="3.2" fill="#fff"/><circle cx="79" cy="54.5" r="1.6" fill="${eye}"/>
+        <path d="M42 58 L50 46 L56 58 Z" fill="${p.cloth}"/>
+        <path d="M40 84 l2 10 l4 -1 l-2 -8 Z" fill="#eee"/>`;
+
+    case 'dino': // stegosaurus
+      return `${shadow}
+        <path d="M12 78 Q4 74 4 66 Q12 72 20 74 Z" fill="${p.skin}"/>
+        <path d="M18 78 Q40 58 72 66 Q84 68 82 80 Q60 92 34 90 Q22 88 18 78 Z" fill="${p.skin}"/>
+        <path d="M78 70 Q90 66 92 60 Q86 62 80 64 Z" fill="${p.skin}"/>
+        <circle cx="84" cy="63" r="1.8" fill="${eye}"/>
+        <g fill="${p.cloth}"><path d="M30 66 l6 -13 l6 13 Z"/><path d="M44 62 l7 -16 l7 16 Z"/><path d="M60 64 l6 -13 l6 13 Z"/></g>
+        <path d="M10 76 l-6 -4 M11 80 l-7 0 M10 84 l-6 4" stroke="${p.cloth}" stroke-width="2.5" stroke-linecap="round"/>
+        <rect x="30" y="88" width="7" height="20" rx="3" fill="${p.cloth}"/><rect x="43" y="90" width="7" height="18" rx="3" fill="${p.skin}"/>
+        <rect x="58" y="88" width="7" height="20" rx="3" fill="${p.cloth}"/><rect x="70" y="90" width="7" height="18" rx="3" fill="${p.skin}"/>`;
+
+    case 'ptero': // pterodactyl
+      return `${shadow}
+        <path d="M50 66 Q20 44 6 54 Q26 60 34 72 Q22 70 16 78 Q36 76 50 74 Z" fill="${p.skin}"/>
+        <path d="M50 66 Q80 44 94 54 Q74 60 66 72 Q78 70 84 78 Q64 76 50 74 Z" fill="${p.cloth}"/>
+        <ellipse cx="50" cy="74" rx="11" ry="15" fill="${p.skin}"/>
+        <circle cx="50" cy="52" r="9" fill="${p.skin}"/>
+        <path d="M56 50 L80 45 L58 57 Z" fill="${p.skin}"/>
+        <path d="M45 46 L36 40 L47 44 Z" fill="${p.cloth}"/>
+        <circle cx="53" cy="50" r="2.6" fill="#fff"/><circle cx="53.5" cy="50.5" r="1.4" fill="${eye}"/>
+        <path d="M45 88 l-3 14 M55 88 l3 14" stroke="${p.cloth}" stroke-width="3" stroke-linecap="round"/>`;
+
+    case 'trex': // the Tyrant King (boss)
+      return `${shadow}
+        <path d="M14 72 Q2 68 2 56 Q14 64 26 64 Z" fill="${p.skin}"/>
+        <path d="M26 66 Q24 90 36 100 L48 100 Q42 86 46 72 Z" fill="${p.cloth}"/>
+        <ellipse cx="46" cy="62" rx="30" ry="20" fill="${p.skin}"/>
+        <path d="M48 74 Q44 96 58 108 L72 108 Q64 92 66 74 Z" fill="${p.skin}"/>
+        <path d="M58 100 l3 4 l3 -4 l3 4 l3 -4" stroke="#eee" stroke-width="2" fill="none"/>
+        <path d="M60 44 Q84 36 98 42 L96 54 L100 58 L90 64 Q80 70 64 70 Q54 60 58 48 Z" fill="${p.skin}"/>
+        <path d="M64 67 l5 0 l-2 5 l-5 0 Z M73 67 l5 0 l-2 5 l-5 0 Z M82 65 l5 0 l-2 5 l-5 0 Z" fill="#fff"/>
+        <circle cx="82" cy="48" r="3.8" fill="#fff"/><circle cx="83" cy="48.5" r="1.9" fill="${eye}"/>
+        <path d="M62 54 L52 62 L62 62 Z" fill="${p.cloth}"/>
+        <path d="M40 56 L48 44 L54 56 Z" fill="${p.cloth}"/>`;
+
     default:
       return `${shadow}
         <rect x="38" y="60" width="24" height="36" rx="10" fill="${p.cloth}"/>
