@@ -200,6 +200,8 @@ const ARTIFACTS = {
   venom_fang:  { id: 'venom_fang',  name: 'Venom Fang',  icon: '🐍', desc: 'Your strikes poison enemies.' },
   toxic_vigor: { id: 'toxic_vigor', name: 'Toxic Vigor', icon: '☠️', desc: 'Your poison hits harder and lasts longer.' },
   plague_ward: { id: 'plague_ward', name: 'Plague Ward', icon: '🧪', desc: 'You are immune to poison pools.' },
+  // ACT TWO artifact — flight
+  wings:       { id: 'wings',       name: 'Wings of Icarus', icon: '🪽', desc: 'Hold Jump to take flight and glide over hazards.' },
 };
 
 /* The Toxic Temple layout: designed chambers linked by stair corridors with
@@ -500,7 +502,7 @@ function startDungeon(regionId) {
     beach: !!theme.beach, water, waves, secret, key, corridor, tide: 0,
     dunes: !!theme.dunes, tornadoes, wind: { x: 0, y: 0, gust: false },
     hero,
-    enemies: [], drops: [], fx: [],
+    enemies: [], drops: [], fx: [], shots: [],
     kills: 0, spawned: 0, target: DUN.KILLS_TARGET, progress: 0,
     boss: null, bossIntro: false,
     over: false, outcome: null,
@@ -607,7 +609,7 @@ function startTempleDungeon(regionId, theme) {
     checkpoints: [], canopy: [], traps, grabbers: [],
     chamberMode: true, chamberList: chambers, doors, stairs, artifacts, activeIndex: -1, chambersCleared: 0,
     hard: true, poison: !!theme.poison,
-    hero, enemies: [], drops: [], fx: [],
+    hero, enemies: [], drops: [], fx: [], shots: [],
     kills: 0, spawned: 0, progress: 0,
     boss: null, bossIntro: false,
     over: false, outcome: null,
@@ -890,7 +892,13 @@ function bindDungeonInput() {
   atk.addEventListener('mouseup', holdOff);
   document.getElementById('t-dodge').addEventListener('click', heroDodge);
   document.getElementById('t-heal').addEventListener('click', heroHeal);
-  document.getElementById('t-jump').addEventListener('click', heroJump);
+  const jmp = document.getElementById('t-jump');
+  const jumpOn = e => { e.preventDefault(); d.jumpBtnHeld = true; heroJump(); };   // hold to fly with Wings
+  const jumpOff = e => { d.jumpBtnHeld = false; };
+  jmp.addEventListener('touchstart', jumpOn, { passive: false });
+  jmp.addEventListener('touchend', jumpOff);
+  jmp.addEventListener('mousedown', jumpOn);
+  jmp.addEventListener('mouseup', jumpOff);
   bindJoystick();
 }
 
@@ -935,6 +943,17 @@ function heroAttack() {
   const wid = STATE.equippedWeapon;
   let durab = STATE.weapons[wid] || 0;
   const bare = durab <= 0;
+  // Ranged weapons (gun / bazooka) FIRE a projectile instead of swinging — and
+  // you can pull the trigger mid-jump.
+  const rangedKind = (!bare && (weaponPower(wid) === 'gun' || weaponPower(wid) === 'bazooka')) ? weaponPower(wid) : null;
+  if (rangedKind) {
+    h.attackReadyAt = now + (rangedKind === 'bazooka' ? 950 : 300);   // fire rate
+    h.swingUntil = now + 130;
+    STATE.weapons[wid] = durab - 1;
+    fireHeroShot(rangedKind, wid, now);
+    updateWeaponHUD();
+    return;
+  }
   const sp = weaponSpeed(WEAPONS[wid] || {});     // per-weapon feel: light=fast, heavy=slow
   h.attackReadyAt = now + sp.cool;
   h.swingUntil = now + sp.swing;
@@ -990,6 +1009,43 @@ function heroAttack() {
   }
   spawnSwingFx(h);
   updateWeaponHUD();
+}
+
+/* ---- ranged weapons: hero bullets & rockets ---- */
+function fireHeroShot(kind, wid, now) {
+  const d = DUNGEON, h = d.hero;
+  updateHeroFacing();
+  const ang = h.faceAngle;
+  const speed = kind === 'bazooka' ? 10 : 17;
+  const dmg = weaponDamage(wid) + (STATE.dmgBonus || 0);
+  d.shots.push({ kind, x: h.fx + Math.cos(ang) * 0.5, y: h.fy + Math.sin(ang) * 0.5, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, dmg, born: now, life: 1300 });
+  Audio2.sfx[kind === 'bazooka' ? 'bighit' : 'special']();
+  h.swingUntil = now + 130;
+}
+function updateHeroShots(dt, t) {
+  const d = DUNGEON; if (!d.shots || !d.shots.length) return;
+  d.shots = d.shots.filter(s => {
+    s.x += s.vx * dt; s.y += s.vy * dt;
+    const gone = t - s.born > s.life || s.x < 2 || s.y < 2 || s.x > d.W - 2 || s.y > d.H - 2 || !isGroundTile(d.tiles, s.x, s.y, d.W, d.H);
+    if (gone) { if (s.kind === 'bazooka') explodeBazooka(s); return false; }
+    let hit = null;
+    for (const e of d.enemies) { if (!e.dead && dist(s.x, s.y, e.fx, e.fy) < (e.r || 0.4) + 0.45) { hit = e; break; } }
+    if (!hit && d.boss && !d.boss.dead && dist(s.x, s.y, d.boss.fx, d.boss.fy) < (d.boss.r || 0.9) + 0.5) hit = d.boss;
+    if (hit) {
+      if (s.kind === 'bazooka') { s.x = hit.fx; s.y = hit.fy; explodeBazooka(s); }
+      else { damageEnemy(hit, s.dmg, false); d.fx.push({ kind: 'text', fx: s.x, fy: s.y, text: '✦', color: '#ffd23f', born: t, life: 220 }); }
+      return false;
+    }
+    return true;
+  });
+}
+function explodeBazooka(s) {
+  const d = DUNGEON, R = 2.3;
+  d.enemies.forEach(e => { if (!e.dead && dist(s.x, s.y, e.fx, e.fy) < R + (e.r || 0.4)) damageEnemy(e, s.dmg, false); });
+  if (d.boss && !d.boss.dead && dist(s.x, s.y, d.boss.fx, d.boss.fy) < R + (d.boss.r || 0.9)) damageEnemy(d.boss, s.dmg, false);
+  shake(); Audio2.sfx.bighit();
+  for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283; d.fx.push({ kind: 'text', fx: s.x + Math.cos(a) * 0.7, fy: s.y + Math.sin(a) * 0.7, text: '✦', color: i % 2 ? '#ff9a3a' : '#ffd23f', born: performance.now(), life: 420 }); }
+  spawnFloatText(s.x, s.y, '💥 BOOM', '#ff7a2a');
 }
 
 /* weapon power helpers */
@@ -1232,9 +1288,24 @@ function updateDungeon(dt, t) {
     if (d.keys['d'] || d.keys['arrowright']) sx += 1;
     if (sx || sy) { const wr = screenDirToWorld(sx, sy); mvx = wr.x; mvy = wr.y; }
   }
-  // jump arc (a hop that clears floor traps)
+  // FLIGHT (Wings of Icarus): hold Jump to hover, draining flight fuel; refills
+  // on the ground. You stay airborne (clearing floor hazards) while you fly.
+  const hasWings = hasArtifact('wings');
+  const jumpHeld = !!(d.keys[' '] || d.jumpBtnHeld);
+  if (h.flyFuel === undefined) h.flyFuel = 1;
+  if (hasWings && jumpHeld && h.flyFuel > 0 && (t < h.jumpUntil || h.flying)) {
+    h.flying = true; h.jumpUntil = t + 250;                 // keep 'airborne' for hazard skips
+    h.flyFuel = Math.max(0, h.flyFuel - dt / 3.2);          // ~3.2s of continuous flight
+  } else {
+    h.flying = false;
+    if ((h.jumpZ || 0) < 4 && t >= h.jumpUntil) h.flyFuel = Math.min(1, h.flyFuel + dt / 4.5);
+  }
+  // jump arc (a hop that clears floor traps); flight eases up to a hover height
   const jumping = t < h.jumpUntil;
-  h.jumpZ = jumping ? Math.sin((1 - (h.jumpUntil - t) / JUMP_DUR) * Math.PI) * 46 : 0;
+  if (h.flying) h.jumpZ = (h.jumpZ || 0) + (52 - (h.jumpZ || 0)) * Math.min(1, 9 * dt);
+  else if (jumping) h.jumpZ = Math.sin((1 - (h.jumpUntil - t) / JUMP_DUR) * Math.PI) * 46;
+  else if ((h.jumpZ || 0) > 0.6) h.jumpZ = Math.max(0, h.jumpZ - dt * 150);   // glide down after flight
+  else h.jumpZ = 0;
   // rooted by a grab or trap door => can't move
   const rooted = t < h.rootedUntil;
 
@@ -1495,6 +1566,9 @@ function updateDungeon(dt, t) {
     }
     return t - dr.born < 12000;
   });
+
+  /* --- hero bullets / rockets --- */
+  updateHeroShots(dt, t);
 
   /* --- fx aging --- */
   d.fx = d.fx.filter(f => t - f.born < f.life);
@@ -1777,6 +1851,9 @@ function renderDungeon() {
   // ---- roaming tornadoes, drawn tall over the fighters ----
   if (d.tornadoes) d.tornadoes.forEach(tor => { if (Math.abs(tor.x - d.hero.fx) < RANGE + 3 && Math.abs(tor.y - d.hero.fy) < RANGE + 3) drawTornado(ctx, tor, ox, oy); });
 
+  // ---- hero bullets / rockets ----
+  if (d.shots) d.shots.forEach(s => drawHeroShot(ctx, s, ox, oy));
+
   // floating texts / swing fx
   d.fx.forEach(f => drawFx(ctx, f, ox, oy));
 
@@ -1822,6 +1899,39 @@ function renderDungeon() {
   const vg = ctx.createRadialGradient(cw / 2, ch / 2, vgInner, cw / 2, ch / 2, vgOuter);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${dark})`);
   ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+
+  // ---- flight-fuel meter (only when you own the Wings) ----
+  if (hasArtifact('wings')) {
+    const f = d.hero.flyFuel === undefined ? 1 : d.hero.flyFuel;
+    const bw = 132, bh = 9, bx = cw / 2 - bw / 2, by = ch - 104;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)'; roundRectPath(ctx, bx - 4, by - 16, bw + 8, bh + 20, 6); ctx.fill();
+    ctx.fillStyle = '#16283a'; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = d.hero.flying ? '#7fe0ff' : (f > 0.25 ? '#8fd0a0' : '#e0a060'); ctx.fillRect(bx, by, bw * f, bh);
+    ctx.font = '900 11px Trebuchet MS, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#dff0ff';
+    ctx.fillText('🪽 FLIGHT — hold Jump', cw / 2, by - 4);
+  }
+}
+
+/* A hero bullet (glowing tracer) or rocket (finned shell + smoke trail). */
+function drawHeroShot(ctx, s, ox, oy) {
+  const p = isoToScreen(s.x, s.y), x = p.x + ox, y = p.y + oy - 24;
+  const svx = (s.vx - s.vy) * (ISO.TW / 2), svy = (s.vx + s.vy) * (ISO.TH / 2);
+  const ang = Math.atan2(svy, svx), m = Math.hypot(svx, svy) || 1, ux = svx / m, uy = svy / m;
+  ctx.save();
+  if (s.kind === 'bazooka') {
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#b8b8b8';
+    for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.arc(x - ux * i * 8, y - uy * i * 8, 4 - i, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1; ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = '#3a3a44'; ctx.fillRect(-9, -3.5, 16, 7);
+    ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(7, -3.5); ctx.lineTo(13, 0); ctx.lineTo(7, 3.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5a5a64'; ctx.beginPath(); ctx.moveTo(-9, -3.5); ctx.lineTo(-13, -6); ctx.lineTo(-9, 0); ctx.closePath(); ctx.fill();
+  } else {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,190,70,0.6)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - ux * 12, y - uy * 12); ctx.stroke();
+    ctx.fillStyle = '#ffe08a'; ctx.beginPath(); ctx.arc(x, y, 3.6, 0, 7); ctx.fill();
+  }
+  ctx.restore();
 }
 
 /* A roaming tornado — a swirling sand funnel that flings the hero around. */
@@ -2754,6 +2864,19 @@ function drawBladeShape(ctx, w) {
       ctx.moveTo(34, 2); ctx.quadraticCurveTo(40, -26, 64, -32);
       ctx.quadraticCurveTo(46, -14, 40, -1); ctx.closePath();
       ctx.fillStyle = metal; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = dark; ctx.stroke();
+      break;
+    case 'gun':
+      bar(-8, 3, 2, 3, 6, grip);                        // grip
+      poly([[-4, 0], [30, -1], [30, 3], [-4, 4]], '#3a3a44');   // barrel body
+      poly([[28, -3], [36, -1], [36, 3], [28, 2]], metal);     // muzzle
+      ctx.fillStyle = '#ffcf3f'; ctx.beginPath(); ctx.arc(36, 0, 2, 0, 7); ctx.fill();
+      break;
+    case 'bazooka':
+      bar(-6, 2, 6, 2, 7, grip);
+      poly([[-10, -6], [34, -6], [34, 6], [-10, 6]], '#454550');   // tube
+      poly([[34, -8], [46, -3], [46, 3], [34, 8]], '#7a2a1a');     // wide muzzle
+      ctx.fillStyle = '#2a2a30'; ctx.beginPath(); ctx.arc(-10, 0, 4, 0, 7); ctx.fill();
+      ctx.fillStyle = metal; ctx.fillRect(4, -11, 6, 5);          // sight
       break;
     default:
       bar(-6, 0, 6, 0, 6, grip);
