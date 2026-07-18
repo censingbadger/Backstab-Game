@@ -385,6 +385,32 @@ function charBody(art, p) {
         <circle cx="43" cy="40" r="2.6" fill="${eye}"/>
         <circle cx="57" cy="40" r="2.6" fill="${eye}"/>`;
 
+    case 'cat': {  // a brown tabby house cat — skin = fur, cloth = stripes, eye = eye colour
+      const fur = p.skin, stripe = p.cloth, ceye = p.eye || '#57cc66';
+      return `${shadow}
+        <path d="M76 92 Q92 86 88 68 Q86 60 80 62 Q84 74 72 82Z" fill="${fur}"/>
+        <path d="M80 66 q3 3 1 7 M82 76 q1 4 -3 7" stroke="${stripe}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="52" cy="82" rx="22" ry="16" fill="${fur}"/>
+        <path d="M36 76 q6 -4 10 0 M42 88 q6 -4 10 0 M56 74 q6 -4 10 0 M60 86 q6 -4 10 0" stroke="${stripe}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="40" cy="96" rx="5" ry="3.4" fill="${fur}"/>
+        <ellipse cx="62" cy="96" rx="5" ry="3.4" fill="${fur}"/>
+        <ellipse cx="50" cy="88" rx="9" ry="8" fill="#efe2cf"/>
+        <path d="M34 26 L28 8 L46 18Z" fill="${fur}"/><path d="M35.5 23 L31.5 12.5 L43 19Z" fill="#e8a8b8"/>
+        <path d="M66 26 L72 8 L54 18Z" fill="${fur}"/><path d="M64.5 23 L68.5 12.5 L57 19Z" fill="#e8a8b8"/>
+        <circle cx="50" cy="40" r="19" fill="${fur}"/>
+        <path d="M50 22 v9 M42 24 l2 8 M58 24 l-2 8" stroke="${stripe}" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M32 38 l5 2 M68 38 l-5 2" stroke="${stripe}" stroke-width="2.4" stroke-linecap="round"/>
+        <ellipse cx="43" cy="39" rx="3.6" ry="4.2" fill="${ceye}"/>
+        <ellipse cx="57" cy="39" rx="3.6" ry="4.2" fill="${ceye}"/>
+        <ellipse cx="43" cy="40" rx="1.4" ry="3" fill="#1c1410"/>
+        <ellipse cx="57" cy="40" rx="1.4" ry="3" fill="#1c1410"/>
+        <circle cx="44" cy="37.6" r="0.9" fill="#fff"/><circle cx="58" cy="37.6" r="0.9" fill="#fff"/>
+        <ellipse cx="50" cy="49" rx="7" ry="5.5" fill="#efe2cf"/>
+        <path d="M47 47 L53 47 L50 50Z" fill="#d87a8a"/>
+        <path d="M50 50 v2.5 M50 52.5 q-3 3 -6 1.5 M50 52.5 q3 3 6 1.5" stroke="#8a6a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <path d="M36 46 L24 44 M36 49 L25 50 M64 46 L76 44 M64 49 L75 50" stroke="#e8dcc8" stroke-width="1.2"/>`;
+    }
+
     case 'mummy':
       return `${shadow}
         <rect x="38" y="62" width="24" height="34" rx="9" fill="${p.skin}"/>

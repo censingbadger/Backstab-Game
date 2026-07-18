@@ -2288,12 +2288,14 @@ function updatePet(dt, t) {
   const stop = fighting ? 0.85 : 0.25, sp = (fighting ? 4.6 : 3.6) * dt;
   if (m > stop) { p.fx += dx / m * Math.min(m, sp); p.fy += dy / m * Math.min(m, sp); p.facing = dx >= 0 ? 1 : -1; p.moving = true; }
   else p.moving = false;
-  // bite on a cooldown when in range
+  // bite on a cooldown when in range — legendary companions (Scully & Stripes)
+  // pounce noticeably faster and hit harder
   if (fighting && t >= p.attackReadyAt && dist(p.fx, p.fy, target.fx, target.fy) < 1.25) {
-    p.attackReadyAt = t + 1150; p.lungeUntil = t + 200;
-    const dmg = 3 + Math.round(p.fighter.attack || 2);
+    const leg = !!p.fighter.legendary;
+    p.attackReadyAt = t + (leg ? 800 : 1150); p.lungeUntil = t + 200;
+    const dmg = (leg ? 5 : 3) + Math.round(p.fighter.attack || 2);
     damageEnemy(target, dmg, false);
-    Audio2.sfx.hit(); spawnFloatText(p.fx, p.fy - 0.3, '🐾', '#ffd23f');
+    Audio2.sfx.hit(); spawnFloatText(p.fx, p.fy - 0.3, leg ? '🐱⚡' : '🐾', '#ffd23f');
     if (d.over) return;
   }
 }

@@ -1218,7 +1218,7 @@ function renderPets() {
   const list = document.getElementById('pet-list');
   if (!list) return;
   if (!STATE.captured.length) {
-    list.innerHTML = `<div class="pet-empty">Weaken a foe in the Arena, then throw a 🎪 Cage to capture it — captured creatures become companions that fight at your side!</div>`;
+    list.innerHTML = `<div class="pet-empty">Weaken a foe in the Arena, then throw a 🎪 Cage to capture it — captured creatures become companions that fight at your side! (Legendary cats Scully &amp; Stripes are waiting in the Shop...)</div>`;
     return;
   }
   let html = `<button class="pet-card ${STATE.activePet ? '' : 'on'}" data-pet="">
@@ -1226,9 +1226,9 @@ function renderPets() {
   STATE.captured.forEach(id => {
     const f = getFighter(id); if (!f) return;
     const on = STATE.activePet === id;
-    html += `<button class="pet-card ${on ? 'on' : ''}" data-pet="${id}">
+    html += `<button class="pet-card ${on ? 'on' : ''} ${f.legendary ? 'legendary' : ''}" data-pet="${id}">
         <div class="pet-face">${characterSVG(f)}</div>
-        <div class="pet-name">${f.name}</div>
+        <div class="pet-name">${f.legendary ? '⭐ ' : ''}${f.name}</div>
         ${on ? '<div class="pet-badge">Following</div>' : ''}
       </button>`;
   });
@@ -1395,6 +1395,14 @@ function renderShop() {
     const it = ITEMS[id];
     html += shopRow('item', id, it.name, it.blurb, it.rarity, it.price, false, itemSVG(it.art));
   });
+  // ---- Legendary companions: Scully & Stripes, the brown tabby cats ----
+  if (typeof COMPANIONS !== 'undefined') {
+    html += `<div class="shop-sep">🐱 Legendary Companions</div>`;
+    Object.values(COMPANIONS).forEach(c => {
+      const owned = STATE.captured.includes(c.id);
+      html += shopRow('pet', c.id, c.name, c.blurb, c.rarity, c.price, owned, characterSVG(c));
+    });
+  }
   // ---- Act 2 relic: the Wings of Icarus (flight) ----
   if (currentAct() >= 2 && typeof ARTIFACTS !== 'undefined' && ARTIFACTS.wings) {
     html += `<div class="shop-sep">🪽 Time-traveller's relic</div>`;
@@ -1439,6 +1447,7 @@ function renderShop() {
       else if (type === 'shield') STATE.shields[id] = SHIELDS[id].durability;
       else if (type === 'item') STATE.items[id] = (STATE.items[id] || 0) + 1;
       else if (type === 'artifact') { if (!STATE.artifacts) STATE.artifacts = []; if (!STATE.artifacts.includes(id)) STATE.artifacts.push(id); }
+      else if (type === 'pet') { if (!STATE.captured.includes(id)) STATE.captured.push(id); STATE.activePet = id; }   // a new legendary friend starts following right away
       Audio2.sfx.buy(); saveGame(); renderStats();
     });
   });
