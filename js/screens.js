@@ -43,6 +43,7 @@ function showScreen(name, param) {
     case 'auth':     return renderAuth();
     case 'register': return renderRegister();
     case 'forgot':   return renderForgot();
+    case 'chars':    return renderCharSelect();
     case 'title':    return renderTitle();
     case 'map':      return renderMap();
     case 'arena':    return renderArena(param);
@@ -169,7 +170,7 @@ function renderAuth() {
   async function doLogin() {
     const r = await Auth.login(userIn.value, passIn.value);
     if (!r.ok) { authMsg(r.error); Audio2.sfx.lose(); return; }
-    loadUserState(); Audio2.sfx.click(); showScreen('title');
+    Audio2.sfx.click(); showScreen('chars');   // pick (or create) a hero
   }
   el.querySelector('#auth-login').addEventListener('click', doLogin);
   passIn.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
@@ -200,7 +201,7 @@ function renderRegister() {
     if (p !== p2) { authMsg('The two passwords do not match.'); return; }
     const r = await Auth.register(u, p, q, ans);
     if (!r.ok) { authMsg(r.error); Audio2.sfx.lose(); return; }
-    loadUserState(); Audio2.sfx.win(); showScreen('title');
+    Audio2.sfx.win(); showScreen('chars');   // name your first hero
   });
 }
 
@@ -235,6 +236,67 @@ function renderForgot() {
     if (!r.ok) { authMsg(r.error); Audio2.sfx.lose(); return; }
     loadUserState(); Audio2.sfx.win(); showScreen('title');
   });
+}
+
+/* ================= CHARACTER SELECT =================
+   After logging in, every player sees their roster of heroes — each with its
+   own save — and can create, pick, or delete characters. */
+function renderCharSelect() {
+  if (!Auth.currentUser()) return showScreen('auth');
+  Audio2.playMusic('menu');
+  const el = app(); el.className = 'screen screen-auth';
+  const chars = Auth.characters();
+  const cards = chars.map(c => {
+    const p = Auth.peekCharacter(c.id);
+    const sub = p
+      ? `Act ${p.act === 2 ? 'II' : 'I'} · Lv ${p.level} · ❤️ ${p.maxHearts} · 💰 ${p.money} · 🏰 ${p.cleared} cleared`
+      : 'A brand-new adventurer';
+    return `<div class="char-card" data-char="${c.id}">
+        <div class="char-face">${p && p.act === 2 ? '⏳' : '🗡️'}</div>
+        <div class="char-info">
+          <div class="char-name">${escapeHtml(c.name)}</div>
+          <div class="char-sub">${sub}</div>
+        </div>
+        <button class="char-del" data-del="${c.id}" title="Delete character">🗑️</button>
+      </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="auth-wrap">
+      <h1 class="auth-logo">BACK STAB</h1>
+      <div class="auth-card chars-card">
+        <h2>👤 ${escapeHtml(Auth.currentName() || '')} — choose your hero</h2>
+        <div class="char-list">${cards || '<div class="char-empty">No characters yet — create your first hero below!</div>'}</div>
+        <div class="char-new-row">
+          <input id="char-name" class="auth-input" placeholder="New character name" maxlength="16" autocomplete="off">
+          <button id="char-create" class="wide-btn">✨ Create</button>
+        </div>
+        <div id="auth-msg" class="auth-msg"></div>
+        <div class="auth-links"><button class="link-btn" data-action="logout">Log out</button></div>
+      </div>
+      <div class="auth-note">Each hero keeps their own quest, gear, and story — everyone can play as many as they like.</div>
+    </div>`;
+  wireCommon(el);
+  el.querySelectorAll('.char-card').forEach(card => card.addEventListener('click', e => {
+    if (e.target.closest('.char-del')) return;   // deletes are handled below
+    const r = Auth.selectCharacter(+card.dataset.char);
+    if (!r.ok) { authMsg(r.error); return; }
+    loadUserState(); Audio2.sfx.win(); showScreen('title');
+  }));
+  el.querySelectorAll('.char-del').forEach(btn => btn.addEventListener('click', () => {
+    const id = +btn.dataset.del, ch = chars.find(c => c.id === id);
+    if (!confirm(`Delete ${ch ? ch.name : 'this character'} forever? Their whole quest will be erased.`)) return;
+    Auth.deleteCharacter(id); Audio2.sfx.lose(); renderCharSelect();
+  }));
+  const doCreate = () => {
+    const r = Auth.createCharacter(el.querySelector('#char-name').value);
+    if (!r.ok) { authMsg(r.error); Audio2.sfx.lose(); return; }
+    resetGame();                       // the new hero starts a fresh quest
+    Audio2.sfx.win(); showScreen('title');
+  };
+  el.querySelector('#char-create').addEventListener('click', doCreate);
+  el.querySelector('#char-name').addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); });
+  const out = el.querySelector('[data-action="logout"]');
+  if (out) out.addEventListener('click', () => { Auth.logout(); Audio2.sfx.click(); showScreen('auth'); });
 }
 
 /* Wire up any element with data-nav / data-action after render */
@@ -282,7 +344,7 @@ function renderTitle() {
         <button class="hexbtn" data-nav="story"><span>📖</span>Story</button>
         <button class="hexbtn" data-nav="stats"><span>📊</span>Stats</button>
       </div>
-      <div class="who-bar">${Auth.currentName() ? `<span class="who-name">👤 ${escapeHtml(Auth.currentName())}</span><button class="link-btn" data-action="logout">Log out</button>` : ''}</div>
+      <div class="who-bar">${Auth.currentName() ? `<span class="who-name">👤 ${escapeHtml(Auth.currentName())}${Auth.currentCharacter() ? ' · 🗡️ ' + escapeHtml(Auth.currentCharacter().name) : ''}</span><button class="link-btn" data-nav="chars">Switch hero</button><button class="link-btn" data-action="logout">Log out</button>` : ''}</div>
       <button class="link-reset" data-action="reset">New Game</button>
       <button class="btn-icon mute title-mute" data-action="mute">${STATE.muted ? '🔇' : '🔊'}</button>
       <div class="copyright">© Asher and Ren, 2026</div>

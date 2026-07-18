@@ -106,15 +106,18 @@ const DUNGEON_THEMES = {
   },
   knife_mountain: {
     name: 'Knife Mountain',
-    sky: ['#1a2740', '#101a2e', '#070d18'],         // cold, dark frozen-peak interior
-    ground: ['#cfe0ee', '#b7cde1'],                 // pale-blue glacier ice floor
-    speckle: 'rgba(255,255,255,0.5)',
-    edge: ['#7f97b0', '#586c84'],                   // frosted rock walls
-    props: ['icespike', 'snowpile', 'frozenrock', 'pine', 'icespike', 'snowpile'],
-    trail: '180,230,255',
+    sky: ['#a8c4de', '#7690ac', '#3a4a60'],         // thin high-altitude sky fading to the valley haze far below
+    ground: ['#8b939f', '#79828e'],                 // bare grey summit rock
+    speckle: 'rgba(255,255,255,0.45)',              // wind-blown snow dust
+    edge: ['#565d68', '#33383f'],                   // grey mountain faces dropping away beneath the ridge
+    props: ['frozenrock', 'icespike', 'pine', 'rock', 'snowpile', 'frozenrock', 'icespike'],
+    trail: '220,235,250',
     enemies: ['polar_bear', 'baby_werewolf', 'yeti', 'bear', 'polar_bear', 'yeti'],
     boss: 'frost_titan',
-    chambers: true, hard: true, hazard: 'ice',      // temple-style chambers on a slippery ice floor
+    // a knife-thin summit ridge: switchbacks along the mountain tops, with the
+    // grey rock faces falling away under the player's feet
+    waypoints: [[10, 54], [22, 48], [16, 36], [26, 26], [16, 16], [30, 10], [42, 16], [36, 28], [46, 38], [38, 50], [52, 54], [56, 40], [54, 24]],
+    hard: true,
   },
   barren_grasslands: {
     name: 'Barren Grasslands',
@@ -245,15 +248,17 @@ const ACT2_THEMES = {
   knife_mountain: {
     name: 'The Ice Age',
     color: '#9ac8e8', emoji: '🦣',
-    sky: ['#20344e', '#14223a', '#0a1220'],         // deep-frozen glacier night
-    ground: ['#d8e8f2', '#c2d6e6'],                 // hard-packed glacier ice
-    speckle: 'rgba(255,255,255,0.5)',
-    edge: ['#6a86a0', '#48607a'],
-    props: ['icespike', 'snowpile', 'campfire', 'mammothskull', 'frozenrock', 'icespike', 'campfire'],
-    trail: '170,225,255',
+    sky: ['#dceaf4', '#b8d0e2', '#88a6c0'],         // a pale arctic sky over endless white
+    ground: ['#f2f8fc', '#e2edf5'],                 // wind-packed tundra snow
+    speckle: 'rgba(255,255,255,0.75)',
+    edge: ['#b0c6d6', '#8ba4b8'],                   // snow-drift banks at the tundra's edge
+    props: ['snowpile', 'icespike', 'pine', 'mammothskull', 'campfire', 'snowpile', 'frozenrock'],
+    trail: '170,205,235',
     enemies: ['caveman', 'sabertooth', 'yeti', 'caveman', 'sabertooth'],
     boss: 'mammoth_king',
-    chambers: true, hard: true, hazard: 'ice',      // the glacier cave crawl, still slippery underfoot
+    // a wide-open white tundra trek — a long wandering trail across the snow
+    waypoints: [[8, 12], [22, 10], [30, 20], [18, 28], [10, 40], [24, 46], [38, 40], [34, 26], [46, 16], [54, 26], [48, 40], [54, 52]],
+    hard: true, wider: true,
   },
   desolate_dunes: {
     name: 'The Dawn of Time',
@@ -748,6 +753,14 @@ function chamberContains(c, fx, fy) {
 
 /* Per-frame chamber logic: activate the room you enter, spawn its wave, and open
    the onward gate once it's cleared. The final chamber summons the boss. */
+/* Pause the mobs while a banner is on screen: extends the freeze window the
+   whole game respects (no spawns, no movement, no attacks) so the player can
+   actually read what just popped up. */
+function pauseMobs(ms) {
+  const d = DUNGEON; if (!d) return;
+  d.introUntil = Math.max(d.introUntil || 0, performance.now() + ms);
+}
+
 function updateChambers(dt, t) {
   const d = DUNGEON, h = d.hero;
   if (t < (d.introUntil || 0)) return;   // let the player read the intro before the first horde spawns
@@ -771,7 +784,7 @@ function activateChamber(c, t) {
   const count = 5 + c.index * 3;   // a denser horde guards every chamber gate
   for (let k = 0; k < count; k++) spawnInChamber(c, k);
   c.spawned = true;
-  if (c.index > 0) banner('⚔️ CHAMBER GATE ' + (c.index + 1) + ' — defeat the horde!', 1600);
+  if (c.index > 0) { banner('⚔️ CHAMBER GATE ' + (c.index + 1) + ' — defeat the horde!', 1600); pauseMobs(1700); }
 }
 
 /* Boss-rush chamber: resurrect one of the realm's fallen bosses as a tough
@@ -794,6 +807,7 @@ function spawnMiniBoss(c) {
   d.spawned++;
   for (let k = 0; k < 3; k++) spawnInChamber(c, k + 50);   // a few guards alongside it
   banner('☠️ BOSS RUSH — ' + bd.name.toUpperCase() + ' RISES AGAIN!', 2000);
+  pauseMobs(2100);   // let the announcement land before the resurrected warden moves
   Audio2.sfx.lose();
 }
 
@@ -1571,7 +1585,7 @@ function updateDungeon(dt, t) {
   }
 
   /* --- Desolate Dunes: wind, gusts, tornadoes, and being blown off the edge --- */
-  if (d.dunes) {
+  if (d.dunes && t >= (d.introUntil || 0)) {   // the storm holds its breath while you read
     const t2 = t / 1000;
     const ang = t2 * 0.35 + Math.sin(t2 * 0.13) * 1.5;             // wind slowly veers
     const gusting = (t2 % 7) < 1.4;                                // a hard gust ~1.4s every 7s
@@ -1603,7 +1617,7 @@ function updateDungeon(dt, t) {
   }
 
   /* --- Pompeii: Vesuvius rains telegraphed lava bombs that erupt underfoot --- */
-  if (d.volcano) { updateVolcano(dt, t); if (d.over) return; }
+  if (d.volcano && t >= (d.introUntil || 0)) { updateVolcano(dt, t); if (d.over) return; }
 
   // grabber trees: root the hero when close (unless jumping)
   if (d.grabbers) d.grabbers.forEach(g => {
@@ -1627,6 +1641,7 @@ function updateDungeon(dt, t) {
       cp.reached = true;
       earn(10);
       banner('⚔️ GATE ' + cp.idx + ' / ' + d.checkpoints.length + ' — fight through the horde!', 1900);
+      pauseMobs(2000);   // the horde holds until the banner clears
       Audio2.sfx.coin();
       spawnFloatText(h.fx, h.fy, '+10 💰', '#ffcf3f');
       h.hp = Math.min(h.maxhp, h.hp + 1);   // small reward heal before the fight
@@ -1677,7 +1692,7 @@ function updateDungeon(dt, t) {
   d.enemies = d.enemies.filter(e => !e.dead || t - (e.deadAt || (e.deadAt = t)) < 200);
 
   /* --- boss --- */
-  if (d.boss && !d.boss.dead) {
+  if (d.boss && !d.boss.dead && t >= (d.introUntil || 0)) {
     const b = d.boss;
     tickPoison(b, t);
     if (b.worm) { updateWormBoss(b, h, dt, t); if (d.over) return; }
