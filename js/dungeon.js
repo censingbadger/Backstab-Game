@@ -960,7 +960,9 @@ function buildDungeonDOM() {
     </div>
     <div class="dun-touch">
       <div id="joy" class="joy"><div id="joy-knob" class="joy-knob"></div></div>
+      <div id="potion-tray" class="potion-tray hidden"></div>
       <div class="touch-btns">
+        <button class="tbtn potion" id="t-potion">🧪</button>
         <button class="tbtn heal" id="t-heal">❤️</button>
         <button class="tbtn jump" id="t-jump">⤴️</button>
         <button class="tbtn dodge" id="t-dodge">💨</button>
@@ -1038,6 +1040,8 @@ function bindDungeonInput() {
   atk.addEventListener('mouseup', holdOff);
   document.getElementById('t-dodge').addEventListener('click', heroDodge);
   document.getElementById('t-heal').addEventListener('click', heroHeal);
+  const potBtn = document.getElementById('t-potion');
+  if (potBtn) potBtn.addEventListener('click', e => { e.preventDefault(); togglePotionTray(); });
   const jmp = document.getElementById('t-jump');
   const jumpOn = e => { e.preventDefault(); d.jumpBtnHeld = true; heroJump(); };   // hold to fly with Wings
   const jumpOff = e => { d.jumpBtnHeld = false; };
@@ -1107,7 +1111,8 @@ function heroAttack() {
   const power = bare ? null : weaponPower(wid);
   // BACK STAB: striking an enemy from behind its facing deals double damage.
   const behind = e => e.facing !== 0 && Math.sign(h.fx - e.fx) !== 0 && Math.sign(h.fx - e.fx) !== e.facing;
-  const dmg = Math.round((bare ? 2 : (weaponDamage(wid) + (STATE.dmgBonus || 0))) * levelMastery() * 10) / 10;   // upgrades + Power modifier + level mastery
+  const buff = (h.buffMs > 0) ? (h.buffMult || 2) : 1;   // Strength/Berserk potion
+  const dmg = Math.round((bare ? 2 : (weaponDamage(wid) + (STATE.dmgBonus || 0))) * levelMastery() * buff * 10) / 10;   // upgrades + Power modifier + level mastery + potion buff
   const hits = power === 'double' ? 2 : 1;
   let reach = 2.4, arc = Math.PI * 1.15;
   if (power === 'reach') reach += 1.2;                 // spears/bow strike from further
@@ -1163,7 +1168,8 @@ function fireHeroShot(kind, wid, now) {
   updateHeroFacing();
   const ang = h.faceAngle;
   const speed = kind === 'bazooka' ? 10 : 17;
-  const dmg = Math.round((weaponDamage(wid) + (STATE.dmgBonus || 0)) * levelMastery() * 10) / 10;
+  const buff = (h.buffMs > 0) ? (h.buffMult || 2) : 1;
+  const dmg = Math.round((weaponDamage(wid) + (STATE.dmgBonus || 0)) * levelMastery() * buff * 10) / 10;
   d.shots.push({ kind, x: h.fx + Math.cos(ang) * 0.5, y: h.fy + Math.sin(ang) * 0.5, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, dmg, born: now, life: 1300 });
   Audio2.sfx[kind === 'bazooka' ? 'bighit' : 'special']();
   h.swingUntil = now + 130;
@@ -1239,6 +1245,58 @@ function heroHeal() {
   Audio2.sfx.heal();
   spawnFloatText(h.fx, h.fy, '+' + it.heal + '❤', '#57cc66');
   updateDungeonHUD();
+}
+
+/* Use a specific consumable mid-crawl (from the potion tray or the pause menu):
+   heals restore hearts; buff potions grant a timed damage boost. Returns true
+   if the item was actually spent. */
+function dungeonUseItem(id) {
+  const d = DUNGEON; if (!d || d.over) return false;
+  const h = d.hero, it = ITEMS[id];
+  if (!it || (STATE.items[id] || 0) <= 0) return false;
+  if (it.type === 'heal') {
+    if (h.hp >= h.maxhp) { banner('Already at full hearts!', 800); return false; }
+    h.hp = Math.min(h.maxhp, h.hp + it.heal);
+    spawnFloatText(h.fx, h.fy, '+' + it.heal + '❤', '#57cc66'); Audio2.sfx.heal();
+  } else if (it.type === 'buff') {
+    h.buffMs = it.duration || 8000; h.buffMult = it.dmgMult || 2;
+    spawnFloatText(h.fx, h.fy, '💪 ×' + h.buffMult, '#ffd23f'); Audio2.sfx.special();
+    banner('💪 ' + it.name + ' — ' + h.buffMult + '× damage!', 1400);
+  } else { banner("Can't use that here.", 800); return false; }   // cages are for the Arena
+  STATE.items[id]--; if (STATE.items[id] <= 0) delete STATE.items[id];
+  saveGame(); updateDungeonHUD();
+  return true;
+}
+
+// The quick potion belt on the control pad: tap 🧪 to pop your potions, tap one
+// to drink it without leaving the fight.
+function usablePotionIds() {
+  return Object.keys(STATE.items).filter(i => (STATE.items[i] || 0) > 0 && ITEMS[i] && (ITEMS[i].type === 'heal' || ITEMS[i].type === 'buff'));
+}
+function togglePotionTray() {
+  const tray = document.getElementById('potion-tray'); if (!tray) return;
+  if (!tray.classList.contains('hidden')) { tray.classList.add('hidden'); return; }
+  renderPotionTray(); tray.classList.remove('hidden'); Audio2.sfx.click();
+}
+function renderPotionTray() {
+  const tray = document.getElementById('potion-tray'); if (!tray) return;
+  const ids = usablePotionIds();
+  if (!ids.length) { tray.innerHTML = `<div class="pt-empty">No potions — brew some at the Brewery! 🧪</div>`; return; }
+  tray.innerHTML = ids.map(id => {
+    const it = ITEMS[id];
+    const tag = it.type === 'heal' ? '+' + it.heal + '❤' : (it.dmgMult || 2) + '×💪';
+    return `<button class="pt-item" data-use="${id}" title="${it.name}">
+        <div class="pt-art">${itemSVG(it.art)}</div>
+        <div class="pt-tag">${tag}</div>
+        <div class="pt-qty">×${STATE.items[id]}</div>
+      </button>`;
+  }).join('');
+  tray.querySelectorAll('.pt-item[data-use]').forEach(b => b.addEventListener('click', e => {
+    e.preventDefault();
+    dungeonUseItem(b.dataset.use);
+    if (!usablePotionIds().length) tray.classList.add('hidden');
+    else renderPotionTray();
+  }));
 }
 
 function updateHeroFacing() {
@@ -1435,6 +1493,9 @@ function dungeonLoop(t) {
 
 function updateDungeon(dt, t) {
   const d = DUNGEON, h = d.hero;
+
+  // Potion buff timer runs on GAME time (so pausing to sip one doesn't waste it)
+  if (h.buffMs > 0) { h.buffMs -= dt * 1000; if (h.buffMs <= 0) { h.buffMs = 0; banner('Strength fades…', 900); } }
 
   /* --- hero movement --- */
   let mvx = 0, mvy = 0;
@@ -3264,6 +3325,15 @@ function drawHero(ctx, h, ox, oy) {
   const yb = y - jz + sink;                // body base y
   // shadow stays on the ground, shrinks while airborne
   shadowOval(ctx, x, y + sink, 20 * (1 - jz / 90), 8 * (1 - jz / 90));
+  // Strength/Berserk potion: a pulsing gold aura + 💪 while the buff is active
+  if (h.buffMs > 0) {
+    const now2 = performance.now(), pulse = 0.5 + 0.4 * Math.sin(now2 / 140);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 * pulse;
+    const gr = ctx.createRadialGradient(x, yb - 34, 6, x, yb - 34, 42);
+    gr.addColorStop(0, (h.buffMult >= 3 ? '#ff5a3a' : '#ffd23f')); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, yb - 34, 42, 0, 7); ctx.fill(); ctx.restore();
+    ctx.font = '900 13px Trebuchet MS, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💪', x, yb - 78); ctx.textAlign = 'left';
+  }
   const img = getSprite('hero', { art: 'hero', palette: {} }, h.facing);
   const bob = (h.moving ? Math.sin(h.animT) * 3 : 0) + (submerged ? Math.sin(performance.now() / 400) * 2 : 0);
   const dodging = performance.now() < h.dodgeUntil;
@@ -3693,6 +3763,8 @@ function openGearMenu() {
     <div class="result-card gear-card">
       <h2>⚙️ GEAR</h2>
       <p class="tip">Swap your weapon or shield, then get back in there.</p>
+      <div class="gear-sec">🧪 Potions</div>
+      <div class="gear-grid" id="gear-potions"></div>
       <div class="gear-sec">Weapons</div>
       <div class="gear-grid" id="gear-weapons"></div>
       <div class="gear-sec">Shields</div>
@@ -3705,6 +3777,22 @@ function openGearMenu() {
 }
 function renderGearLists() {
   const wg = document.getElementById('gear-weapons'), sg = document.getElementById('gear-shields');
+  const pg = document.getElementById('gear-potions');
+  if (pg) {
+    const ids = usablePotionIds();
+    pg.innerHTML = ids.length ? ids.map(id => {
+      const it = ITEMS[id];
+      const sub = it.type === 'heal' ? '+' + it.heal + '❤' : (it.dmgMult || 2) + '× damage';
+      return `<button class="gear-item" data-use="${id}" style="--rc:${RARITY[it.rarity].color}">
+        <div class="gi-art">${itemSVG(it.art)}</div>
+        <div class="gi-name">${it.name}</div>
+        <div class="gi-sub">×${STATE.items[id]} · ${sub}</div>
+      </button>`;
+    }).join('') : '<div class="gear-empty">No potions yet — brew some at the Brewery!</div>';
+    pg.querySelectorAll('.gear-item[data-use]').forEach(btn => btn.addEventListener('click', () => {
+      if (dungeonUseItem(btn.dataset.use)) { Audio2.sfx.click(); renderGearLists(); }
+    }));
+  }
   if (wg) {
     wg.innerHTML = Object.keys(STATE.weapons).map(id => {
       const w = WEAPONS[id], dur = STATE.weapons[id], eq = STATE.equippedWeapon === id, broken = dur <= 0;

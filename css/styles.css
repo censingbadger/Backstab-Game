@@ -549,7 +549,21 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .tbtn.dodge{ border-color:var(--green); }
 .tbtn.heal{ border-color:var(--red); }
 .tbtn.jump{ border-color:var(--blue); }
+.tbtn.potion{ border-color:#b061ff; }
 .tbtn:active{ transform:scale(.92); }
+/* Quick potion belt that pops above the control pad */
+.potion-tray{ position:absolute; right:20px; bottom:150px; pointer-events:auto; z-index:12;
+  display:flex; gap:8px; flex-wrap:wrap-reverse; justify-content:flex-end; max-width:260px;
+  background:rgba(14,10,26,.92); border:2px solid #b061ff; border-radius:14px; padding:8px; }
+.potion-tray.hidden{ display:none; }
+.pt-item{ pointer-events:auto; width:52px; border:1.5px solid rgba(255,255,255,.18); border-radius:10px;
+  background:rgba(255,255,255,.06); padding:4px 2px 2px; cursor:pointer; text-align:center; }
+.pt-item:active{ transform:scale(.94); border-color:var(--gold); }
+.pt-art{ width:36px; height:36px; margin:0 auto; }
+.pt-tag{ font-size:9px; font-weight:900; color:#ffd76a; }
+.pt-qty{ font-size:10px; color:#cfc6e0; }
+.pt-empty{ color:#cfc6e0; font-size:12px; padding:4px 6px; max-width:200px; }
+.gear-empty{ color:var(--muted); font-size:12.5px; padding:6px 2px; }
 @media (hover:hover) and (pointer:fine){ .dun-touch{ display:none; } }
 
 .dun-banner{ position:absolute; top:34%; left:50%; transform:translate(-50%,-10px) scale(.9); pointer-events:none; z-index:12;
