@@ -4141,7 +4141,17 @@ function renderGearLists() {
     }));
   }
   if (wg) {
-    wg.innerHTML = Object.keys(STATE.weapons).map(id => {
+    // The Weapon Polisher: a magic kit that fully fixes the EQUIPPED weapon —
+    // even a broken one — right here, mid-level.
+    const kits = (STATE.items && STATE.items.polish_kit) || 0;
+    const eqW = STATE.equippedWeapon, eqDur = STATE.weapons[eqW] || 0, eqFull = WEAPONS[eqW] ? WEAPONS[eqW].durability : 0;
+    const needsPolish = eqDur < eqFull;
+    const polishRow = kits > 0 ? `<button class="gear-item polish ${needsPolish ? '' : 'broken'}" id="gear-polish" style="--rc:#e8c95a">
+        <div class="gi-art">${itemSVG('polish')}</div>
+        <div class="gi-name">Weapon Polisher ×${kits}</div>
+        <div class="gi-sub">${needsPolish ? 'Tap to fix ' + (WEAPONS[eqW] ? WEAPONS[eqW].name : 'your weapon') + ' → ' + eqFull : 'Weapon already gleaming!'}</div>
+      </button>` : '';
+    wg.innerHTML = polishRow + Object.keys(STATE.weapons).map(id => {
       const w = WEAPONS[id], dur = STATE.weapons[id], eq = STATE.equippedWeapon === id, broken = dur <= 0;
       return `<button class="gear-item ${eq ? 'on' : ''} ${broken ? 'broken' : ''}" data-w="${id}" style="--rc:${RARITY[w.rarity].color}">
         <div class="gi-art">${weaponSVG(w)}</div>
@@ -4150,6 +4160,15 @@ function renderGearLists() {
         ${eq ? '<span class="gi-badge">Equipped</span>' : ''}${broken ? '<span class="gi-badge broken">Broken</span>' : ''}
       </button>`;
     }).join('');
+    const pb = wg.querySelector('#gear-polish');
+    if (pb) pb.addEventListener('click', () => {
+      if (!needsPolish || (STATE.items.polish_kit || 0) <= 0) return;
+      STATE.weapons[eqW] = eqFull;
+      STATE.items.polish_kit--; if (STATE.items.polish_kit <= 0) delete STATE.items.polish_kit;
+      saveGame(); Audio2.sfx.win();
+      banner('🧽 ' + WEAPONS[eqW].name.toUpperCase() + ' polished — good as new!', 2000);
+      renderGearLists(); updateWeaponHUD();
+    });
     wg.querySelectorAll('.gear-item[data-w]').forEach(btn => btn.addEventListener('click', () => {
       STATE.equippedWeapon = btn.dataset.w; Audio2.sfx.click(); saveGame(); renderGearLists(); updateWeaponHUD();
     }));

@@ -361,7 +361,7 @@ function spawnHitFx(x, depth, z, color, big) {
 /* ---------------- Items ---------------- */
 function toggleItemTrayB() {
   const tray = document.getElementById('item-tray'); if (!tray) return;
-  const owned = Object.keys(STATE.items).filter(id => STATE.items[id] > 0);
+  const owned = Object.keys(STATE.items).filter(id => STATE.items[id] > 0 && ITEMS[id] && ITEMS[id].type !== 'polish');   // the Polisher is gear care, not an arena move
   if (!owned.length) { flashB('No items!'); return; }
   if (!tray.classList.contains('hidden')) { tray.classList.add('hidden'); return; }
   tray.innerHTML = owned.map(id => { const it = ITEMS[id]; return `<button class="tray-item" data-item="${id}"><div>${itemSVG(it.art)}</div><span>${it.name} ×${STATE.items[id]}</span></button>`; }).join('');
