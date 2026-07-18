@@ -1060,9 +1060,14 @@ function renderArena(regionId) {
   rollCrowd();
   const applause = Game.crowd, booing = 100 - applause;
 
-  const fighterIds = region.enemies.slice();
+  // The Arena's roster matches the ACT you're in: Act 1 duels the realm's
+  // classic foes, Act 2 the creatures of the eras, Act 3 the futuristic
+  // rebuilds — with that act's warden as the boss card.
+  const actTheme = currentAct() >= 2 ? dungeonTheme(region.id) : null;
+  const fighterIds = actTheme ? [...new Set(actTheme.enemies)] : region.enemies.slice();
+  const bossId = actTheme ? actTheme.boss : region.boss;
   const cards = fighterIds.map(id => fighterCard(ENEMIES[id], region.id, false)).join('');
-  const bossCard = region.boss ? fighterCard(BOSSES[region.boss], region.id, true) : '';
+  const bossCard = bossId ? fighterCard(BOSSES[bossId], region.id, true) : '';
 
   const el = app();
   el.className = 'screen screen-arena';
