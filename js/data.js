@@ -198,6 +198,34 @@ const ITEMS = {
   mushroom_stew:  { id:'mushroom_stew',  name:'Mushroom Stew',  type:'heal',  heal:3,   rarity:'C', price:25, art:'stew',    blurb:'A hearty meal. Restores 3 hearts.' },
   strength_potion:{ id:'strength_potion',name:'Strength Potion',type:'buff',  buff:'strength', dmgMult:2, duration:8000, rarity:'U', price:85, art:'potion', blurb:'Double damage for 8 seconds!' },
   cage:           { id:'cage',           name:'Cage',           type:'capture', rarity:'E', price:120, art:'cage',   blurb:'Throw at a weakened enemy to CAPTURE it for your collection.' },
+  // ----- Brewed potions (crafted at the Brewery from gathered ingredients) -----
+  heal_potion:    { id:'heal_potion',    name:'Healing Potion', type:'heal',  heal:2,   rarity:'C', price:0, art:'potion_red',  brewed:true, blurb:'A brewed potion. Restores 2 hearts.' },
+  greater_heal:   { id:'greater_heal',   name:'Greater Healing Potion', type:'heal', heal:5, rarity:'U', price:0, art:'potion_red', brewed:true, blurb:'A strong brew. Restores 5 hearts.' },
+  full_restore:   { id:'full_restore',   name:'Full Restore',   type:'heal',  heal:12,  rarity:'R', price:0, art:'potion_gold', brewed:true, blurb:'Fills your heart bar completely.' },
+  berserk_potion: { id:'berserk_potion', name:'Berserk Potion', type:'buff',  buff:'strength', dmgMult:3, duration:10000, rarity:'R', price:0, art:'potion_dark', brewed:true, blurb:'TRIPLE damage for 10 seconds!' },
+};
+
+/* ---------- Brewing ingredients (gathered from felled foes in dungeons) ---------- */
+const INGREDIENTS = {
+  herb:     { id:'herb',     name:'Herb',          icon:'🌿', color:'#5aa84a' },
+  mushroom: { id:'mushroom', name:'Toadstool',     icon:'🍄', color:'#d05a5a' },
+  crystal:  { id:'crystal',  name:'Crystal Shard', icon:'💎', color:'#6cd8ff' },
+  ember:    { id:'ember',    name:'Ember',         icon:'🔥', color:'#ff8a3a' },
+  essence:  { id:'essence',  name:'Beast Essence', icon:'🫧', color:'#b061ff' },
+};
+
+/* ---------- Brewery recipes ----------
+   out=item id produced (or 'extra_life' for the special draught) · qty · cost=coins
+   need={ingredientId:count} */
+const RECIPES = {
+  heal_potion:    { out:'heal_potion',    qty:2, cost:15,  need:{ herb:1, mushroom:1 } },
+  cliff_shrooms:  { out:'cliff_shrooms',  qty:3, cost:12,  need:{ mushroom:2 } },
+  greater_heal:   { out:'greater_heal',   qty:1, cost:60,  need:{ herb:2, crystal:1 } },
+  full_restore:   { out:'full_restore',   qty:1, cost:150, need:{ herb:2, crystal:2 } },
+  strength_potion:{ out:'strength_potion',qty:1, cost:70,  need:{ ember:2, herb:1 } },
+  berserk_potion: { out:'berserk_potion', qty:1, cost:180, need:{ ember:3, crystal:1 } },
+  cage:           { out:'cage',           qty:1, cost:90,  need:{ crystal:1, essence:2 } },
+  extra_life:     { out:'extra_life',     qty:1, cost:600, need:{ crystal:2, ember:2, essence:3 } },
 };
 
 /* ---------- Shields (equippable, reduce damage when blocking) ---------- */

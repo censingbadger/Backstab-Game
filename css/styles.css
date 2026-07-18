@@ -176,6 +176,26 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .char-new-row .auth-input{ flex:1; margin:0; }
 .char-new-row .wide-btn{ width:auto; padding:0 18px; }
 
+/* ---------------- Brewery & Companion ---------------- */
+.brew-ings{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.ing-chip{ font-size:13px; background:rgba(255,255,255,0.07); border:1.5px solid var(--ic); border-radius:999px; padding:3px 9px; color:#f0e8d2; }
+.ing-chip.none{ opacity:.45; border-color:rgba(255,255,255,0.2); }
+.ing-chip b{ color:#fff; }
+.brew-panel .si-sub .need{ font-size:12px; padding:1px 5px; border-radius:6px; background:rgba(0,0,0,0.25); }
+.brew-panel .si-sub .need.ok{ color:#8ff0a0; }
+.brew-panel .si-sub .need.no{ color:#ff8a8a; }
+.pet-list{ display:flex; flex-wrap:wrap; gap:10px; }
+.pet-empty{ color:var(--muted); font-size:13px; line-height:1.5; padding:6px 2px; }
+.pet-card{ width:84px; background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.16); border-radius:12px;
+  padding:8px 4px 6px; cursor:pointer; text-align:center; transition:border-color .12s, transform .08s; position:relative; }
+.pet-card:hover{ transform:translateY(-1px); border-color:var(--gold); }
+.pet-card.on{ border-color:#57cc66; box-shadow:0 0 10px rgba(87,204,102,.4); }
+.pet-face{ width:52px; height:56px; margin:0 auto; display:flex; align-items:flex-end; justify-content:center; }
+.pet-face.none{ font-size:30px; align-items:center; }
+.pet-face .char-svg{ width:52px; height:56px; }
+.pet-name{ font-size:11px; font-weight:800; color:#fff; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pet-badge{ font-size:9px; font-weight:900; color:#57cc66; margin-top:1px; }
+
 /* ---------------- Arena ---------------- */
 .arena-region{ display:flex; justify-content:space-between; align-items:center; gap:8px;
   margin:12px 14px; padding:10px 14px; border-radius:14px; font-weight:800;

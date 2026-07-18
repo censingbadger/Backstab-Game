@@ -28,6 +28,10 @@ function newGame() {
     items: { apple: 2 },
     // enemies captured with the Cage
     captured: [],
+    // brewing ingredients gathered in dungeons { ingredientId: count }
+    ingredients: {},
+    // the captured creature currently following you as a pet (fighter id or null)
+    activePet: null,
     // permanent reward modifiers earned by clearing dungeons
     dmgBonus: 0, armorBonus: 0, speedBonus: 0, modifiers: [],
     // roguelike progression: weapon upgrade levels, and which regions already
