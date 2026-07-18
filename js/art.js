@@ -66,6 +66,17 @@ function shieldIcon(color) {
 }
 
 /* ---------- Item art ---------- */
+// A round-bellied brewed potion in a glass flask, tinted by the recipe.
+function potionSVG(liquid, shine) {
+  return `<svg viewBox="0 0 40 40">
+    <rect x="16" y="4" width="8" height="7" rx="1.5" fill="#8a6a3a"/>
+    <path d="M17 10 H23 L23 15 A11 11 0 1 1 17 15 Z" fill="#cfe6f2" opacity="0.35"/>
+    <path d="M12 24 A8 8 0 0 0 28 24 A8 8 0 0 0 22 16 L18 16 A8 8 0 0 0 12 24Z" fill="${liquid}"/>
+    <ellipse cx="20" cy="21" rx="7" ry="2.4" fill="${shine}" opacity="0.7"/>
+    <circle cx="17" cy="26" r="1.4" fill="${shine}" opacity="0.8"/><circle cx="23" cy="28" r="1" fill="${shine}" opacity="0.7"/>
+    <path d="M16 13 A6 6 0 0 0 15 18" stroke="#fff" stroke-width="1.2" fill="none" opacity="0.6"/>
+  </svg>`;
+}
 function itemSVG(art, color) {
   const c = color || '#cc5';
   switch (art) {
@@ -74,6 +85,9 @@ function itemSVG(art, color) {
     case 'stew': return `<svg viewBox="0 0 40 40"><path d="M6 20 H34 C34 30 28 34 20 34 C12 34 6 30 6 20Z" fill="#8a5a2a"/><ellipse cx="20" cy="20" rx="14" ry="4" fill="#c0392b"/><circle cx="15" cy="19" r="2" fill="#e08e3a"/><circle cx="24" cy="20" r="2" fill="#6aa84f"/></svg>`;
     case 'potion': return `<svg viewBox="0 0 40 40"><rect x="16" y="4" width="8" height="8" fill="#8a6a3a"/><path d="M14 12 H26 L30 24 C30 34 10 34 10 24Z" fill="#b061ff" opacity="0.85"/><ellipse cx="20" cy="26" rx="9" ry="4" fill="rgba(255,255,255,0.3)"/></svg>`;
     case 'cage': return `<svg viewBox="0 0 40 40"><rect x="8" y="10" width="24" height="24" rx="2" fill="none" stroke="#8a8f9a" stroke-width="2.4"/><path d="M14 10 V34 M20 10 V34 M26 10 V34 M8 18 H32 M8 26 H32" stroke="#8a8f9a" stroke-width="2"/><rect x="12" y="6" width="16" height="5" rx="2" fill="#6a6f7a"/></svg>`;
+    case 'potion_red':  return potionSVG('#e0453a', '#ff8a7a');
+    case 'potion_gold': return potionSVG('#e0b040', '#ffe08a');
+    case 'potion_dark': return potionSVG('#6a2a8a', '#c060ff');
     default: return `<svg viewBox="0 0 40 40"><rect x="10" y="10" width="20" height="20" rx="4" fill="${c}"/></svg>`;
   }
 }

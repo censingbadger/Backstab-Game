@@ -625,6 +625,7 @@ function startDungeon(regionId) {
     spawnTimer: 0,
     // grace period: no mobs spawn or attack until the level-intro banner is gone
     introUntil: performance.now() + 5200,
+    pet: makeDungeonPet(hero),
   };
 
   buildDungeonDOM();
@@ -734,6 +735,7 @@ function startTempleDungeon(regionId, theme) {
     lastT: performance.now(), raf: null, spawnTimer: 0,
     // grace period: no mobs spawn or attack until the level-intro banner is gone
     introUntil: performance.now() + 5200,
+    pet: makeDungeonPet(hero),
   };
   buildDungeonDOM();
   bindDungeonInput();
@@ -1223,15 +1225,19 @@ function heroDodge() {
 
 function heroHeal() {
   const d = DUNGEON; if (!d || d.over) return;
-  // use the best healing item available
-  const order = ['mushroom_stew', 'cliff_shrooms', 'apple'];
-  const id = order.find(i => (STATE.items[i] || 0) > 0);
-  if (!id) { banner('No food!', 500); return; }
+  const h = d.hero;
+  // Any owned heal item (shop food OR brewed potions), least-wasteful first: the
+  // smallest heal that still tops you off, else the biggest you have.
+  const owned = Object.keys(STATE.items).filter(i => (STATE.items[i] || 0) > 0 && ITEMS[i] && ITEMS[i].type === 'heal');
+  if (!owned.length) { banner('No potions or food!', 700); return; }
+  owned.sort((a, b) => ITEMS[a].heal - ITEMS[b].heal);
+  const missing = h.maxhp - h.hp;
+  const id = owned.find(i => ITEMS[i].heal >= missing) || owned[owned.length - 1];
   const it = ITEMS[id];
-  d.hero.hp = Math.min(d.hero.maxhp, d.hero.hp + it.heal);
+  h.hp = Math.min(h.maxhp, h.hp + it.heal);
   STATE.items[id]--; if (STATE.items[id] <= 0) delete STATE.items[id];
   Audio2.sfx.heal();
-  spawnFloatText(d.hero.fx, d.hero.fy, '+' + it.heal + '❤', '#57cc66');
+  spawnFloatText(h.fx, h.fy, '+' + it.heal + '❤', '#57cc66');
   updateDungeonHUD();
 }
 
@@ -1291,6 +1297,12 @@ function killEnemy(e) {
     if (rand(d.kills * 3.7 + 2) < 0.35) d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
   } else if (rand(d.kills * 5.3) < 0.05) {
     d.drops.push({ fx: e.fx, fy: e.fy, kind: 'heart', born: performance.now() });
+  }
+  // brewing ingredients: elites always drop one, ordinary foes ~30% of the time
+  if (e.elite || rand(d.kills * 7.1 + 3) < 0.3) {
+    const pool = ['herb', 'herb', 'mushroom', 'mushroom', 'ember', 'crystal', 'essence'];
+    const ing = pool[Math.floor(rand(d.kills * 2.9 + 5) * pool.length)];
+    d.drops.push({ fx: e.fx + 0.35, fy: e.fy - 0.2, kind: 'ingredient', ing, born: performance.now() });
   }
   spawnPuff(e.fx, e.fy);
   updateDungeonHUD();
@@ -1716,12 +1728,23 @@ function updateDungeon(dt, t) {
   /* --- drops (hearts) pickup --- */
   d.drops = d.drops.filter(dr => {
     if (dist(dr.fx, dr.fy, h.fx, h.fy) < 0.8) {
+      if (dr.kind === 'ingredient') {
+        STATE.ingredients = STATE.ingredients || {};
+        STATE.ingredients[dr.ing] = (STATE.ingredients[dr.ing] || 0) + 1;
+        const ing = (typeof INGREDIENTS !== 'undefined' && INGREDIENTS[dr.ing]) || null;
+        Audio2.sfx.coin(); spawnFloatText(h.fx, h.fy, (ing ? ing.icon : '✨') + ' +1', ing ? ing.color : '#fff');
+        saveGame();
+        return false;
+      }
       h.hp = Math.min(h.maxhp, h.hp + 0.5);
       Audio2.sfx.heal(); spawnFloatText(h.fx, h.fy, '+½❤', '#57cc66'); updateDungeonHUD();
       return false;
     }
     return t - dr.born < 12000;
   });
+
+  /* --- pet companion: heels behind you and bites nearby foes --- */
+  if (d.pet) { updatePet(dt, t); if (d.over) return; }
 
   /* --- hero bullets / rockets --- */
   updateHeroShots(dt, t);
@@ -1907,6 +1930,53 @@ function pushHeroRaw(dx, dy) {
   h.fx = clamp(h.fx + dx, 0.5, d.W - 0.5);
   h.fy = clamp(h.fy + dy, 0.5, d.H - 0.5);
 }
+/* ============================================================
+   PET (companion) — a captured creature that trots along and bites foes
+   ============================================================ */
+function makeDungeonPet(hero) {
+  if (!STATE.activePet) return null;
+  const f = (typeof getFighter === 'function') ? getFighter(STATE.activePet) : null;
+  if (!f) return null;
+  return { id: STATE.activePet, fighter: f, fx: hero.fx - 1, fy: hero.fy, facing: 1,
+           attackReadyAt: 0, lungeUntil: 0, animT: 0, moving: false };
+}
+function updatePet(dt, t) {
+  const d = DUNGEON, p = d.pet, h = d.hero; if (!p) return;
+  p.animT = (p.animT || 0) + dt * 8;
+  // find the nearest living foe within a short leash
+  let target = null, best = 4.5;
+  d.enemies.forEach(e => { if (e.dead || e.shadow) return; const dd = dist(p.fx, p.fy, e.fx, e.fy); if (dd < best) { best = dd; target = e; } });
+  if (!target && d.boss && !d.boss.dead && !d.boss.invuln) { const dd = dist(p.fx, p.fy, d.boss.fx, d.boss.fy); if (dd < 4.5) target = d.boss; }
+  const fighting = target && t >= (d.introUntil || 0);
+  // goal: pounce the target, else heel just behind the hero
+  const heelX = h.fx - Math.cos(h.faceAngle || 0) * 1.5, heelY = h.fy - Math.sin(h.faceAngle || 0) * 1.5;
+  const gx = fighting ? target.fx : heelX, gy = fighting ? target.fy : heelY;
+  const dx = gx - p.fx, dy = gy - p.fy, m = Math.hypot(dx, dy) || 1;
+  const stop = fighting ? 0.85 : 0.25, sp = (fighting ? 4.6 : 3.6) * dt;
+  if (m > stop) { p.fx += dx / m * Math.min(m, sp); p.fy += dy / m * Math.min(m, sp); p.facing = dx >= 0 ? 1 : -1; p.moving = true; }
+  else p.moving = false;
+  // bite on a cooldown when in range
+  if (fighting && t >= p.attackReadyAt && dist(p.fx, p.fy, target.fx, target.fy) < 1.25) {
+    p.attackReadyAt = t + 1150; p.lungeUntil = t + 200;
+    const dmg = 3 + Math.round(p.fighter.attack || 2);
+    damageEnemy(target, dmg, false);
+    Audio2.sfx.hit(); spawnFloatText(p.fx, p.fy - 0.3, '🐾', '#ffd23f');
+    if (d.over) return;
+  }
+}
+function drawPet(ctx, p, ox, oy) {
+  const s = isoToScreen(p.fx, p.fy), now = performance.now();
+  const x = s.x + ox, y = s.y + oy;
+  shadowOval(ctx, x, y, 13, 5);
+  const lunge = now < (p.lungeUntil || 0) ? 5 : 0;
+  const bob = (p.moving ? Math.sin(p.animT) * 2.4 : Math.sin(now / 480) * 1.2) + lunge;
+  const img = getSprite(p.fighter.id, p.fighter, p.facing);
+  if (img && img.complete && img.naturalWidth) ctx.drawImage(img, x - 21, y - 46 - bob, 42, 50);
+  // a friendly little heart tag so pets read as allies, not foes
+  ctx.fillStyle = '#57cc66'; ctx.font = '900 9px Trebuchet MS, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('♥', x, y - 48 - bob); ctx.textAlign = 'left';
+}
+
 /* Where you come back after a fall or a knockout: the last checkpoint you
    crossed (path / beach levels), the current chamber (chamber levels), or the
    very start of the trail if you haven't reached a checkpoint yet. */
@@ -2070,6 +2140,7 @@ function renderDungeon() {
   d.drops.forEach(dr => draws.push({ z: dr.fx + dr.fy - 0.01, kind: 'drop', dr }));
   d.enemies.forEach(e => { if (!e.dead) draws.push({ z: e.fx + e.fy, kind: 'enemy', e }); });
   if (d.boss && !d.boss.dead) draws.push({ z: d.boss.fx + d.boss.fy, kind: 'enemy', e: d.boss });
+  if (d.pet) draws.push({ z: d.pet.fx + d.pet.fy - 0.02, kind: 'pet', p: d.pet });
   draws.push({ z: d.hero.fx + d.hero.fy, kind: 'hero', h: d.hero });
   draws.sort((a, b) => a.z - b.z);
 
@@ -2081,6 +2152,7 @@ function renderDungeon() {
     else if (item.kind === 'grabber') drawGrabber(ctx, item.g, ox, oy);
     else if (item.kind === 'drop') drawDrop(ctx, item.dr, ox, oy);
     else if (item.kind === 'enemy') drawCombatant(ctx, item.e, ox, oy);
+    else if (item.kind === 'pet') drawPet(ctx, item.p, ox, oy);
     else if (item.kind === 'hero') drawHero(ctx, item.h, ox, oy);
   });
 
@@ -3071,6 +3143,18 @@ function drawDrop(ctx, dr, ox, oy) {
   const s = isoToScreen(dr.fx, dr.fy);
   const bob = Math.sin(performance.now() / 200 + dr.fx) * 3;
   const x = s.x + ox, y = s.y + oy - 14 + bob;
+  if (dr.kind === 'ingredient') {
+    const ing = (typeof INGREDIENTS !== 'undefined' && INGREDIENTS[dr.ing]) || { color: '#8ad07a' };
+    ctx.save();
+    const g = ctx.createRadialGradient(x, y, 1, x, y, 11); g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(0.4, ing.color); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fill();     // glow
+    ctx.fillStyle = ing.color;                                                    // faceted gem
+    ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 5, y - 1); ctx.lineTo(x + 3, y + 6); ctx.lineTo(x - 3, y + 6); ctx.lineTo(x - 5, y - 1); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x, y + 6); ctx.moveTo(x - 5, y - 1); ctx.lineTo(x + 5, y - 1); ctx.stroke();
+    ctx.restore();
+    return;
+  }
   ctx.save(); ctx.translate(x, y); ctx.scale(0.7, 0.7);
   ctx.fillStyle = '#ff3b5c';
   ctx.beginPath();

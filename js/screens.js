@@ -967,6 +967,17 @@ function renderStats() {
         <div id="inv-grid" class="inv-grid"></div>
       </section>
 
+      <section class="panel brew-panel">
+        <h3>🧪 Brewery</h3>
+        <div id="brew-ings" class="brew-ings"></div>
+        <div id="brew-list" class="shop-list"></div>
+      </section>
+
+      <section class="panel pet-panel">
+        <h3>🐾 Companion</h3>
+        <div id="pet-list" class="pet-list"></div>
+      </section>
+
       <section class="panel shop-panel">
         <h3>Shop</h3>
         <div id="shop-list" class="shop-list"></div>
@@ -977,7 +988,83 @@ function renderStats() {
     </div>`;
   wireCommon(el);
   renderInventory();
+  renderBrewery();
+  renderPets();
   renderShop();
+}
+
+/* ================= BREWERY ================= */
+function renderBrewery() {
+  const ingBox = document.getElementById('brew-ings'), list = document.getElementById('brew-list');
+  if (!ingBox || !list) return;
+  STATE.ingredients = STATE.ingredients || {};
+  // ingredient satchel
+  ingBox.innerHTML = Object.values(INGREDIENTS).map(ing => {
+    const n = STATE.ingredients[ing.id] || 0;
+    return `<span class="ing-chip ${n ? '' : 'none'}" title="${ing.name}" style="--ic:${ing.color}">${ing.icon} <b>${n}</b></span>`;
+  }).join('');
+
+  const have = id => STATE.ingredients[id] || 0;
+  let html = '';
+  Object.values(RECIPES).forEach(rec => {
+    const isLife = rec.out === 'extra_life';
+    const outName = isLife ? '🌟 Extra Life' : (ITEMS[rec.out].name + (rec.qty > 1 ? ' ×' + rec.qty : ''));
+    const outArt = isLife ? `<div style="font-size:22px">🌟</div>` : itemSVG(ITEMS[rec.out].art);
+    const rar = isLife ? 'L' : ITEMS[rec.out].rarity;
+    const needStr = Object.entries(rec.need).map(([ik, n]) =>
+      `<span class="need ${have(ik) >= n ? 'ok' : 'no'}">${INGREDIENTS[ik].icon}${n}</span>`).join(' ');
+    const enough = Object.entries(rec.need).every(([ik, n]) => have(ik) >= n) && canAfford(rec.cost);
+    html += `<div class="shop-item" style="--rc:${RARITY[rar].color}">
+      <div class="si-art">${outArt}</div>
+      <div class="si-info">
+        <div class="si-name">${outName} <span class="rar" style="color:${RARITY[rar].color}">${RARITY[rar].key}</span></div>
+        <div class="si-sub">${needStr} ${rec.cost ? '· ' + rec.cost + ' 💰' : ''}</div>
+      </div>
+      <button class="buy-btn ${enough ? '' : 'disabled'}" data-brew="${rec.out}">🧪 Brew</button>
+    </div>`;
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('.buy-btn[data-brew]').forEach(btn => btn.addEventListener('click', () => doBrew(btn.dataset.brew)));
+}
+
+function doBrew(outId) {
+  const rec = RECIPES[outId]; if (!rec) return;
+  const have = id => STATE.ingredients[id] || 0;
+  if (!Object.entries(rec.need).every(([ik, n]) => have(ik) >= n) || !canAfford(rec.cost)) { Audio2.sfx.lose(); return; }
+  if (!spend(rec.cost)) { Audio2.sfx.lose(); return; }
+  Object.entries(rec.need).forEach(([ik, n]) => { STATE.ingredients[ik] -= n; if (STATE.ingredients[ik] <= 0) delete STATE.ingredients[ik]; });
+  if (rec.out === 'extra_life') {
+    STATE.extraLives = (STATE.extraLives || 0) + 1;
+  } else {
+    STATE.items[rec.out] = (STATE.items[rec.out] || 0) + rec.qty;
+  }
+  Audio2.sfx.buy(); saveGame(); renderStats();
+}
+
+/* ================= COMPANION (pets) ================= */
+function renderPets() {
+  const list = document.getElementById('pet-list');
+  if (!list) return;
+  if (!STATE.captured.length) {
+    list.innerHTML = `<div class="pet-empty">Weaken a foe in the Arena, then throw a 🎪 Cage to capture it — captured creatures become companions that fight at your side!</div>`;
+    return;
+  }
+  let html = `<button class="pet-card ${STATE.activePet ? '' : 'on'}" data-pet="">
+      <div class="pet-face none">🚫</div><div class="pet-name">None</div></button>`;
+  STATE.captured.forEach(id => {
+    const f = getFighter(id); if (!f) return;
+    const on = STATE.activePet === id;
+    html += `<button class="pet-card ${on ? 'on' : ''}" data-pet="${id}">
+        <div class="pet-face">${characterSVG(f)}</div>
+        <div class="pet-name">${f.name}</div>
+        ${on ? '<div class="pet-badge">Following</div>' : ''}
+      </button>`;
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('.pet-card').forEach(card => card.addEventListener('click', () => {
+    STATE.activePet = card.dataset.pet || null;
+    Audio2.sfx.click(); saveGame(); renderPets();
+  }));
 }
 
 function renderInventory() {
