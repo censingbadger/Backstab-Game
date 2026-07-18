@@ -1907,23 +1907,51 @@ function pushHeroRaw(dx, dy) {
   h.fx = clamp(h.fx + dx, 0.5, d.W - 0.5);
   h.fy = clamp(h.fy + dy, 0.5, d.H - 0.5);
 }
-// Blown off the edge: a short fall, then death — unless an Extra Life catches you
-// and drops you back on solid trail.
+/* Where you come back after a fall or a knockout: the last checkpoint you
+   crossed (path / beach levels), the current chamber (chamber levels), or the
+   very start of the trail if you haven't reached a checkpoint yet. */
+function respawnPoint() {
+  const d = DUNGEON;
+  if (d.chamberMode && d.chamberList && d.chamberList.length) {
+    const c = d.chamberList[d.activeIndex >= 0 ? d.activeIndex : 0] || d.chamberList[0];
+    if (c) return { x: c.cx, y: c.cy };
+  }
+  const reached = (d.checkpoints || []).filter(c => c.reached);
+  if (reached.length) { const cp = reached[reached.length - 1]; return { x: cp.x, y: cp.y }; }
+  const s = d.path.samples[0];
+  return { x: s.x, y: s.y };
+}
+
+/* Put the hero back at the respawn point after a defeat. A knockout heals you
+   to full from the checkpoint; a gust just costs `cost` hearts (never lethal).
+   Brief invulnerability keeps the swarm from instantly re-killing you. */
+function respawnHero(cost) {
+  const d = DUNGEON, h = d.hero;
+  const p = respawnPoint();
+  h.fx = p.x; h.fy = p.y;
+  h.jumpZ = 0; h.rootedUntil = 0; h.sinkUntil = 0; h.sinkLevel = 0; h.submerged = false; h.blownOff = false;
+  h.hp = cost ? Math.max(0.5, h.hp - cost) : h.maxhp;
+  h.hurtInvulnUntil = performance.now() + 2200;
+  updateDungeonHUD();
+}
+
+// Blown off the edge (Desolate Dunes & Dawn of Time gusts): NOT lethal — you're
+// swept back to your last checkpoint and lose 2 hearts. An Extra Life instead
+// hauls you back on the spot at full health.
 function heroFellOff() {
   const d = DUNGEON, h = d.hero;
-  if (d.over || h.blownOff) return;
-  const safe = d.path.samples[nearestSampleIndex(h.fx, h.fy)];
+  if (d.over) return;
   if ((STATE.extraLives || 0) > 0) {
+    const safe = d.path.samples[nearestSampleIndex(h.fx, h.fy)];
     STATE.extraLives = Math.max(0, STATE.extraLives - 1); saveGame();
     h.fx = safe.x; h.fy = safe.y; h.hp = h.maxhp; h.hurtInvulnUntil = performance.now() + 2000;
     banner('🌪️ Blown off — an Extra Life hauled you back!', 2800);
     Audio2.sfx.win(); updateDungeonHUD();
     return;
   }
-  h.blownOff = true;
-  d.over = true; d.outcome = 'lose'; STATE.losses++; saveGame();
-  banner('🌪️ BLOWN OFF THE EDGE!', 1600); Audio2.sfx.lose();
-  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); }, () => { const rid = DUNGEON.regionId; stopDungeon(); startDungeon(rid); });
+  respawnHero(2);   // swept back to the checkpoint, down 2 hearts, still standing
+  banner('🌪️ Blown off — lost 2 hearts! Back to your checkpoint.', 2600);
+  Audio2.sfx.lose(); shake();
 }
 
 /* Pompeii's Vesuvius: on a cycle it hurls molten bombs at telegraphed spots.
@@ -3542,11 +3570,12 @@ function winDungeon() {
 // it's GAME OVER and back to the start.
 function loseDungeon() {
   const d = DUNGEON; if (d.over) return;
-  if ((STATE.extraLives || 0) > 0) return reviveDungeon();
-  d.over = true; d.outcome = 'lose';
+  if ((STATE.extraLives || 0) > 0) return reviveDungeon();   // Extra Life revives you on the spot
   STATE.losses++; saveGame();
+  // Knocked out — respawn at the last checkpoint you crossed, back to full health.
+  respawnHero(0);
+  banner('💀 Knocked out! Back to your last checkpoint.', 2600);
   Audio2.sfx.lose();
-  showGameOverOverlay(() => { stopDungeon(); showScreen('title'); }, () => { const rid = DUNGEON.regionId; stopDungeon(); startDungeon(rid); });
 }
 function reviveDungeon() {
   const d = DUNGEON, h = d.hero;
