@@ -2288,12 +2288,14 @@ function updatePet(dt, t) {
   const stop = fighting ? 0.85 : 0.25, sp = (fighting ? 4.6 : 3.6) * dt;
   if (m > stop) { p.fx += dx / m * Math.min(m, sp); p.fy += dy / m * Math.min(m, sp); p.facing = dx >= 0 ? 1 : -1; p.moving = true; }
   else p.moving = false;
-  // bite on a cooldown when in range
+  // bite on a cooldown when in range — legendary companions (Scully & Stripes)
+  // pounce noticeably faster and hit harder
   if (fighting && t >= p.attackReadyAt && dist(p.fx, p.fy, target.fx, target.fy) < 1.25) {
-    p.attackReadyAt = t + 1150; p.lungeUntil = t + 200;
-    const dmg = 3 + Math.round(p.fighter.attack || 2);
+    const leg = !!p.fighter.legendary;
+    p.attackReadyAt = t + (leg ? 800 : 1150); p.lungeUntil = t + 200;
+    const dmg = (leg ? 5 : 3) + Math.round(p.fighter.attack || 2);
     damageEnemy(target, dmg, false);
-    Audio2.sfx.hit(); spawnFloatText(p.fx, p.fy - 0.3, '🐾', '#ffd23f');
+    Audio2.sfx.hit(); spawnFloatText(p.fx, p.fy - 0.3, leg ? '🐱⚡' : '🐾', '#ffd23f');
     if (d.over) return;
   }
 }
@@ -4141,7 +4143,17 @@ function renderGearLists() {
     }));
   }
   if (wg) {
-    wg.innerHTML = Object.keys(STATE.weapons).map(id => {
+    // The Weapon Polisher: a magic kit that fully fixes the EQUIPPED weapon —
+    // even a broken one — right here, mid-level.
+    const kits = (STATE.items && STATE.items.polish_kit) || 0;
+    const eqW = STATE.equippedWeapon, eqDur = STATE.weapons[eqW] || 0, eqFull = WEAPONS[eqW] ? WEAPONS[eqW].durability : 0;
+    const needsPolish = eqDur < eqFull;
+    const polishRow = kits > 0 ? `<button class="gear-item polish ${needsPolish ? '' : 'broken'}" id="gear-polish" style="--rc:#e8c95a">
+        <div class="gi-art">${itemSVG('polish')}</div>
+        <div class="gi-name">Weapon Polisher ×${kits}</div>
+        <div class="gi-sub">${needsPolish ? 'Tap to fix ' + (WEAPONS[eqW] ? WEAPONS[eqW].name : 'your weapon') + ' → ' + eqFull : 'Weapon already gleaming!'}</div>
+      </button>` : '';
+    wg.innerHTML = polishRow + Object.keys(STATE.weapons).map(id => {
       const w = WEAPONS[id], dur = STATE.weapons[id], eq = STATE.equippedWeapon === id, broken = dur <= 0;
       return `<button class="gear-item ${eq ? 'on' : ''} ${broken ? 'broken' : ''}" data-w="${id}" style="--rc:${RARITY[w.rarity].color}">
         <div class="gi-art">${weaponSVG(w)}</div>
@@ -4150,6 +4162,15 @@ function renderGearLists() {
         ${eq ? '<span class="gi-badge">Equipped</span>' : ''}${broken ? '<span class="gi-badge broken">Broken</span>' : ''}
       </button>`;
     }).join('');
+    const pb = wg.querySelector('#gear-polish');
+    if (pb) pb.addEventListener('click', () => {
+      if (!needsPolish || (STATE.items.polish_kit || 0) <= 0) return;
+      STATE.weapons[eqW] = eqFull;
+      STATE.items.polish_kit--; if (STATE.items.polish_kit <= 0) delete STATE.items.polish_kit;
+      saveGame(); Audio2.sfx.win();
+      banner('🧽 ' + WEAPONS[eqW].name.toUpperCase() + ' polished — good as new!', 2000);
+      renderGearLists(); updateWeaponHUD();
+    });
     wg.querySelectorAll('.gear-item[data-w]').forEach(btn => btn.addEventListener('click', () => {
       STATE.equippedWeapon = btn.dataset.w; Audio2.sfx.click(); saveGame(); renderGearLists(); updateWeaponHUD();
     }));

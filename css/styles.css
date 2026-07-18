@@ -195,6 +195,8 @@ button{ font-family:var(--font); cursor:pointer; border:none; color:var(--text);
 .pet-face .char-svg{ width:52px; height:56px; }
 .pet-name{ font-size:11px; font-weight:800; color:#fff; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pet-badge{ font-size:9px; font-weight:900; color:#57cc66; margin-top:1px; }
+.pet-card.legendary{ border-color:var(--gold); background:linear-gradient(180deg, rgba(255,210,63,0.12), rgba(255,255,255,0.04)); box-shadow:0 0 12px rgba(255,210,63,.35); }
+.pet-card.legendary.on{ border-color:#ffd23f; box-shadow:0 0 14px rgba(255,210,63,.6), 0 0 8px rgba(87,204,102,.4); }
 
 /* ---------------- Arena ---------------- */
 .arena-region{ display:flex; justify-content:space-between; align-items:center; gap:8px;

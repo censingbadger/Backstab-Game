@@ -241,6 +241,7 @@ const ITEMS = {
   mushroom_stew:  { id:'mushroom_stew',  name:'Mushroom Stew',  type:'heal',  heal:3,   rarity:'C', price:25, art:'stew',    blurb:'A hearty meal. Restores 3 hearts.' },
   strength_potion:{ id:'strength_potion',name:'Strength Potion',type:'buff',  buff:'strength', dmgMult:2, duration:8000, rarity:'U', price:85, art:'potion', blurb:'Double damage for 8 seconds!' },
   cage:           { id:'cage',           name:'Cage',           type:'capture', rarity:'E', price:120, art:'cage',   blurb:'Throw at a weakened enemy to CAPTURE it for your collection.' },
+  polish_kit:     { id:'polish_kit',     name:'Weapon Polisher',type:'polish',  rarity:'U', price:150, art:'polish', blurb:'A magic polishing kit. Fully fixes your equipped weapon — even when BROKEN — right in the middle of a level (open Gear ⚙️).' },
   // ----- Brewed potions (crafted at the Brewery from gathered ingredients) -----
   heal_potion:    { id:'heal_potion',    name:'Healing Potion', type:'heal',  heal:2,   rarity:'C', price:0, art:'potion_red',  brewed:true, blurb:'A brewed potion. Restores 2 hearts.' },
   greater_heal:   { id:'greater_heal',   name:'Greater Healing Potion', type:'heal', heal:5, rarity:'U', price:0, art:'potion_red', brewed:true, blurb:'A strong brew. Restores 5 hearts.' },
@@ -374,7 +375,17 @@ const LORE_ACT3 = {
   },
 };
 
-/* Helper to look up any fighter (enemy or boss) by id */
+/* ---------- Legendary companions (pets you can't capture — only befriend) ---------- */
+const COMPANIONS = {
+  scully:  { id:'scully',  name:'Scully',  hearts:9, attack:8, reward:0, art:'cat', rarity:'L', legendary:true, price:7500,
+             palette:{ skin:'#a97e52', cloth:'#6b4a2a', eye:'#57cc66' },
+             blurb:'A legendary brown tabby with wise green eyes. She has walked every land, every age, and every planet — and chose YOU. Her pounce never misses.' },
+  stripes: { id:'stripes', name:'Stripes', hearts:9, attack:8, reward:0, art:'cat', rarity:'L', legendary:true, price:7500,
+             palette:{ skin:'#b8874f', cloth:'#54371c', eye:'#ffb03a' },
+             blurb:'A legendary brown tabby wearing the boldest stripes in the realm. Fearless, fast, and always lands on his feet — usually on top of a monster.' },
+};
+
+/* Helper to look up any fighter (enemy, boss, or companion) by id */
 function getFighter(id) {
-  return ENEMIES[id] || BOSSES[id] || null;
+  return ENEMIES[id] || BOSSES[id] || (typeof COMPANIONS !== 'undefined' && COMPANIONS[id]) || null;
 }

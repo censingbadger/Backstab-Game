@@ -85,6 +85,7 @@ function itemSVG(art, color) {
     case 'stew': return `<svg viewBox="0 0 40 40"><path d="M6 20 H34 C34 30 28 34 20 34 C12 34 6 30 6 20Z" fill="#8a5a2a"/><ellipse cx="20" cy="20" rx="14" ry="4" fill="#c0392b"/><circle cx="15" cy="19" r="2" fill="#e08e3a"/><circle cx="24" cy="20" r="2" fill="#6aa84f"/></svg>`;
     case 'potion': return `<svg viewBox="0 0 40 40"><rect x="16" y="4" width="8" height="8" fill="#8a6a3a"/><path d="M14 12 H26 L30 24 C30 34 10 34 10 24Z" fill="#b061ff" opacity="0.85"/><ellipse cx="20" cy="26" rx="9" ry="4" fill="rgba(255,255,255,0.3)"/></svg>`;
     case 'cage': return `<svg viewBox="0 0 40 40"><rect x="8" y="10" width="24" height="24" rx="2" fill="none" stroke="#8a8f9a" stroke-width="2.4"/><path d="M14 10 V34 M20 10 V34 M26 10 V34 M8 18 H32 M8 26 H32" stroke="#8a8f9a" stroke-width="2"/><rect x="12" y="6" width="16" height="5" rx="2" fill="#6a6f7a"/></svg>`;
+    case 'polish': return `<svg viewBox="0 0 40 40"><path d="M8 22 Q12 16 20 17 Q30 18 33 24 Q30 31 20 30 Q11 30 8 22Z" fill="#e8c95a"/><path d="M10 22 Q14 18 20 19 Q27 20 30 24" stroke="#fff0b0" stroke-width="2" fill="none" opacity="0.8"/><path d="M28 8 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2Z" fill="#fff4c0"/><path d="M10 9 l0.9 2.2 2.2 0.9 -2.2 0.9 -0.9 2.2 -0.9 -2.2 -2.2 -0.9 2.2 -0.9Z" fill="#dff4ff"/><path d="M20 4 l0.7 1.8 1.8 0.7 -1.8 0.7 -0.7 1.8 -0.7 -1.8 -1.8 -0.7 1.8 -0.7Z" fill="#fff"/></svg>`;
     case 'potion_red':  return potionSVG('#e0453a', '#ff8a7a');
     case 'potion_gold': return potionSVG('#e0b040', '#ffe08a');
     case 'potion_dark': return potionSVG('#6a2a8a', '#c060ff');
@@ -383,6 +384,32 @@ function charBody(art, p) {
         <ellipse cx="50" cy="46" rx="3.4" ry="2.6" fill="#20140a"/>
         <circle cx="43" cy="40" r="2.6" fill="${eye}"/>
         <circle cx="57" cy="40" r="2.6" fill="${eye}"/>`;
+
+    case 'cat': {  // a brown tabby house cat — skin = fur, cloth = stripes, eye = eye colour
+      const fur = p.skin, stripe = p.cloth, ceye = p.eye || '#57cc66';
+      return `${shadow}
+        <path d="M76 92 Q92 86 88 68 Q86 60 80 62 Q84 74 72 82Z" fill="${fur}"/>
+        <path d="M80 66 q3 3 1 7 M82 76 q1 4 -3 7" stroke="${stripe}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="52" cy="82" rx="22" ry="16" fill="${fur}"/>
+        <path d="M36 76 q6 -4 10 0 M42 88 q6 -4 10 0 M56 74 q6 -4 10 0 M60 86 q6 -4 10 0" stroke="${stripe}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="40" cy="96" rx="5" ry="3.4" fill="${fur}"/>
+        <ellipse cx="62" cy="96" rx="5" ry="3.4" fill="${fur}"/>
+        <ellipse cx="50" cy="88" rx="9" ry="8" fill="#efe2cf"/>
+        <path d="M34 26 L28 8 L46 18Z" fill="${fur}"/><path d="M35.5 23 L31.5 12.5 L43 19Z" fill="#e8a8b8"/>
+        <path d="M66 26 L72 8 L54 18Z" fill="${fur}"/><path d="M64.5 23 L68.5 12.5 L57 19Z" fill="#e8a8b8"/>
+        <circle cx="50" cy="40" r="19" fill="${fur}"/>
+        <path d="M50 22 v9 M42 24 l2 8 M58 24 l-2 8" stroke="${stripe}" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M32 38 l5 2 M68 38 l-5 2" stroke="${stripe}" stroke-width="2.4" stroke-linecap="round"/>
+        <ellipse cx="43" cy="39" rx="3.6" ry="4.2" fill="${ceye}"/>
+        <ellipse cx="57" cy="39" rx="3.6" ry="4.2" fill="${ceye}"/>
+        <ellipse cx="43" cy="40" rx="1.4" ry="3" fill="#1c1410"/>
+        <ellipse cx="57" cy="40" rx="1.4" ry="3" fill="#1c1410"/>
+        <circle cx="44" cy="37.6" r="0.9" fill="#fff"/><circle cx="58" cy="37.6" r="0.9" fill="#fff"/>
+        <ellipse cx="50" cy="49" rx="7" ry="5.5" fill="#efe2cf"/>
+        <path d="M47 47 L53 47 L50 50Z" fill="#d87a8a"/>
+        <path d="M50 50 v2.5 M50 52.5 q-3 3 -6 1.5 M50 52.5 q3 3 6 1.5" stroke="#8a6a4a" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <path d="M36 46 L24 44 M36 49 L25 50 M64 46 L76 44 M64 49 L75 50" stroke="#e8dcc8" stroke-width="1.2"/>`;
+    }
 
     case 'mummy':
       return `${shadow}

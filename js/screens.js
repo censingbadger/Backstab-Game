@@ -763,6 +763,65 @@ function landform(biome, cx, cy) {
   return fn ? fn(cx, cy) : '';
 }
 
+/* ---- PEACE RESTORED: once a region's warden falls, its patch of map heals —
+   green meadows, a rainbow, sheep, bunnies, flowers. Drawn instead of the
+   corrupted terrain, so beating a level visibly gives the land back its joy. */
+function pSheep(x, y, s) {
+  s = s || 1;
+  return `<ellipse cx="${x}" cy="${y + 1.6 * s}" rx="${2 * s}" ry="${0.5 * s}" fill="rgba(0,30,0,0.15)"/>
+    <line x1="${x - 1 * s}" y1="${y + 0.8 * s}" x2="${x - 1 * s}" y2="${y + 1.6 * s}" stroke="#5a4a3a" stroke-width="${0.35 * s}"/>
+    <line x1="${x + 1 * s}" y1="${y + 0.8 * s}" x2="${x + 1 * s}" y2="${y + 1.6 * s}" stroke="#5a4a3a" stroke-width="${0.35 * s}"/>
+    <ellipse cx="${x}" cy="${y}" rx="${1.9 * s}" ry="${1.25 * s}" fill="#f4f0e6"/>
+    <circle cx="${x - 1.2 * s}" cy="${y - 0.6 * s}" r="${0.75 * s}" fill="#fbf8f0"/><circle cx="${x + 0.2 * s}" cy="${y - 0.9 * s}" r="${0.8 * s}" fill="#fbf8f0"/><circle cx="${x + 1.2 * s}" cy="${y - 0.4 * s}" r="${0.7 * s}" fill="#fbf8f0"/>
+    <circle cx="${x + 1.9 * s}" cy="${y + 0.1 * s}" r="${0.62 * s}" fill="#3a3230"/>
+    <circle cx="${x + 2.1 * s}" cy="${y - 0.05 * s}" r="${0.14 * s}" fill="#fff"/>`;
+}
+function pBunny(x, y, s) {
+  s = s || 1;
+  return `<ellipse cx="${x}" cy="${y + 1.1 * s}" rx="${1.3 * s}" ry="${0.35 * s}" fill="rgba(0,30,0,0.15)"/>
+    <ellipse cx="${x - 0.9 * s}" cy="${y - 1.2 * s}" rx="${0.32 * s}" ry="${1 * s}" fill="#efe6ea" transform="rotate(-12 ${x - 0.9 * s} ${y - 1.2 * s})"/>
+    <ellipse cx="${x - 0.2 * s}" cy="${y - 1.35 * s}" rx="${0.32 * s}" ry="${1 * s}" fill="#efe6ea" transform="rotate(8 ${x - 0.2 * s} ${y - 1.35 * s})"/>
+    <ellipse cx="${x}" cy="${y + 0.3 * s}" rx="${1.15 * s}" ry="${0.95 * s}" fill="#f7f0f4"/>
+    <circle cx="${x - 0.55 * s}" cy="${y - 0.35 * s}" r="${0.7 * s}" fill="#fbf6f9"/>
+    <circle cx="${x + 1.05 * s}" cy="${y + 0.5 * s}" r="${0.4 * s}" fill="#fff"/>
+    <circle cx="${x - 0.75 * s}" cy="${y - 0.45 * s}" r="${0.12 * s}" fill="#3a3038"/>`;
+}
+function pFlower(x, y, c) {
+  return `<line x1="${x}" y1="${y}" x2="${x}" y2="${y - 1.1}" stroke="#4a8a3a" stroke-width="0.3"/>
+    ${[0, 72, 144, 216, 288].map(a => `<circle cx="${x + Math.cos(a * Math.PI / 180) * 0.5}" cy="${y - 1.4 + Math.sin(a * Math.PI / 180) * 0.5}" r="0.34" fill="${c}"/>`).join('')}
+    <circle cx="${x}" cy="${y - 1.4}" r="0.3" fill="#ffd23f"/>`;
+}
+function pRainbow(x, y, s) {
+  s = s || 1;
+  const arc = (r, c) => `<path d="M${x - r * s} ${y} A ${r * s} ${r * s} 0 0 1 ${x + r * s} ${y}" fill="none" stroke="${c}" stroke-width="${0.75 * s}" stroke-linecap="round"/>`;
+  return `<g opacity="0.9">${arc(5.4, '#ff6a5a')}${arc(4.65, '#ffd23f')}${arc(3.9, '#6ad06a')}${arc(3.15, '#6aa8ff')}</g>
+    <ellipse cx="${x - 5.4 * s}" cy="${y}" rx="${1.2 * s}" ry="${0.8 * s}" fill="#fff" opacity="0.9"/>
+    <ellipse cx="${x + 5.4 * s}" cy="${y}" rx="${1.2 * s}" ry="${0.8 * s}" fill="#fff" opacity="0.9"/>`;
+}
+function peaceform(cx, cy, seed) {
+  seed = seed || 1;
+  // a healed meadow under a rainbow, grazed by sheep and bunnies
+  let s = `<ellipse cx="${cx}" cy="${cy + 2}" rx="14" ry="7.5" fill="#63b04e" opacity="0.95"/>
+    <ellipse cx="${cx - 3}" cy="${cy + 1}" rx="9" ry="5" fill="#79c45e" opacity="0.95"/>
+    <ellipse cx="${cx + 5}" cy="${cy + 3.5}" rx="7" ry="3.6" fill="#8fd06a" opacity="0.9"/>`;
+  s += `<circle cx="${cx - 9}" cy="${cy - 6}" r="1.7" fill="#ffe07a"/><g stroke="#ffe07a" stroke-width="0.4">${[0, 45, 90, 135, 180, 225, 270, 315].map(a => { const r1 = 2.2, r2 = 3.1, ax = Math.cos(a * Math.PI / 180), ay = Math.sin(a * Math.PI / 180); return `<line x1="${cx - 9 + ax * r1}" y1="${cy - 6 + ay * r1}" x2="${cx - 9 + ax * r2}" y2="${cy - 6 + ay * r2}"/>`; }).join('')}</g>`;
+  s += pRainbow(cx + 3, cy - 1.5, 1);
+  s += pSheep(cx - 4 + mrand(seed) * 2, cy + 2.5, 1);
+  s += pSheep(cx + 6, cy + 4.2, 0.75);
+  s += pBunny(cx - 8 + mrand(seed * 3) * 2, cy + 4.5, 1);
+  const petals = ['#ff8ab0', '#fff', '#c9a2ff', '#ffb060'];
+  for (let i = 0; i < 5; i++) s += pFlower(cx - 11 + mrand(seed * 7 + i) * 22, cy + 3 + mrand(seed * 11 + i) * 4, petals[i % petals.length]);
+  for (let i = 0; i < 4; i++) s += mtuft(cx - 10 + mrand(seed * 13 + i) * 20, cy + 5 + mrand(seed * 17 + i) * 2.5);
+  return s;
+}
+// A healed planet on the Act 3 star map: a little rainbow arch, sparkles, and
+// one very happy space bunny.
+function peaceOrbit(x, y) {
+  return `${pRainbow(x, y - 7.5, 0.75)}
+    ${pBunny(x + 6.4, y - 5, 0.8)}
+    ${[[-8, -2, '#ff8ab0'], [8.5, 2, '#fff'], [-6.5, 5, '#c9a2ff']].map(f => `<path d="M${x + f[0]} ${y + f[1] - 0.9} l0.55 1.35 1.35 0.55 -1.35 0.55 -0.55 1.35 -0.55 -1.35 -1.35 -0.55 1.35 -0.55Z" fill="${f[2]}" opacity="0.95"/>`).join('')}`;
+}
+
 /* The whole illustrated continent: ocean depth, a relief landmass with real
    topography per region, rivers flowing from the mountains, and a travel route. */
 function continentSVG() {
@@ -772,19 +831,21 @@ function continentSVG() {
   // the Sandcastle is a lonely secret island — drawn separately, off the coast
   const biomes = act2 ? BIOME_ACT2 : BIOME;
   const mainland = REGIONS.filter(r => r.id !== 'sandcastle');
-  const terrain = mainland.slice().sort((a, b) => a.y - b.y).map(r => landform(biomes[r.id] || 'grass', r.x, r.y)).join('');
+  // beaten regions HEAL: their corrupted terrain is repainted as a peaceful
+  // meadow of rainbows, sheep and bunnies — the land visibly won back
+  const terrain = mainland.slice().sort((a, b) => a.y - b.y).map((r, i) => isCleared(r.id) ? peaceform(r.x, r.y, i + 1) : landform(biomes[r.id] || 'grass', r.x, r.y)).join('');
   // biome colour field: the whole continent tinted by its nearest region, so
   // each part of the land is the colour of that region (green forest, tan
   // desert, grey mountains…). In Act 2 the eras repaint it — icy blue Ice Age,
-  // molten Dawn of Time, neon End of Time…
-  const field = mainland.map(r => `<circle cx="${r.x}" cy="${r.y}" r="22" fill="${regionView(r.id).color}"/>`).join('');
+  // molten Dawn of Time, neon End of Time… Healed regions glow spring-green.
+  const field = mainland.map(r => `<circle cx="${r.x}" cy="${r.y}" r="22" fill="${isCleared(r.id) ? '#5fae4a' : regionView(r.id).color}"/>`).join('');
   const sc = REGIONS.find(r => r.id === 'sandcastle');
   const island = sc ? `<g>
       <ellipse cx="${sc.x}" cy="${sc.y + 2.5}" rx="9" ry="5.5" fill="#5fd0dd" opacity="0.45"/>
       <ellipse cx="${sc.x}" cy="${sc.y + 3}" rx="9" ry="5.5" fill="none" stroke="#eaf6ff" stroke-width="0.4" opacity="0.5"/>
       <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="url(#mapLand)"/>
-      <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="${regionView(sc.id).color}" opacity="0.55"/>
-      ${landform(biomes[sc.id] || 'sandcastle', sc.x, sc.y)}
+      <ellipse cx="${sc.x}" cy="${sc.y + 1}" rx="6" ry="3.6" fill="${isCleared(sc.id) ? '#5fae4a' : regionView(sc.id).color}" opacity="0.55"/>
+      ${isCleared(sc.id) ? `<g transform="translate(${sc.x} ${sc.y}) scale(0.5) translate(${-sc.x} ${-sc.y})">${peaceform(sc.x, sc.y, 9)}</g>` : landform(biomes[sc.id] || 'sandcastle', sc.x, sc.y)}
     </g>` : '';
   const chain = REGIONS.filter(r => !r.passageOnly);
   const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
@@ -888,7 +949,8 @@ function starMapSVG() {
     <circle cx="104" cy="46" r="7" fill="#fff4c0" opacity="0.5" filter="url(#mapSoft)"/>`;
   const chain = REGIONS;   // every planet is a stop on the road home
   const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
-  const planets = REGIONS.map(r => planetSVG(r.id, r.x, r.y)).join('');
+  // freed planets bloom: rainbow arches, sparkle-flowers and a happy space bunny
+  const planets = REGIONS.map(r => planetSVG(r.id, r.x, r.y) + (isCleared(r.id) ? peaceOrbit(r.x, r.y) : '')).join('');
   return `<svg viewBox="0 0 100 100" class="map-svg" preserveAspectRatio="none" aria-hidden="true">
     <defs>
       <filter id="mapSoft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter>
@@ -1156,7 +1218,7 @@ function renderPets() {
   const list = document.getElementById('pet-list');
   if (!list) return;
   if (!STATE.captured.length) {
-    list.innerHTML = `<div class="pet-empty">Weaken a foe in the Arena, then throw a 🎪 Cage to capture it — captured creatures become companions that fight at your side!</div>`;
+    list.innerHTML = `<div class="pet-empty">Weaken a foe in the Arena, then throw a 🎪 Cage to capture it — captured creatures become companions that fight at your side! (Legendary cats Scully &amp; Stripes are waiting in the Shop...)</div>`;
     return;
   }
   let html = `<button class="pet-card ${STATE.activePet ? '' : 'on'}" data-pet="">
@@ -1164,9 +1226,9 @@ function renderPets() {
   STATE.captured.forEach(id => {
     const f = getFighter(id); if (!f) return;
     const on = STATE.activePet === id;
-    html += `<button class="pet-card ${on ? 'on' : ''}" data-pet="${id}">
+    html += `<button class="pet-card ${on ? 'on' : ''} ${f.legendary ? 'legendary' : ''}" data-pet="${id}">
         <div class="pet-face">${characterSVG(f)}</div>
-        <div class="pet-name">${f.name}</div>
+        <div class="pet-name">${f.legendary ? '⭐ ' : ''}${f.name}</div>
         ${on ? '<div class="pet-badge">Following</div>' : ''}
       </button>`;
   });
@@ -1329,10 +1391,18 @@ function renderShop() {
       html += shopRow('shield', id, (s.era ? s.era + ' ' : '') + s.name, `blocks ${Math.round(s.block * 100)}% · ${s.durability} dur`, s.rarity, s.price, owned, shieldIcon(s.color || '#b98a3a'));
     });
   }
-  ['apple', 'cliff_shrooms', 'mushroom_stew', 'strength_potion', 'cage'].forEach(id => {
+  ['apple', 'cliff_shrooms', 'mushroom_stew', 'strength_potion', 'polish_kit', 'cage'].forEach(id => {
     const it = ITEMS[id];
     html += shopRow('item', id, it.name, it.blurb, it.rarity, it.price, false, itemSVG(it.art));
   });
+  // ---- Legendary companions: Scully & Stripes, the brown tabby cats ----
+  if (typeof COMPANIONS !== 'undefined') {
+    html += `<div class="shop-sep">🐱 Legendary Companions</div>`;
+    Object.values(COMPANIONS).forEach(c => {
+      const owned = STATE.captured.includes(c.id);
+      html += shopRow('pet', c.id, c.name, c.blurb, c.rarity, c.price, owned, characterSVG(c));
+    });
+  }
   // ---- Act 2 relic: the Wings of Icarus (flight) ----
   if (currentAct() >= 2 && typeof ARTIFACTS !== 'undefined' && ARTIFACTS.wings) {
     html += `<div class="shop-sep">🪽 Time-traveller's relic</div>`;
@@ -1377,6 +1447,7 @@ function renderShop() {
       else if (type === 'shield') STATE.shields[id] = SHIELDS[id].durability;
       else if (type === 'item') STATE.items[id] = (STATE.items[id] || 0) + 1;
       else if (type === 'artifact') { if (!STATE.artifacts) STATE.artifacts = []; if (!STATE.artifacts.includes(id)) STATE.artifacts.push(id); }
+      else if (type === 'pet') { if (!STATE.captured.includes(id)) STATE.captured.push(id); STATE.activePet = id; }   // a new legendary friend starts following right away
       Audio2.sfx.buy(); saveGame(); renderStats();
     });
   });
