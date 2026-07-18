@@ -46,6 +46,8 @@ function newGame() {
     act: 1,
     // set true once the time machine is used — lets you hop between acts freely
     act2Unlocked: false,
+    // set true once the sabotaged drive strands you on Neptune (Act 3 open)
+    act3Unlocked: false,
     // per-act map progress snapshots so each act remembers its own unlocked/cleared
     actProgress: {},
     // marks that this save is on the 5-heart rebalance (see loadGame migration)
@@ -171,6 +173,8 @@ function currentAct() { return STATE.act || 1; }
 // An Act-2 region is "built" only once it has an ACT2_THEMES entry; until then
 // the time-travel path stops there ("to be continued").
 function act2Built(id) { return typeof ACT2_THEMES !== 'undefined' && !!ACT2_THEMES[id]; }
+// Same rule for Act 3's planets.
+function act3Built(id) { return typeof ACT3_THEMES !== 'undefined' && !!ACT3_THEMES[id]; }
 // Stash the current act's map progress so we can restore it if the player hops
 // back to it later. Gear, weapons, artifacts and hearts are shared across acts.
 function snapshotActProgress() {
@@ -206,15 +210,21 @@ function beginActTwo() {
   switchToAct(2);              // snapshots Act 1's completed map on the way in
 }
 
+function beginActThree() {
+  STATE.act3Unlocked = true;   // marooned in 3026 — the solar system is open
+  switchToAct(3);              // snapshots Act 2's completed map on the way in
+}
+
 function clearRegion(id) {
   if (!STATE.cleared.includes(id)) STATE.cleared.push(id);
   // Unlock the next region on the path — skipping any that are reachable only
-  // through a hidden passage (e.g. the Sandcastle).
+  // through a hidden passage (e.g. the Sandcastle). In Act 3 nothing is
+  // skipped: Earth sits in that slot, a full stop on the road home.
   let ni = REGIONS.findIndex(r => r.id === id) + 1;
-  while (REGIONS[ni] && REGIONS[ni].passageOnly) ni++;
+  while (REGIONS[ni] && REGIONS[ni].passageOnly && currentAct() !== 3) ni++;
   const next = REGIONS[ni];
-  // In Act 2, only advance to eras that have actually been built yet.
-  const okForAct = next && (currentAct() !== 2 || act2Built(next.id));
+  // In Acts 2 and 3, only advance to eras/planets that have actually been built.
+  const okForAct = next && (currentAct() === 2 ? act2Built(next.id) : currentAct() === 3 ? act3Built(next.id) : true);
   if (okForAct && !STATE.unlocked.includes(next.id)) STATE.unlocked.push(next.id);
   saveGame();
 }

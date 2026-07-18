@@ -290,20 +290,151 @@ const ACT2_THEMES = {
     chambers: true, hard: true, lair: true,           // boss-rush of resurrected wardens + the stealth finale
   },
 };
-// Act-aware theme lookup: Act 2 re-skin when one exists, else the Act 1 theme.
+/* ============================================================
+   ACT THREE themes — the year 3026, marooned across the solar system. Each
+   REGION slot becomes a planet on the long road home: Neptune → Uranus →
+   Saturn → Jupiter → Mars → Earth → Venus → Mercury → Karrowmere. Same level
+   structures, futuristic rosters: every foe leveled up with lasers, jetpacks
+   and hovercrafts. */
+const ACT3_THEMES = {
+  dead_cliffs: {
+    name: 'Neptune',
+    color: '#3a6aff', emoji: '🔱',
+    sky: ['#0a1440', '#0c2468', '#1a4aa8'],        // deep-blue storm bands over the black ocean
+    ground: ['#3a5a72', '#2f4c62'],                // frozen methane-ice shelf
+    speckle: 'rgba(120,200,255,0.30)',
+    edge: ['#122238', '#0a1524'],
+    props: ['icespike', 'coral', 'hologram', 'frozenrock', 'shell', 'icespike', 'antenna'],
+    trail: '120,200,255',
+    enemies: ['cyber_zombie', 'void_squid', 'laser_swordfish', 'cyber_zombie', 'void_squid'],
+    boss: 'mecha_shark',
+    waypoints: [[8, 12], [8, 28], [22, 32], [22, 16], [38, 14], [40, 32], [28, 42], [42, 50], [54, 54]],
+  },
+  barren_grasslands: {
+    name: 'Uranus',
+    color: '#7ae8e0', emoji: '🌀',
+    sky: ['#bff4f0', '#7ad0d8', '#3a88a8'],        // pale sideways-tilted haze
+    ground: ['#cfeef2', '#bcdfe6'],                // wind-polished ice plain
+    speckle: 'rgba(255,255,255,0.55)',
+    edge: ['#5a98a8', '#3a6a7a'],
+    props: ['snowpile', 'icespike', 'frozenrock', 'powercore', 'icespike', 'snowpile', 'antenna'],
+    trail: '170,235,235',
+    enemies: ['cryo_yeti', 'hover_bear', 'frost_drone', 'cryo_yeti', 'hover_bear'],
+    boss: 'cryo_titan',
+    waypoints: [[10, 10], [26, 10], [26, 24], [12, 28], [14, 44], [34, 44], [36, 28], [50, 30], [54, 50]],
+  },
+  dark_forest: {
+    name: 'Saturn',
+    color: '#e8c97a', emoji: '🪐',
+    sky: ['#f4e0b0', '#d9ae6a', '#8a5f30'],        // golden ring-light
+    ground: ['#c9b080', '#b89e6c'],                // packed ring-dust
+    speckle: 'rgba(255,240,200,0.35)',
+    edge: ['#6a5430', '#463618'],
+    props: ['meteor', 'rock', 'antenna', 'hologram', 'meteor', 'rock', 'powercore'],
+    trail: '255,224,150',
+    enemies: ['laser_pup', 'ring_phantom', 'jet_werewolf', 'laser_pup', 'ring_phantom'],
+    boss: 'laser_alpha',
+    waypoints: [[10, 10], [10, 28], [26, 34], [26, 16], [44, 14], [46, 34], [30, 46], [46, 52], [56, 54]],
+    hard: true, wider: true,
+  },
+  toxic_temple: {
+    name: 'Jupiter',
+    color: '#d98a4a', emoji: '🌪️',
+    sky: ['#8a3a1a', '#c06a2a', '#e8a45a'],        // the Great Red Spot, wall to wall
+    ground: ['#a8703a', '#96622f'],                // storm-station deck plating
+    speckle: 'rgba(255,190,120,0.28)',
+    edge: ['#5a3014', '#381c0a'],
+    props: ['hologram', 'powercore', 'brazier', 'antenna', 'pillar', 'powercore', 'hologram'],
+    trail: '255,190,110',
+    enemies: ['storm_amoeba', 'plasma_jelly', 'thunder_mech', 'storm_amoeba', 'plasma_jelly'],
+    boss: 'storm_colossus',
+    chambers: true, hard: true, hazard: 'quicksand',   // gravity wells suck you down between the gates
+  },
+  shatter_coast: {
+    name: 'Mars',
+    color: '#d95a3a', emoji: '🔴',
+    sky: ['#f0b090', '#d97a4a', '#8a3a20'],        // butterscotch dust-storm sky
+    ground: ['#c96a42', '#b85c38'],                // rust-red regolith
+    speckle: 'rgba(255,180,140,0.30)',
+    edge: ['#6a2c14', '#44190a'],
+    props: ['rock', 'meteor', 'antenna', 'trafficcone', 'rock', 'meteor', 'powercore'],
+    trail: '255,170,130',
+    enemies: ['rust_raptor', 'war_drone', 'dust_soldier', 'rust_raptor', 'war_drone'],
+    boss: 'war_machine',
+    waypoints: [[10, 12], [24, 12], [24, 28], [10, 32], [14, 46], [34, 46], [36, 30], [50, 32], [54, 52]],
+    traps: true, hard: true, wider: true,
+  },
+  sandcastle: {
+    name: 'Earth · 3026',
+    color: '#30ffb0', emoji: '🌍',
+    sky: ['#1a2a3a', '#101a2e', '#080d1c'],        // dead megacity night, lit by dying neon
+    ground: ['#3a4048', '#30363e'],                // cracked alloy streets
+    speckle: 'rgba(48,255,176,0.18)',
+    edge: ['#181c24', '#0e1118'],
+    props: ['hologram', 'streetlight', 'car', 'powercore', 'trafficcone', 'antenna', 'burgerjoint'],
+    trail: '80,255,190',
+    enemies: ['chrome_zombie', 'hunter_mech', 'security_bot', 'chrome_zombie', 'security_bot'],
+    boss: 'maglev',
+    chambers: true, hard: true,                    // vault-to-vault through the ruined arcology
+  },
+  knife_mountain: {
+    name: 'Venus',
+    color: '#ffb84a', emoji: '🌋',
+    sky: ['#f8d060', '#e08a2a', '#7a3410'],        // crushing acid-cloud furnace glare
+    ground: ['#8a5a38', '#784c2e'],                // scorched volcanic rock
+    speckle: 'rgba(255,200,90,0.35)',
+    edge: ['#5a2810', '#331608'],
+    props: ['volcano', 'lavacrack', 'meteor', 'brazier', 'rock', 'volcano', 'lavacrack'],
+    trail: '255,200,110',
+    enemies: ['acid_gooster', 'inferno_scarab', 'lava_trilobite', 'acid_gooster', 'inferno_scarab'],
+    boss: 'plasma_leviathan',
+    waypoints: [[10, 54], [22, 48], [16, 36], [26, 26], [16, 16], [30, 10], [42, 16], [36, 28], [46, 38], [38, 50], [52, 54], [56, 40], [54, 24]],
+    hard: true, traps: true, lava: true,
+  },
+  desolate_dunes: {
+    name: 'Mercury',
+    color: '#c9c9d9', emoji: '☀️',
+    sky: ['#fff4c0', '#e8ce7a', '#a8842a'],          // the sun fills half the sky
+    ground: ['#b0aab8', '#9e98a8'],                  // heat-cracked silver rock
+    speckle: 'rgba(255,244,200,0.45)',
+    edge: ['#5a5468', '#38343f'],
+    props: ['meteor', 'rock', 'lavacrack', 'powercore', 'meteor', 'rock', 'antenna'],
+    trail: '255,240,180',
+    enemies: ['solar_skeleton', 'mercury_crab', 'quick_wraith', 'solar_skeleton', 'mercury_crab'],
+    boss: 'quicksilver',
+    // the same colossal wind-blasted platform as the Dunes — solar gales now
+    waypoints: [[8, 8], [24, 8], [24, 20], [8, 20], [8, 32], [24, 32], [24, 44], [8, 44], [8, 54], [26, 54], [40, 50], [40, 36], [54, 34], [54, 20], [40, 18], [40, 10], [54, 10]],
+    traps: true, dunes: true, hard: true, wind: true, lava: true, enemyDmgMul: 2,
+  },
+  secret: {
+    name: 'Karrowmere · Homecoming',
+    color: '#ff2d5a', emoji: '🏰',
+    sky: ['#1a0c2e', '#10061e', '#05020c'],          // home under an aurora of torn time
+    ground: ['#2a1e34', '#211829'],                  // the old lair, a thousand years older
+    speckle: 'rgba(255,60,110,0.22)',
+    edge: ['#170f22', '#0c0714'],
+    props: ['torch', 'pillar', 'tomb', 'skull', 'hologram', 'torch', 'powercore'],
+    trail: '255,80,120',
+    enemies: ['robot', 'mech', 'phantom', 'werewolf'],   // filler adds in the final arena
+    boss: 'backstabber_omega',
+    chambers: true, hard: true, lair: true,          // EVERY boss ever, then the Omega
+  },
+};
+// Act-aware theme lookup: later acts re-skin when a theme exists, else Act 1.
 function dungeonTheme(regionId) {
+  if (currentAct() === 3 && ACT3_THEMES[regionId]) return ACT3_THEMES[regionId];
   if (currentAct() === 2 && ACT2_THEMES[regionId]) return ACT2_THEMES[regionId];
   return DUNGEON_THEMES[regionId];
 }
 
 /* Progressive difficulty: every region has a TIER — its position along the
-   journey. Act 1 runs tiers 0-8; Act 2 picks up mid-curve (4-12) so each era
-   keeps climbing past where Act 1 left off. Enemies, swarms and bosses all
-   scale off this, so the game gets steadily harder from first cliff to the
-   End of Time. */
+   journey. Act 1 runs tiers 0-8; Act 2 picks up mid-curve (4-12); Act 3 runs
+   the top of the curve (8-16) so the solar system is the hardest road yet.
+   Enemies, swarms and bosses all scale off this, so the game gets steadily
+   harder from first cliff to the final showdown at Karrowmere. */
 function regionTier(regionId) {
   const i = Math.max(0, REGIONS.findIndex(r => r.id === regionId));
-  return i + (currentAct() === 2 ? 4 : 0);
+  return i + (currentAct() === 3 ? 8 : currentAct() === 2 ? 4 : 0);
 }
 
 /* Poison artifacts earned in the Toxic Temple — permanent powers for your weapon. */
@@ -394,8 +525,42 @@ const BACKSTAB_LAIR = {
     { from: 5, to: 6, ax: 14, ay: 37, bx: 14, by: 46, gate: { x: 14, y: 41, hw: 2.2, hh: 1.4 }, stair: 'down' },
   ],
 };
+/* ACT THREE finale — KARROWMERE HOMECOMING: the ultimate gauntlet. Nine rush
+   chambers resurrect EVERY boss from all three acts (each chamber runs its
+   slot's whole lineage in sequence — Act 1 warden, Act 2 rebirth, Act 3
+   machine), then the Backstabber Omega waits in the last arena. */
+const KARROWMERE_GAUNTLET = {
+  chambers: [
+    { cx: 10, cy: 8,  hw: 6, hh: 5, rush: ['brute', 'trex', 'mecha_shark'] },
+    { cx: 28, cy: 8,  hw: 6, hh: 5, rush: ['hexstraw', 'iron_horse', 'cryo_titan'] },
+    { cx: 46, cy: 8,  hw: 6, hh: 5, rush: ['alpha_werewolf', 'warhound', 'laser_alpha'] },
+    { cx: 46, cy: 22, hw: 6, hh: 5, rush: ['venombane', 'anubis', 'storm_colossus'] },
+    { cx: 28, cy: 22, hw: 6, hh: 5, rush: ['great_white', 'kraken', 'war_machine'] },
+    { cx: 10, cy: 22, hw: 6, hh: 5, rush: ['crab_king', 'colossus', 'maglev'] },
+    { cx: 10, cy: 36, hw: 6, hh: 5, rush: ['frost_titan', 'mammoth_king', 'plasma_leviathan'] },
+    { cx: 28, cy: 36, hw: 6, hh: 5, rush: ['dune_worm', 'magma_worm', 'quicksilver'] },
+    { cx: 46, cy: 36, hw: 6, hh: 5, rush: ['bread_boi', 'dragok', 'gorton', 'backstabber', 'backstabber_prime'] },
+    { cx: 46, cy: 52, hw: 8, hh: 6, boss: true },     // the Omega's arena
+  ],
+  corridors: [
+    { from: 0, to: 1, ax: 16, ay: 8,  bx: 22, by: 8,  gate: { x: 19, y: 8,  hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 1, to: 2, ax: 34, ay: 8,  bx: 40, by: 8,  gate: { x: 37, y: 8,  hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 2, to: 3, ax: 46, ay: 13, bx: 46, by: 17, gate: { x: 46, y: 15, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 3, to: 4, ax: 34, ay: 22, bx: 40, by: 22, gate: { x: 37, y: 22, hw: 1.4, hh: 2.2 }, stair: 'up' },
+    { from: 4, to: 5, ax: 16, ay: 22, bx: 22, by: 22, gate: { x: 19, y: 22, hw: 1.4, hh: 2.2 }, stair: 'up' },
+    { from: 5, to: 6, ax: 10, ay: 27, bx: 10, by: 31, gate: { x: 10, y: 29, hw: 2.2, hh: 1.4 }, stair: 'down' },
+    { from: 6, to: 7, ax: 16, ay: 36, bx: 22, by: 36, gate: { x: 19, y: 36, hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 7, to: 8, ax: 34, ay: 36, bx: 40, by: 36, gate: { x: 37, y: 36, hw: 1.4, hh: 2.2 }, stair: 'down' },
+    { from: 8, to: 9, ax: 46, ay: 41, bx: 46, by: 46, gate: { x: 46, y: 43, hw: 2.2, hh: 1.4 }, stair: 'down' },
+  ],
+};
 // Which hand-built chamber layout each chamber-mode region uses.
 const CHAMBER_LAYOUTS = { toxic_temple: TEMPLE, sandcastle: SANDCASTLE_CAVES, knife_mountain: KNIFE_MOUNTAIN_CAVES, secret: BACKSTAB_LAIR };
+// In Act 3 the finale swaps in the Homecoming gauntlet (every boss ever).
+function chamberLayoutFor(regionId) {
+  if (currentAct() === 3 && regionId === 'secret') return KARROWMERE_GAUNTLET;
+  return CHAMBER_LAYOUTS[regionId] || TEMPLE;
+}
 
 let DUNGEON = null;
 
@@ -638,7 +803,7 @@ function startDungeon(regionId) {
    TOXIC TEMPLE — chamber-clear level with gates, stairs, poison
    ============================================================ */
 function startTempleDungeon(regionId, theme) {
-  const LAYOUT = CHAMBER_LAYOUTS[regionId] || TEMPLE;   // per-region hand-built layout
+  const LAYOUT = chamberLayoutFor(regionId);   // per-region hand-built layout (act-aware)
   // hazard flavour per level: poison pools (Temple), sucking quicksand (sand caves), slippery ice (mountain)
   const hazardKind = theme.hazard || (theme.poison ? 'poison_pool' : 'quicksand');
   const W = 62, H = 62;
@@ -773,7 +938,9 @@ function updateChambers(dt, t) {
 
   const act = d.chamberList[d.activeIndex];
   if (act && act.active && !act.cleared && !act.boss && act.spawned && d.enemies.filter(e => !e.dead).length === 0) {
-    clearChamber(act, t);
+    // a rush chamber with bosses still queued raises the next one instead of opening
+    if (act.queue && act.queue.length) spawnNextRushBoss(act);
+    else clearChamber(act, t);
   }
   d.progress = d.chambersCleared / (d.chamberList.length - 1);
 }
@@ -791,11 +958,18 @@ function activateChamber(c, t) {
 
 /* Boss-rush chamber: resurrect one of the realm's fallen bosses as a tough
    mini-boss (in the swarm, so the gate opens when it and its guards fall).
-   In Act 2's End of Time, each chamber raises the era-warden you already beat. */
+   In Act 2's End of Time, each chamber raises the era-warden you already beat.
+   A chamber's `rush` may be a LIST — Act 3's Homecoming runs whole lineages of
+   bosses back to back, one rising as the last one falls. */
 const ACT2_RUSH = { brute: 'trex', hexstraw: 'iron_horse', alpha_werewolf: 'warhound', frost_titan: 'mammoth_king', crab_king: 'colossus', gorton: 'kraken' };
 function spawnMiniBoss(c) {
+  c.queue = (Array.isArray(c.rush) ? c.rush : [c.rush]).slice();
+  spawnNextRushBoss(c, true);
+}
+function spawnNextRushBoss(c, first) {
   const d = DUNGEON;
-  const rushId = (currentAct() === 2 && ACT2_RUSH[c.rush]) ? ACT2_RUSH[c.rush] : c.rush;
+  let rushId = c.queue.shift();
+  if (currentAct() === 2 && ACT2_RUSH[rushId]) rushId = ACT2_RUSH[rushId];
   const bd = BOSSES[rushId];
   if (!bd) return;
   const hp = Math.round(bd.hearts * 16);   // a real wall, but below the true finale boss
@@ -807,8 +981,8 @@ function spawnMiniBoss(c) {
     facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, animT: 0,
   });
   d.spawned++;
-  for (let k = 0; k < 3; k++) spawnInChamber(c, k + 50);   // a few guards alongside it
-  banner('☠️ BOSS RUSH — ' + bd.name.toUpperCase() + ' RISES AGAIN!', 2000);
+  if (first) for (let k = 0; k < 3; k++) spawnInChamber(c, k + 50);   // a few guards alongside the first
+  banner('☠️ BOSS RUSH — ' + bd.name.toUpperCase() + ' RISES AGAIN!' + (c.queue.length ? ' (' + c.queue.length + ' more wait...)' : ''), 2000);
   pauseMobs(2100);   // let the announcement land before the resurrected warden moves
   Audio2.sfx.lose();
 }
@@ -871,7 +1045,7 @@ function summonBossChamber() {
   setTimeout(() => {
     if (!DUNGEON) return;
     const c = d.chamberList[d.chamberList.length - 1];
-    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1) * (1 + regionTier(d.regionId) * 0.08));   // resurrected Act 2 wardens are tougher; all bosses climb the tier curve
+    const hp = Math.round(bd.hearts * 24 * bossActMul() * (1 + regionTier(d.regionId) * 0.08));   // later-act wardens are tougher; all bosses climb the tier curve
     d.boss = {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
       fx: c.cx, fy: c.cy - c.hh * 0.5, r: 0.9, scale: 2.3, poison: !!d.theme.poison,
@@ -884,6 +1058,11 @@ function summonBossChamber() {
     // The Backstabber PRIME — the Act 2 finale. Same shadow game, but he's far
     // bigger, faster on every beat, hits harder, and raises more clones.
     if (bd.id === 'backstabber_prime') { Object.assign(d.boss, { backstabber: true, prime: true, state: 'chase', stateUntil: 0, vanished: false, invuln: false, phaseNum: 1, scale: 2.8, speed: 2.7 }); }
+    // The Backstabber OMEGA — the saga's true finale. The full shadow game AND
+    // a thousand years of stolen powers: fireballs, ice novas, lightning and
+    // world-cracking stomps — every one of them a ONE-HIT KILL. Jump and dodge
+    // on the telegraph, or die.
+    if (bd.id === 'backstabber_omega') { Object.assign(d.boss, { backstabber: true, prime: true, omega: true, state: 'chase', stateUntil: 0, vanished: false, invuln: false, phaseNum: 1, scale: 3.3, speed: 2.9 }); }
     const bar = document.getElementById('boss-bar');
     bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
     bar.classList.remove('hidden');
@@ -1381,16 +1560,19 @@ function summonBoss() {
     const h = d.hero;
     const pi = nearestSampleIndex(h.fx, h.fy);
     const bs = d.path.samples[Math.min(d.path.samples.length - 1, pi + 10)];
-    const hp = Math.round(bd.hearts * 24 * (currentAct() === 2 ? 1.4 : 1) * (1 + regionTier(d.regionId) * 0.08));   // resurrected Act 2 wardens are tougher; all bosses climb the tier curve
+    const hp = Math.round(bd.hearts * 24 * bossActMul() * (1 + regionTier(d.regionId) * 0.08));   // later-act wardens are tougher; all bosses climb the tier curve
     d.boss = {
       boss: true, fighter: bd, art: bd.art, palette: bd.palette,
       fx: bs.x, fy: bs.y, r: 0.9, scale: 2.1,
       hp, maxhp: hp, attack: bd.attack, reward: bd.reward,
       speed: 1.5, facing: -1, faceFlipReadyAt: 0, attackReadyAt: 0, windUntil: 0, hurtUntil: 0, name: bd.name,
     };
-    // The Dune Devourer is a burrowing sandworm with a rhythmic dive-and-strike
-    // pattern; it can only be hurt in its brief "reared up" exposed window.
-    if (bd.id === 'dune_worm' || bd.id === 'magma_worm') { d.boss.worm = true; d.boss.state = 'exposed'; d.boss.invuln = false; d.boss.phaseUntil = 0; d.boss.scale = bd.id === 'magma_worm' ? 2.9 : 2.6; }
+    // The Devourer lineage are burrowing worms with a rhythmic dive-and-strike
+    // pattern; they can only be hurt in their brief "reared up" exposed window.
+    if (bd.id === 'dune_worm' || bd.id === 'magma_worm' || bd.id === 'plasma_leviathan') { d.boss.worm = true; d.boss.state = 'exposed'; d.boss.invuln = false; d.boss.phaseUntil = 0; d.boss.scale = bd.id === 'dune_worm' ? 2.6 : 2.9; }
+    // Quicksilver is the fastest thing in the solar system — a liquid-metal
+    // blur that runs the hero down. Outmaneuvering it is the whole fight.
+    if (bd.id === 'quicksilver') { d.boss.scale = 1.9; d.boss.speed = 3.3; d.boss.quicksilver = true; }
     const bar = document.getElementById('boss-bar');
     bar.querySelector('.boss-name').textContent = bd.name.toUpperCase();
     bar.classList.remove('hidden');
@@ -1457,8 +1639,8 @@ function makeDungeonEnemy(id, fx, fy, seed) {
   // difficulty multiplier: base 1.0, or ramps 1.35 -> ~2.0 as you progress
   const ramp = d.hard ? 1.35 + Math.min(0.65, (d.progress || 0) * 0.65) : 1;
   const dmgMul = d.theme.enemyDmgMul || 1;                           // Desolate Dunes = double-power foes
-  const actHpMul = currentAct() === 2 ? 1.5 : 1;                     // Act 2 foes have markedly more HP
-  const actDmgMul = currentAct() === 2 ? 2 : 1;                      // ...and hit TWICE as hard
+  const actHpMul = currentAct() === 3 ? 1.7 : currentAct() === 2 ? 1.5 : 1;   // later-act foes have markedly more HP
+  const actDmgMul = currentAct() === 3 ? 2.2 : currentAct() === 2 ? 2 : 1;    // ...and hit far harder
   const tier = regionTier(d.regionId);                               // the journey's difficulty curve
   const tierHp = 1 + tier * 0.12, tierDmg = 1 + tier * 0.07, tierLoot = 1 + tier * 0.10;
   let hp = Math.max(6, Math.round(f.hearts * 8.5 * ramp * (dmgMul > 1 ? 1.2 : 1) * actHpMul * tierHp));   // tougher to cut down
@@ -1692,6 +1874,9 @@ function updateDungeon(dt, t) {
   /* --- Pompeii: Vesuvius rains telegraphed lava bombs that erupt underfoot --- */
   if (d.volcano && t >= (d.introUntil || 0)) { updateVolcano(dt, t); if (d.over) return; }
 
+  /* --- the Backstabber Omega's one-shot projectiles + telegraphed strikes --- */
+  if ((d.bossShots && d.bossShots.length) || (d.strikes && d.strikes.length)) { updateOmegaHazards(dt, t); if (d.over) return; }
+
   // grabber trees: root the hero when close (unless jumping)
   if (d.grabbers) d.grabbers.forEach(g => {
     if (g.dead) return;
@@ -1829,7 +2014,9 @@ function enemyStrikeHero(e) {
 
 // Act 2 wardens are resurrected and monstrous — every hit lands for a full
 // two hearts minimum (Act 1 bosses keep their tuned values).
-function bossDmg(base) { return currentAct() === 2 ? Math.max(2, base) : base; }
+function bossDmg(base) { return currentAct() === 3 ? Math.max(2.5, base * 1.2) : currentAct() === 2 ? Math.max(2, base) : base; }
+// Boss HP multiplier per act: rebuilt wardens keep getting tougher.
+function bossActMul() { return currentAct() === 3 ? 1.75 : currentAct() === 2 ? 1.4 : 1; }
 
 function bossSlam(b) {
   const d = DUNGEON; if (!d || d.over || d.paused || b.dead) return;
@@ -1891,6 +2078,7 @@ function updateBackstabberBoss(b, h, dt, t) {
   const frac = b.hp / Math.max(1, b.maxhp);
   const phase = frac > 0.66 ? 1 : frac > 0.33 ? 2 : 3;
   if (phase !== b.phaseNum) { b.phaseNum = phase; onBackstabberPhase(b, h, t, phase); }
+  if (b.omega) updateOmegaCasting(b, h, t);   // a thousand years of stolen one-shot powers
   const spd = 2.1 + phase * 0.45 + (b.prime ? 0.5 : 0);   // Prime is a blur
   if (!b.stateUntil) { b.state = 'chase'; b.stateUntil = t + 2400; b.vanished = false; b.invuln = false; }
 
@@ -1936,6 +2124,90 @@ function backstabberSlash(b) {
   if (t < h.dodgeUntil) { spawnFloatText(h.fx, h.fy, 'dodge!', '#8ff0a0'); return; }
   if (t < h.hurtInvulnUntil) return;
   hurtHero(bossDmg(1));
+}
+
+/* ============================================================
+   THE BACKSTABBER OMEGA — stolen powers. Every ~5 seconds he unleashes one of
+   four signature specials, each telegraphed and each an instant KILL if it
+   lands: a fan of fireballs, an ice nova, lightning strikes from the torn sky,
+   and a giant foot stomp that cracks the world. Jump or dodge on the beat.
+   ============================================================ */
+function updateOmegaCasting(b, h, t) {
+  if (!b.nextSpecialAt) { b.nextSpecialAt = t + 4500; return; }
+  if (b.vanished || t < b.nextSpecialAt) return;
+  const order = ['fire', 'ice', 'lightning', 'stomp'];
+  b.specialIdx = ((b.specialIdx === undefined ? -1 : b.specialIdx) + 1) % order.length;
+  b.nextSpecialAt = t + 5600 - b.phaseNum * 700;    // he casts faster as he rages
+  castOmegaSpecial(order[b.specialIdx], b, h, t);
+}
+function castOmegaSpecial(kind, b, h, t) {
+  const d = DUNGEON;
+  d.bossShots = d.bossShots || []; d.strikes = d.strikes || [];
+  if (kind === 'fire') {
+    banner('☄️ OMEGA FIREBALLS — one touch is DEATH! Jump or dodge!', 1400);
+    const aim = Math.atan2(h.fy - b.fy, h.fx - b.fx);
+    for (let i = 0; i < 9; i++) {
+      const a = aim + (i - 4) * 0.28;
+      d.bossShots.push({ x: b.fx, y: b.fy, vx: Math.cos(a) * 4.6, vy: Math.sin(a) * 4.6, kind: 'fire', born: t, life: 2600 });
+    }
+    Audio2.sfx.bighit(); shake();
+  } else if (kind === 'ice') {
+    banner('❄️ OMEGA ICE NOVA — a ring of death! Jump or dodge!', 1400);
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      d.bossShots.push({ x: b.fx, y: b.fy, vx: Math.cos(a) * 3.4, vy: Math.sin(a) * 3.4, kind: 'ice', born: t, life: 3200 });
+    }
+    Audio2.sfx.special(); shake();
+  } else if (kind === 'lightning') {
+    banner('⚡ OMEGA LIGHTNING — MOVE! The marked ground is DEATH!', 1400);
+    for (let i = 0; i < 4; i++) {
+      const near = i < 2;   // two bolts hunt you, two scatter
+      const a = rand(t * 0.003 + i * 7.7) * Math.PI * 2, rr = near ? rand(t * 0.001 + i) * 1.6 : 2.5 + rand(t * 0.002 + i) * 3.5;
+      d.strikes.push({ x: clamp(h.fx + Math.cos(a) * rr, 3, d.W - 3), y: clamp(h.fy + Math.sin(a) * rr, 3, d.H - 3), at: t + 1000, r: 1.8, kind: 'bolt' });
+    }
+    Audio2.sfx.lose();
+  } else {
+    banner('🦶 OMEGA STOMP — get clear and JUMP!', 1400);
+    d.strikes.push({ x: b.fx, y: b.fy, at: t + 1100, r: 3.6, kind: 'stomp' });
+    Audio2.sfx.lose();
+  }
+}
+/* Move his projectiles, land his strikes. Everything here is a ONE-HIT KILL —
+   but every shot can be out-jumped, out-dodged, or simply out-run. */
+function updateOmegaHazards(dt, t) {
+  const d = DUNGEON, h = d.hero;
+  const jumping = t < h.jumpUntil, dodging = t < h.dodgeUntil;
+  if (d.bossShots && d.bossShots.length) {
+    d.bossShots = d.bossShots.filter(s => {
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      if (t - s.born > s.life) return false;
+      if (s.x < 2 || s.y < 2 || s.x > d.W - 2 || s.y > d.H - 2) return false;
+      if (dist(s.x, s.y, h.fx, h.fy) < 0.62 + h.r) {
+        if (jumping || dodging) { spawnFloatText(h.fx, h.fy, 'evaded!', '#8ff0a0'); return false; }
+        if (t < h.hurtInvulnUntil) return false;
+        spawnFloatText(h.fx, h.fy, (s.kind === 'fire' ? '☄️' : '❄️') + ' OBLITERATED!', '#ff2d5a');
+        shake(); Audio2.sfx.bighit(); hurtHero(999);
+        return false;
+      }
+      return true;
+    });
+  }
+  if (d.strikes && d.strikes.length) {
+    d.strikes = d.strikes.filter(s => {
+      if (t < s.at) return true;             // still telegraphing
+      if (!s.landed) {                       // the strike lands (resolve once)
+        s.landed = true; s.until = t + 450;
+        shake(); Audio2.sfx.bighit();
+        const inside = dist(s.x, s.y, h.fx, h.fy) < s.r + h.r;
+        const escaped = s.kind === 'stomp' ? jumping : (jumping || dodging);   // only a JUMP clears the ground-cracking stomp
+        if (inside && !escaped && t >= h.hurtInvulnUntil) {
+          spawnFloatText(h.fx, h.fy, (s.kind === 'bolt' ? '⚡' : '🦶') + ' OBLITERATED!', '#ff2d5a');
+          hurtHero(999);
+        } else if (inside) spawnFloatText(h.fx, h.fy, 'evaded!', '#8ff0a0');
+      }
+      return t < s.until;                    // keep briefly for the impact flash
+    });
+  }
 }
 
 function hurtHero(amount) {
@@ -2198,6 +2470,8 @@ function renderDungeon() {
   if (d.waves) d.waves.forEach(wv => { if (Math.abs(wv.x - d.hero.fx) < RANGE && Math.abs(wv.y - d.hero.fy) < RANGE) drawWave(ctx, wv, ox, oy); });
   // ---- Vesuvius lava-bomb warning rings + molten splats sit on the ground ----
   if (d.eruptions) d.eruptions.forEach(e => drawEruptGround(ctx, e, ox, oy));
+  // ---- Omega strike telegraphs (lightning marks / stomp ring) on the ground ----
+  if (d.strikes) d.strikes.forEach(s => drawOmegaStrike(ctx, s, ox, oy));
 
   // ---- collect depth-sorted sprites (props + entities + drops + checkpoints + grabbers) ----
   const draws = [];
@@ -2232,6 +2506,8 @@ function renderDungeon() {
 
   // ---- hero bullets / rockets ----
   if (d.shots) d.shots.forEach(s => drawHeroShot(ctx, s, ox, oy));
+  // ---- the Omega's fireballs / ice shards ----
+  if (d.bossShots) d.bossShots.forEach(s => drawOmegaShot(ctx, s, ox, oy));
 
   // floating texts / swing fx
   d.fx.forEach(f => drawFx(ctx, f, ox, oy));
@@ -2297,6 +2573,52 @@ function renderDungeon() {
     ctx.font = '900 11px Trebuchet MS, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#dff0ff';
     ctx.fillText('🪽 FLIGHT — hold Jump', cw / 2, by - 4);
   }
+}
+
+/* An Omega projectile: a roaring fireball or a spinning ice shard. */
+function drawOmegaShot(ctx, s, ox, oy) {
+  const p = isoToScreen(s.x, s.y), x = p.x + ox, y = p.y + oy - 22;
+  const fire = s.kind === 'fire';
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createRadialGradient(x, y, 1, x, y, 13);
+  if (fire) { g.addColorStop(0, 'rgba(255,240,180,0.95)'); g.addColorStop(0.5, 'rgba(255,130,40,0.75)'); g.addColorStop(1, 'rgba(200,40,10,0)'); }
+  else { g.addColorStop(0, 'rgba(230,250,255,0.95)'); g.addColorStop(0.5, 'rgba(110,200,255,0.75)'); g.addColorStop(1, 'rgba(40,90,200,0)'); }
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 13, 0, 7); ctx.fill();
+  ctx.fillStyle = fire ? '#ffd27a' : '#dff4ff';
+  ctx.beginPath(); ctx.arc(x, y, 4.4, 0, 7); ctx.fill();
+  ctx.restore();
+}
+/* An Omega strike: a pulsing death-ring telegraph, then the impact flash. */
+function drawOmegaStrike(ctx, s, ox, oy) {
+  const p = isoToScreen(s.x, s.y), x = p.x + ox, y = p.y + oy;
+  const t = performance.now();
+  const rx = s.r * (ISO.TW / 2) * 1.35, ry = s.r * (ISO.TH / 2) * 1.35;
+  ctx.save();
+  if (!s.landed) {                                      // shrinking warning ring
+    const frac = Math.max(0, (s.at - t) / 1100);
+    const pulse = 0.55 + 0.35 * Math.abs(Math.sin(t / 90));
+    ctx.strokeStyle = s.kind === 'bolt' ? `rgba(255,230,90,${pulse})` : `rgba(255,90,60,${pulse})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(x, y, rx * (0.25 + frac * 0.75), ry * (0.25 + frac * 0.75), 0, 0, 7); ctx.stroke();
+    ctx.font = '900 16px Trebuchet MS, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,240,200,0.9)';
+    ctx.fillText(s.kind === 'bolt' ? '⚡' : '🦶', x, y + 5);
+  } else {                                              // the impact flash
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y, 2, x, y, rx);
+    if (s.kind === 'bolt') { g.addColorStop(0, 'rgba(255,255,220,0.9)'); g.addColorStop(1, 'rgba(255,220,60,0)'); }
+    else { g.addColorStop(0, 'rgba(255,200,150,0.9)'); g.addColorStop(1, 'rgba(200,60,20,0)'); }
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.fill();
+    if (s.kind === 'bolt') {                            // the bolt itself, top of screen down
+      ctx.strokeStyle = 'rgba(255,255,200,0.85)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); let yy = y - 320, xx = x;
+      ctx.moveTo(xx, yy);
+      while (yy < y) { yy += 40; xx = x + (rand(yy * 0.13) - 0.5) * 26; ctx.lineTo(xx, yy); }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 /* A hero bullet (glowing tracer) or rocket (finned shell + smoke trail). */
@@ -3653,7 +3975,8 @@ function updateDungeonHUD() {
   if (fill) fill.style.width = clamp((d.progress || 0) * 100, 0, 100) + '%';
   if (d.chamberMode) {
     const label = document.querySelector('.obj-label');
-    if (label) label.textContent = /^the /i.test(d.theme.name) ? 'Descend ' + d.theme.name : 'Descend the ' + d.theme.name;   // no "the The Ice Age"
+    if (label) label.textContent = d.theme.lair && currentAct() === 3 ? 'The Final Showdown'
+      : /^the /i.test(d.theme.name) ? 'Descend ' + d.theme.name : 'Descend the ' + d.theme.name;   // no "the The Ice Age"
     if (cnt) cnt.textContent = 'Chamber ' + Math.min(d.chambersCleared + 1, d.chamberList.length) + ' / ' + d.chamberList.length;
   } else {
     const reached = d.checkpoints.filter(c => c.reached).length;
@@ -3724,8 +4047,10 @@ function winDungeon() {
   Audio2.sfx.win();
   // Beating the Act 1 finale (the Backstabber) reveals his time machine → Act 2.
   if (d.regionId === 'secret' && currentAct() === 1) { showTimeMachine(); return; }
-  // Beating the Act 2 finale (the Backstabber Prime) ends the saga — roll the epilogue.
-  if (d.regionId === 'secret' && currentAct() === 2) { showVictoryEpilogue(); return; }
+  // Beating the Act 2 finale: the Prime's dying sabotage flings you to Neptune → Act 3.
+  if (d.regionId === 'secret' && currentAct() === 2) { showSabotage(); return; }
+  // Beating the Act 3 finale (the Backstabber Omega) ends the saga — roll the epilogue.
+  if (d.regionId === 'secret' && currentAct() === 3) { showVictoryEpilogue(); return; }
   showDungeonResult(true, bonus, mods, gotLife);
 }
 // Falling to 0 hearts is DEATH. An Extra Life (if you have one) cheats it and
