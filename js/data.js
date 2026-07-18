@@ -94,6 +94,39 @@ const ENEMIES = {
   /* ===== ACT TWO — The End of Time (the machine future) ===== */
   robot:         { id:'robot',         name:'Sentry Bot',     hearts:5,   attack:5, reward:20, art:'robot',    palette:{ skin:'#7a8a9a', cloth:'#30ffb0' }, blurb:'A clanking security robot with one glowing eye and zero patience for heroes.' },
   mech:          { id:'mech',          name:'War Mech',       hearts:6,   attack:6, reward:24, art:'mech',     palette:{ skin:'#5a5a6a', cloth:'#ff4a6a' }, blurb:'A walking weapons platform on hydraulic legs. It was built for exactly this.' },
+
+  /* ===== ACT THREE — Neptune (the black ocean, year 3026) ===== */
+  cyber_zombie:  { id:'cyber_zombie',  name:'Cyber Zombie',    hearts:6,  attack:6, reward:22, art:'zombie',   palette:{ skin:'#4ae0c8', cloth:'#1a3a4a' }, blurb:'A drowned zombie rebuilt with chrome plating and one glowing laser eye. A thousand years did not improve its mood.' },
+  void_squid:    { id:'void_squid',    name:'Void Squid',      hearts:5,  attack:5, reward:20, art:'squid',    palette:{ skin:'#7a5aff', cloth:'#2a1a6a' }, blurb:"A squid from Neptune's black ocean, its tentacles crackling with stolen plasma." },
+  laser_swordfish:{ id:'laser_swordfish', name:'Laser Swordfish', hearts:4, attack:6, reward:20, art:'fish',   palette:{ skin:'#4ab8ff', cloth:'#1a4a8a' }, blurb:'Nature gave it a sword. Science upgraded it to a cutting laser.' },
+  /* ===== ACT THREE — Uranus (the sideways ice giant) ===== */
+  cryo_yeti:     { id:'cryo_yeti',     name:'Cryo Yeti',       hearts:7,  attack:6, reward:24, art:'yeti',     palette:{ skin:'#bff0ff', cloth:'#4a7ac9' }, blurb:'A yeti sealed in a frost-powered exosuit, breathing clouds of liquid nitrogen.' },
+  hover_bear:    { id:'hover_bear',    name:'Hover Bear',      hearts:6.5,attack:6, reward:24, art:'bear',     palette:{ skin:'#8ac0e8', cloth:'#2a4a6a' }, blurb:'A polar bear riding a stolen hovercraft. Nobody has dared ask for it back.' },
+  frost_drone:   { id:'frost_drone',   name:'Frost Drone',     hearts:3,  attack:5, reward:18, art:'drone',    palette:{ skin:'#c8e8ff', cloth:'#3a8ac9' }, blurb:'A patrol drone that fires beams of pure cold.' },
+  /* ===== ACT THREE — Saturn (the ring plains) ===== */
+  laser_pup:     { id:'laser_pup',     name:'Laser Baby Werewolf', hearts:5, attack:6, reward:22, art:'wolf',  palette:{ skin:'#c9b8ff', cloth:'#6a4aff' }, blurb:'Still cute. But now its eyes shoot lasers.' },
+  ring_phantom:  { id:'ring_phantom',  name:'Ring Phantom',    hearts:6,  attack:6, reward:24, art:'phantom',  palette:{ skin:'#e8d8ff', cloth:'#8a6aff' }, blurb:'A ghost that drifted the rings of Saturn for a thousand years, growing stranger.' },
+  jet_werewolf:  { id:'jet_werewolf',  name:'Jetpack Werewolf',hearts:7,  attack:7, reward:28, art:'wolf',     palette:{ skin:'#8a80c9', cloth:'#3a3468' }, blurb:'The full-grown beast strapped into a roaring jetpack. Sharp claws, now airborne.' },
+  /* ===== ACT THREE — Jupiter (the endless storm) ===== */
+  storm_amoeba:  { id:'storm_amoeba',  name:'Storm Amoeba',    hearts:6,  attack:6, reward:24, art:'amoeba',   palette:{ skin:'#ffd24a', cloth:'#c98a1a' }, blurb:'The very first life, evolved in the Great Red Spot — it wobbles with lightning.' },
+  plasma_jelly:  { id:'plasma_jelly',  name:'Plasma Jellyfish',hearts:4,  attack:6, reward:22, art:'jellyfish',palette:{ skin:'#ff8ae8', cloth:'#c93aa8' }, blurb:'A stinging bell of raw plasma, pulsing through the storm winds.' },
+  thunder_mech:  { id:'thunder_mech',  name:'Thunder Mech',    hearts:8,  attack:7, reward:30, art:'mech',     palette:{ skin:'#c9a24a', cloth:'#ffd24a' }, blurb:'A war mech rebuilt to run on lightning. It never needs recharging here.' },
+  /* ===== ACT THREE — Mars (the red frontier) ===== */
+  rust_raptor:   { id:'rust_raptor',   name:'Rust Raptor',     hearts:6,  attack:7, reward:26, art:'raptor',   palette:{ skin:'#d96a3a', cloth:'#8a3a1a' }, blurb:'A cyborg raptor rebuilt from rover parts — half fossil, half machine, all teeth.' },
+  war_drone:     { id:'war_drone',     name:'War Drone',       hearts:4,  attack:6, reward:22, art:'drone',    palette:{ skin:'#d94a3a', cloth:'#5a1a10' }, blurb:'A red-dusted combat drone with twin laser cannons bolted underneath.' },
+  dust_soldier:  { id:'dust_soldier',  name:'Dust Marine',     hearts:7,  attack:7, reward:28, art:'soldier',  palette:{ skin:'#c97a4a', cloth:'#7a3a20' }, blurb:'A marine in powered armour, patrolling the red dunes for a war that ended centuries ago.' },
+  /* ===== ACT THREE — Earth, year 3026 (the ruined megacity) ===== */
+  chrome_zombie: { id:'chrome_zombie', name:'Chrome Zombie',   hearts:8,  attack:7, reward:30, art:'zombie',   palette:{ skin:'#b8c8d8', cloth:'#4a5a6a' }, blurb:'A future zombie plated in mirror-chrome. It shuffles faster than it used to.' },
+  hunter_mech:   { id:'hunter_mech',   name:'Hunter Mech',     hearts:9,  attack:8, reward:34, art:'mech',     palette:{ skin:'#6a7a8a', cloth:'#ff4a6a' }, blurb:'A hunter-killer platform that has stalked the ruined streets for a thousand years.' },
+  security_bot:  { id:'security_bot',  name:'Security Bot',    hearts:7,  attack:7, reward:28, art:'robot',    palette:{ skin:'#8a9aaa', cloth:'#30ffb0' }, blurb:'It still guards a city that no longer exists, and you are trespassing.' },
+  /* ===== ACT THREE — Venus (the furnace world) ===== */
+  acid_gooster:  { id:'acid_gooster',  name:'Acid Gooster',    hearts:7,  attack:7, reward:28, art:'goo',      palette:{ skin:'#c9ff4a', cloth:'#7aa81a' }, blurb:'A goo-monster stewed in acid clouds. REALLY do not step in it.' },
+  inferno_scarab:{ id:'inferno_scarab',name:'Inferno Scarab',  hearts:5,  attack:7, reward:26, art:'scarab',   palette:{ skin:'#ff8a3a', cloth:'#a83a10' }, blurb:'A beetle the size of a dog, its shell glowing furnace-orange.' },
+  lava_trilobite:{ id:'lava_trilobite',name:'Lava Trilobite',  hearts:8,  attack:7, reward:30, art:'trilobite',palette:{ skin:'#ff6a4a', cloth:'#7a2410' }, blurb:'An armoured sea-bug that learned to swim in molten rock instead.' },
+  /* ===== ACT THREE — Mercury (the sun-scorched anvil) ===== */
+  solar_skeleton:{ id:'solar_skeleton',name:'Solar Skeleton',  hearts:7,  attack:8, reward:30, art:'skeleton', palette:{ skin:'#ffe08a', cloth:'#c9891a' }, blurb:'A skeleton burned gold by a thousand years of naked sunlight. Its bones still smoulder.' },
+  mercury_crab:  { id:'mercury_crab',  name:'Mercury Crab',    hearts:6,  attack:7, reward:28, art:'crab',     palette:{ skin:'#e8e8f0', cloth:'#8a8a9a' }, blurb:'A crab of living liquid metal. Its pinch cuts like a laser scalpel.' },
+  quick_wraith:  { id:'quick_wraith',  name:'Quick Wraith',    hearts:6,  attack:8, reward:30, art:'phantom',  palette:{ skin:'#e8f0ff', cloth:'#9aa8c9' }, blurb:"Quicksilver's shadow, cast in silver light. Blink and it's behind you." },
 };
 
 /* ---------- Named bosses (tougher, unique, bigger rewards) ---------- */
@@ -116,6 +149,16 @@ const BOSSES = {
   mammoth_king:{ id:'mammoth_king', name:'The Mammoth King', hearts:30, attack:9, reward:520, art:'mammoth', palette:{ skin:'#8a6a48', cloth:'#e8e0d0' }, boss:true, dungeon:true, blurb:'The Frost Titan, resurrected in the deep freeze as a colossal woolly mammoth with tusks of black ice. The glacier shakes with every step it takes.' },
   magma_worm: { id:'magma_worm', name:'The Magma Leviathan', hearts:32, attack:9, reward:560, art:'worm',    palette:{ skin:'#ff7a2a', cloth:'#8a2410' }, boss:true, dungeon:true, blurb:'The Dune Devourer, dragged back to the dawn of the world and reborn in liquid rock — a burrowing leviathan of magma that erupts from the molten crust to feed.' },
   backstabber_prime:{ id:'backstabber_prime', name:'The Backstabber Prime', hearts:44, attack:10, reward:1000, art:'assassin', palette:{ skin:'#1a1430', cloth:'#30ffb0' }, boss:true, dungeon:true, blurb:'At the end of time the Backstabber waits — swollen monstrous on every drop of power he stole, faster and crueller than he ever was. The last back stab in history belongs to one of you.' },
+  // ACT THREE bosses — the wardens rebuilt a thousand years on, with lasers
+  mecha_shark:{ id:'mecha_shark', name:'Mecha-Jaws',            hearts:30, attack:8,  reward:600, art:'shark',    palette:{ skin:'#7a8a9a', cloth:'#4ae0ff' }, boss:true, dungeon:true, blurb:"The Great White, salvaged from Neptune's black ocean and rebuilt in chrome — rocket engines where its tail was, and fins that fire cutting lasers." },
+  cryo_titan: { id:'cryo_titan',  name:'The Cryo Titan',        hearts:32, attack:8,  reward:640, art:'yeti',     palette:{ skin:'#dff4ff', cloth:'#4a90ff' }, boss:true, dungeon:true, blurb:'The Frost Titan, welded into a mountain of exo-armour on the sideways ice giant. Its freeze-ray breath turns heroes to statues.' },
+  laser_alpha:{ id:'laser_alpha', name:'The Laser Alpha',       hearts:34, attack:9,  reward:680, art:'wolf',     palette:{ skin:'#5a5a80', cloth:'#b04aff' }, boss:true, dungeon:true, blurb:'The Alpha Werewolf, upgraded: laser eyes, a howling jetpack, and a thousand years of grudge. It rules the rings of Saturn.' },
+  storm_colossus:{ id:'storm_colossus', name:'The Storm Colossus', hearts:36, attack:9, reward:720, art:'colossus', palette:{ skin:'#4a5068', cloth:'#4ad9ff' }, boss:true, dungeon:true, blurb:'The Molten Colossus, reborn inside the Great Red Spot — a giant of storm-cloud and plasma whose every step is a thunderclap.' },
+  war_machine:{ id:'war_machine', name:'The War Machine',       hearts:38, attack:9,  reward:760, art:'tank',     palette:{ skin:'#7a4030', cloth:'#ff6a3a' }, boss:true, dungeon:true, blurb:'The Warhound, rebuilt as a hover-tank that skims the red dunes of Mars — twin laser cannons, and a jetpack the size of a house.' },
+  maglev:     { id:'maglev',      name:'The Maglev',            hearts:38, attack:9,  reward:780, art:'train',    palette:{ skin:'#6a7a92', cloth:'#30ffb0' }, boss:true, dungeon:true, blurb:'The Iron Horse, evolved: a runaway maglev bullet-train screaming through the ruins of Earth with nobody left to drive it.' },
+  plasma_leviathan:{ id:'plasma_leviathan', name:'The Plasma Leviathan', hearts:40, attack:10, reward:840, art:'worm', palette:{ skin:'#ff9a3a', cloth:'#ffe04a' }, boss:true, dungeon:true, blurb:'The Devourer, reborn in the furnace clouds of Venus as a leviathan of pure plasma. It burrows through molten rock like water.' },
+  quicksilver:{ id:'quicksilver', name:'Quicksilver',           hearts:34, attack:10, reward:900, art:'phantom',  palette:{ skin:'#eef2fa', cloth:'#aab4c9' }, boss:true, dungeon:true, blurb:'A being of living liquid metal, forged on the sun-scorched anvil of Mercury. The fastest thing in the solar system — beat it, and the way home opens.' },
+  backstabber_omega:{ id:'backstabber_omega', name:'The Backstabber Omega', hearts:66, attack:13, reward:2500, art:'assassin', palette:{ skin:'#0c0a20', cloth:'#ff2d5a' }, boss:true, dungeon:true, blurb:'He had a thousand years to prepare for you. Fireballs, ice, lightning, a stomp that cracks the world — every power he ever stole, and each one can end you in a single hit.' },
   bread_boi:  { id:'bread_boi',  name:'Bread Boy',        hearts:5,  attack:3, reward:19,  art:'bread',    palette:{ skin:'#e8b46a', cloth:'#a8781f' }, boss:true, blurb:'A living loaf. Crustier than he looks.' },
   dragok:     { id:'dragok',     name:'Dragok',           hearts:7,  attack:4, reward:43,  art:'dragon',   palette:{ skin:'#c0453a', cloth:'#7a241c' }, boss:true, blurb:'Half-dragon champion of the arena.' },
   gorton:     { id:'gorton',     name:'Gorton',           hearts:9,  attack:5, reward:100, art:'king',     palette:{ skin:'#c9a24a', cloth:'#5a3a7a' }, boss:true, blurb:'The armoured king. Sword AND shield. The big test.' },
@@ -305,6 +348,29 @@ const LORE_ACT2 = {
     knife_mountain:    "The frozen Ice Age. A warden stalks the mammoth herds. Bring it down and chase the Backstabber onward.",
     desolate_dunes:    "The dawn of the world, when the land was molten. Even here a warden festers — survive the fire and press on.",
     secret:            "The end of time, where the Backstabber has grown monstrous on stolen power. Every warden you've hunted led here. Destroy him, and set time right.",
+  },
+};
+
+/* ---- ACT THREE story: marooned across the solar system, year 3026 ---- */
+const LORE_ACT3 = {
+  title: 'Act Three — The Long Way Home',
+  intro: [
+    "You struck the Backstabber Prime down at the End of Time — but with his dying breath he drove his blade into your time machine. One last betrayal. The sabotaged drive screamed, tore a hole in the sky, and flung you a THOUSAND years into the future... and clear across the solar system, crashing down into the black ocean of NEPTUNE.",
+    "The year is 3026. Everything you ever fought has had a thousand years to evolve: zombies plated in chrome, baby werewolves with laser eyes, yetis in exosuits, bears on hovercrafts. And on every world between you and home, one of the old wardens waits — rebuilt bigger, faster, and armed with lasers.",
+    "There is only one way back: planet by planet. Neptune. Uranus. Saturn. Jupiter. Mars. The ruins of Earth. Venus. And last, sun-scorched Mercury, where the fastest thing alive — QUICKSILVER — guards the teleporter home.",
+    "Beat it, and you'll be flung back to Karrowmere at last... where a final shadow waits with every power he ever stole. Fight your way across the stars, hero. The last showdown is waiting at home.",
+  ],
+  goal: 'Fight home across the solar system, planet by planet, then survive the final showdown at Karrowmere.',
+  regions: {
+    dead_cliffs:       "NEPTUNE. Your wrecked time machine sinks in the black ocean behind you. Cyber zombies shamble on the ice — fight to the beacon, and fell Mecha-Jaws. The long way home starts here.",
+    barren_grasslands: "URANUS. The sideways world, colder than cold. Cryo yetis and hover bears prowl the ice — beat the Cryo Titan and jump onward, sunward.",
+    dark_forest:       "SATURN. You walk the ring plains themselves, boulders of ice drifting past. The Laser Alpha hunts you here, jetpack howling. Bring it down.",
+    toxic_temple:      "JUPITER. Inside the Great Red Spot, a storm-station of gravity wells and lightning. The Storm Colossus strides the clouds — topple it and press on.",
+    shatter_coast:     "MARS. The red frontier, littered with dead rovers and a war nobody remembers. The War Machine skims the dunes — shoot it down, Earth is next.",
+    sandcastle:        "EARTH, year 3026. Home — but a thousand years too late, the megacity silent and overgrown. The Maglev screams through the ruins. Derail it.",
+    knife_mountain:    "VENUS. A furnace of acid cloud and molten rock. The Plasma Leviathan burrows beneath the crust — survive its eruptions and keep going. Almost there.",
+    desolate_dunes:    "MERCURY. The sun fills half the sky, and the ground is an anvil. QUICKSILVER — the fastest thing in the solar system — guards the teleporter home. Catch it if you can.",
+    secret:            "KARROWMERE. Home at last — and every boss you have EVER beaten stands raised again between you and the throne, where the Backstabber Omega waits with a thousand years of stolen power. End this. End HIM. Go home a legend.",
   },
 };
 

@@ -102,18 +102,45 @@ function showTimeMachine() {
   });
 }
 
-/* The grand finale: the Backstabber Prime is destroyed at the End of Time.
-   Roll the epilogue — the saga is complete (both acts stay open to replay). */
+/* End of Act 2: the Backstabber Prime falls — but his last act is SABOTAGE.
+   The stabbed time machine detonates and hurls you 1000 years forward, clear
+   across the solar system, into the black ocean of Neptune. Act 3 begins. */
+function showSabotage() {
+  const overlay = document.createElement('div');
+  overlay.className = 'result-overlay';
+  overlay.innerHTML = `
+    <div class="result-card lose timemachine">
+      <h2>🗡️ THE FINAL BETRAYAL</h2>
+      <p>The Backstabber Prime falls... but he is smiling. With his dying breath he drives his blade deep into your time machine's heart. The temporal drive SCREAMS.</p>
+      <p>Light folds in on itself — a thousand years tear past in a heartbeat — and the sky that catches you is not Earth's. It is deep, and blue, and very, very far from home.</p>
+      <div class="tm-panel">
+        <div class="tm-screen"><span>◄ ◙ ►</span> DRIVE&nbsp;SABOTAGED&nbsp;·&nbsp;YEAR&nbsp;3026&nbsp;·&nbsp;DEST:&nbsp;NEPTUNE <span>◄ ◙ ►</span></div>
+        <button class="tm-button" id="sab-go">🚀 CRASH LANDING</button>
+      </div>
+      <p class="tip">Act Three: fight home across the solar system, planet by planet.</p>
+    </div>`;
+  app().appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('show'));
+  overlay.querySelector('#sab-go').addEventListener('click', () => {
+    Audio2.sfx.special();
+    if (typeof stopDungeon === 'function') stopDungeon();
+    beginActThree();
+    showScreen('story');   // straight into the Act 3 intro
+  });
+}
+
+/* The grand finale: the Backstabber Omega is destroyed at Karrowmere.
+   Roll the epilogue — the saga is complete (all three acts stay open to replay). */
 function showVictoryEpilogue() {
   const overlay = document.createElement('div');
   overlay.className = 'result-overlay';
   overlay.innerHTML = `
     <div class="result-card win timemachine">
-      <h2>🏆 TIME IS SAFE</h2>
-      <p>The Backstabber Prime crumbles into the dark he came from. Every warden he raised is beaten, every age he poisoned runs clean again — from the first molten dawn to the last machine night.</p>
-      <p>Karrowmere has its realm back. History has its heroes.</p>
+      <h2>🏆 HOME AT LAST</h2>
+      <p>The Backstabber Omega crumbles — fireballs, ice, lightning and all — a thousand years of stolen power scattering like sparks on the wind. Every warden of every age and every world lies beaten behind you.</p>
+      <p>From the first cold cliff to the rings of Saturn and back, you crossed a realm, all of history, and the whole solar system to get here. Karrowmere is free. Time is clean. And you — you walked the long way home.</p>
       <div class="tm-panel">
-        <div class="tm-screen"><span>◄ ◙ ►</span> SAGA&nbsp;COMPLETE <span>◄ ◙ ►</span></div>
+        <div class="tm-screen"><span>◄ ◙ ►</span> SAGA&nbsp;COMPLETE&nbsp;·&nbsp;WELCOME&nbsp;HOME <span>◄ ◙ ►</span></div>
         <button class="tm-button" id="ep-go">RETURN A LEGEND</button>
       </div>
       <p class="tip">By Jing &amp; Ash Games · © Asher and Ren, 2026 — thanks for playing!</p>
@@ -249,10 +276,10 @@ function renderCharSelect() {
   const cards = chars.map(c => {
     const p = Auth.peekCharacter(c.id);
     const sub = p
-      ? `Act ${p.act === 2 ? 'II' : 'I'} · Lv ${p.level} · ❤️ ${p.maxHearts} · 💰 ${p.money} · 🏰 ${p.cleared} cleared`
+      ? `Act ${p.act === 3 ? 'III' : p.act === 2 ? 'II' : 'I'} · Lv ${p.level} · ❤️ ${p.maxHearts} · 💰 ${p.money} · 🏰 ${p.cleared} cleared`
       : 'A brand-new adventurer';
     return `<div class="char-card" data-char="${c.id}">
-        <div class="char-face">${p && p.act === 2 ? '⏳' : '🗡️'}</div>
+        <div class="char-face">${p && p.act === 3 ? '🚀' : p && p.act === 2 ? '⏳' : '🗡️'}</div>
         <div class="char-info">
           <div class="char-name">${escapeHtml(c.name)}</div>
           <div class="char-sub">${sub}</div>
@@ -363,17 +390,17 @@ function renderTitle() {
 function renderStory() {
   Audio2.playMusic('menu');
   const L = currentLore();
-  const act2 = currentAct() === 2;
+  const act = currentAct();
   const el = app();
   el.className = 'screen screen-story';
   el.innerHTML = `
     ${topBar('The Story', { back: 'title' })}
     <div class="story-page">
-      <div class="story-emblem">${act2 ? '⏳' : '🗡️'}</div>
+      <div class="story-emblem">${act === 3 ? '🚀' : act === 2 ? '⏳' : '🗡️'}</div>
       <h2 class="story-title">${L.title}</h2>
       ${L.intro.map(p => `<p>${p}</p>`).join('')}
       <div class="story-goal"><b>Your quest:</b> ${L.goal}</div>
-      <button class="wide-btn" data-nav="map">${act2 ? '⏳ Enter the time stream' : '🗺️ Begin the journey'}</button>
+      <button class="wide-btn" data-nav="map">${act === 3 ? '🚀 Chart the way home' : act === 2 ? '⏳ Enter the time stream' : '🗺️ Begin the journey'}</button>
     </div>`;
   wireCommon(el);
 }
@@ -391,7 +418,7 @@ function levelIntro(regionId) {
     <div class="li-card">
       <div class="li-name">${v.name}</div>
       <p class="li-line">${line}</p>
-      <div class="li-goal">${currentAct() === 2 ? '⏳' : '🗡️'} ${L.goal}</div>
+      <div class="li-goal">${currentAct() === 3 ? '🚀' : currentAct() === 2 ? '⏳' : '🗡️'} ${L.goal}</div>
     </div>`;
   app().appendChild(card);
   requestAnimationFrame(() => card.classList.add('show'));
@@ -425,11 +452,13 @@ const BIOME_EMOJI = {
   dead_cliffs: '🪨', barren_grasslands: '🌾', dark_forest: '🌲', toxic_temple: '🛕',
   shatter_coast: '🏖️', sandcastle: '🏰', knife_mountain: '⛰️', desolate_dunes: '🏜️', secret: '💀',
 };
-// The story text for the current act (Act 2 = the time-travel chase).
-function currentLore() { return currentAct() === 2 ? LORE_ACT2 : LORE; }
-// Act-aware display for a region pin: Act 2 swaps in the era's name/colour/icon.
+// The story text for the current act (2 = the time chase, 3 = the way home).
+function currentLore() { return currentAct() === 3 ? LORE_ACT3 : currentAct() === 2 ? LORE_ACT2 : LORE; }
+// Act-aware display for a region pin: later acts swap in the era's/planet's
+// name, colour and icon.
 function regionView(id) {
-  const t = currentAct() === 2 && typeof ACT2_THEMES !== 'undefined' && ACT2_THEMES[id];
+  const t = (currentAct() === 3 && typeof ACT3_THEMES !== 'undefined' && ACT3_THEMES[id])
+    || (currentAct() === 2 && typeof ACT2_THEMES !== 'undefined' && ACT2_THEMES[id]);
   const r = regionById(id);
   return {
     name: t ? t.name : r.name,
@@ -799,11 +828,88 @@ function continentSVG() {
   </svg>`;
 }
 
+/* ACT THREE map: the SOLAR SYSTEM. A starfield instead of an ocean, and every
+   region slot drawn as its planet on the long route home — Neptune to Mercury,
+   ending at Karrowmere. */
+function planetSVG(id, x, y) {
+  const r = id === 'secret' ? 5.5 : 6.5;
+  const glow = (c, rr) => `<circle cx="${x}" cy="${y}" r="${rr}" fill="${c}" opacity="0.22" filter="url(#mapBlob)"/>`;
+  const shade = `<ellipse cx="${x + r * 0.45}" cy="${y + r * 0.3}" rx="${r}" ry="${r}" fill="rgba(0,0,20,0.38)" clip-path="url(#pc_${id})"/>
+    <clipPath id="pc_${id}"><circle cx="${x}" cy="${y}" r="${r}"/></clipPath>`;
+  switch (id) {
+    case 'dead_cliffs':   // NEPTUNE — deep blue, storm streaks
+      return `${glow('#3a6aff', r * 2)}<circle cx="${x}" cy="${y}" r="${r}" fill="#2a52d8"/>
+        <path d="M${x - r * 0.8} ${y - 2} q${r} -1.6 ${r * 1.6} 0 M${x - r * 0.9} ${y + 1.5} q${r * 0.8} 1.4 ${r * 1.8} 0.2" stroke="#6a9aff" stroke-width="0.9" fill="none" opacity="0.8" clip-path="url(#pc_dead_cliffs)"/>
+        <ellipse cx="${x - 1.5}" cy="${y - 1}" rx="1.6" ry="1" fill="#0c1e6a"/>${shade}`;
+    case 'barren_grasslands': // URANUS — pale cyan, vertical tilted ring
+      return `${glow('#7ae8e0', r * 2)}<circle cx="${x}" cy="${y}" r="${r}" fill="#8ae0e0"/>
+        <ellipse cx="${x}" cy="${y}" rx="2.4" ry="${r * 1.7}" fill="none" stroke="#c9f4f0" stroke-width="0.8" opacity="0.8" transform="rotate(12 ${x} ${y})"/>${shade}`;
+    case 'dark_forest':   // SATURN — gold with grand rings
+      return `${glow('#e8c97a', r * 2)}<ellipse cx="${x}" cy="${y}" rx="${r * 1.9}" ry="${r * 0.62}" fill="none" stroke="#d9b46a" stroke-width="1.6" opacity="0.9" transform="rotate(-14 ${x} ${y})"/>
+        <circle cx="${x}" cy="${y}" r="${r}" fill="#e0b978"/>
+        <path d="M${x - r} ${y - 1.4} h${r * 2} M${x - r} ${y + 1.6} h${r * 2}" stroke="#c99a4e" stroke-width="0.8" opacity="0.7" clip-path="url(#pc_dark_forest)"/>
+        <ellipse cx="${x}" cy="${y}" rx="${r * 1.9}" ry="${r * 0.62}" fill="none" stroke="#f4e0b0" stroke-width="0.6" opacity="0.9" transform="rotate(-14 ${x} ${y})"/>${shade}`;
+    case 'toxic_temple':  // JUPITER — bands + the Great Red Spot
+      return `${glow('#d98a4a', r * 2)}<circle cx="${x}" cy="${y}" r="${r}" fill="#d9a86a"/>
+        <path d="M${x - r} ${y - 2.4} h${r * 2} M${x - r} ${y} h${r * 2} M${x - r} ${y + 2.4} h${r * 2}" stroke="#b87a3a" stroke-width="1.1" opacity="0.8" clip-path="url(#pc_toxic_temple)"/>
+        <ellipse cx="${x + 2}" cy="${y + 1.6}" rx="1.9" ry="1.2" fill="#c04a2a"/>${shade}`;
+    case 'shatter_coast': // MARS — rust red, polar cap
+      return `${glow('#d95a3a', r * 2)}<circle cx="${x}" cy="${y}" r="${r}" fill="#c9582f"/>
+        <ellipse cx="${x - 1}" cy="${y - r + 1}" rx="2.4" ry="1" fill="#f0e0d0" opacity="0.9"/>
+        <ellipse cx="${x + 1.6}" cy="${y + 1}" rx="1.8" ry="1.1" fill="#8a3418" opacity="0.8"/>
+        <ellipse cx="${x - 2.2}" cy="${y + 2}" rx="1.2" ry="0.8" fill="#8a3418" opacity="0.7"/>${shade}`;
+    case 'sandcastle':    // EARTH 3026 — blue marble, neon pulse
+      return `${glow('#30ffb0', r * 2.2)}<circle cx="${x}" cy="${y}" r="${r}" fill="#2a6ad8"/>
+        <path d="M${x - 3} ${y - 3} q2 -1 3.4 0.2 q1.8 1 0.6 2.2 q-2 1 -3.4 -0.4 q-1.4 -1 -0.6 -2 Z" fill="#3a9a4e"/>
+        <path d="M${x + 0.5} ${y + 1.5} q1.8 -0.4 2.6 1 q-0.6 1.6 -2.4 1.2 q-1.4 -0.8 -0.2 -2.2 Z" fill="#3a9a4e"/>
+        <circle cx="${x}" cy="${y}" r="${r + 0.9}" fill="none" stroke="#30ffb0" stroke-width="0.45" opacity="0.85" stroke-dasharray="1.6 1.2"/>${shade}`;
+    case 'knife_mountain': // VENUS — cream swirls
+      return `${glow('#ffb84a', r * 2)}<circle cx="${x}" cy="${y}" r="${r}" fill="#e8c88a"/>
+        <path d="M${x - r * 0.9} ${y - 1.4} q${r * 0.9} -1.8 ${r * 1.8} 0 M${x - r * 0.8} ${y + 1.8} q${r * 0.8} 1.4 ${r * 1.6} -0.4" stroke="#f4e0b8" stroke-width="1" fill="none" opacity="0.9" clip-path="url(#pc_knife_mountain)"/>${shade}`;
+    case 'desolate_dunes': // MERCURY — grey, cratered, sun-blasted
+      return `${glow('#fff4c0', r * 2.4)}<circle cx="${x}" cy="${y}" r="${r}" fill="#a8a4b0"/>
+        <circle cx="${x - 1.8}" cy="${y - 1}" r="1" fill="#7a7684"/><circle cx="${x + 1.6}" cy="${y + 1.8}" r="0.8" fill="#7a7684"/><circle cx="${x + 0.6}" cy="${y - 2.2}" r="0.6" fill="#8a8694"/>${shade}`;
+    default:              // KARROWMERE — home, wreathed in the Omega's red storm
+      return `${glow('#ff2d5a', r * 2.6)}<circle cx="${x}" cy="${y}" r="${r}" fill="#4a7a3e"/>
+        <path d="M${x - 3} ${y + 0.5} q1.4 -2.4 3.2 -1.2 q2 0.8 2.4 2.4" stroke="#8ab060" stroke-width="1" fill="none" opacity="0.9" clip-path="url(#pc_secret)"/>
+        <circle cx="${x}" cy="${y}" r="${r + 1}" fill="none" stroke="#ff2d5a" stroke-width="0.6" opacity="0.9"/>
+        <circle cx="${x}" cy="${y}" r="${r + 2}" fill="none" stroke="#ff2d5a" stroke-width="0.3" opacity="0.5"/>${shade}`;
+  }
+}
+function starMapSVG() {
+  // stars (deterministic scatter)
+  let stars = '';
+  for (let i = 0; i < 90; i++) {
+    const sx = mrand(i * 3.1) * 100, sy = mrand(i * 7.7 + 2) * 100, sr = 0.14 + mrand(i * 1.3) * 0.3;
+    stars += `<circle cx="${sx}" cy="${sy}" r="${sr}" fill="#eaf2ff" opacity="${0.35 + mrand(i) * 0.6}"/>`;
+  }
+  // the distant sun, far past Mercury (bottom-right corner glow)
+  const sun = `<circle cx="104" cy="46" r="14" fill="#ffdf8a" opacity="0.25" filter="url(#mapBlob)"/>
+    <circle cx="104" cy="46" r="7" fill="#fff4c0" opacity="0.5" filter="url(#mapSoft)"/>`;
+  const chain = REGIONS;   // every planet is a stop on the road home
+  const route = 'M ' + chain.map(r => `${r.x} ${r.y}`).join(' L ');
+  const planets = REGIONS.map(r => planetSVG(r.id, r.x, r.y)).join('');
+  return `<svg viewBox="0 0 100 100" class="map-svg" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <filter id="mapSoft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter>
+      <filter id="mapBlob" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6.5"/></filter>
+      <radialGradient id="deepSpace" cx="30%" cy="20%" r="110%"><stop offset="0" stop-color="#141c3a"/><stop offset="0.55" stop-color="#0a0e24"/><stop offset="1" stop-color="#040614"/></radialGradient>
+    </defs>
+    <rect width="100" height="100" fill="url(#deepSpace)"/>
+    ${stars}
+    <path d="M-4 78 Q 30 60 55 40 T 106 8" fill="none" stroke="#8a9aff" stroke-width="10" opacity="0.06" filter="url(#mapBlob)"/>
+    ${sun}
+    <path d="${route}" class="map-route"/>
+    ${planets}
+  </svg>`;
+}
+
 function renderMap() {
   Audio2.playMusic('map');
   const el = app();
   el.className = 'screen screen-map';
-  const act2 = currentAct() === 2;
+  const act = currentAct();
+  const act2 = act === 2, act3 = act === 3;
   let nodes = '';
   REGIONS.forEach(r => {
     const unlocked = isUnlocked(r.id);
@@ -825,25 +931,29 @@ function renderMap() {
         ${skulls ? `<span class="node-skulls">${skulls}</span>` : ''}
       </button>`;
   });
+  // act travel: every unlocked act EXCEPT the one you're on gets a button
+  const actBtns = [];
+  if (STATE.act2Unlocked || STATE.act3Unlocked) {
+    if (act !== 1) actBtns.push(`<button class="act-switch" data-act="1">🗡️ Act I · Karrowmere</button>`);
+    if (act !== 2 && STATE.act2Unlocked) actBtns.push(`<button class="act-switch" data-act="2">⏳ Act II · Through Time</button>`);
+    if (act !== 3 && STATE.act3Unlocked) actBtns.push(`<button class="act-switch" data-act="3">🚀 Act III · The Way Home</button>`);
+  }
   el.innerHTML = `
-    ${topBar(act2 ? 'Time Map · Act II' : 'World Map', { home: true })}
+    ${topBar(act3 ? 'Star Map · Act III' : act2 ? 'Time Map · Act II' : 'World Map', { home: true })}
     <div class="map-frame">
       <div class="map-canvas">
-        ${continentSVG()}
+        ${act3 ? starMapSVG() : continentSVG()}
         ${nodes}
       </div>
     </div>
-    <div class="map-hint">${act2 ? '⏳ Chase the resurrected wardens through time — clear an era to leap to the next.' : 'Journey across the realm — beat a region to travel onward and unlock the next.'}</div>
-    ${STATE.act2Unlocked ? `<div class="act-switch-row">
-      <button class="act-switch" id="actSwitch">${act2 ? '↩️ Return to Act I · Karrowmere' : '⏳ Travel to Act II · Through Time'}</button>
-    </div>` : ''}`;
+    <div class="map-hint">${act3 ? '🚀 Fight home across the solar system — clear a planet to fly on toward Earth... and Karrowmere.' : act2 ? '⏳ Chase the resurrected wardens through time — clear an era to leap to the next.' : 'Journey across the realm — beat a region to travel onward and unlock the next.'}</div>
+    ${actBtns.length ? `<div class="act-switch-row">${actBtns.join('')}</div>` : ''}`;
   wireCommon(el);
-  const swBtn = el.querySelector('#actSwitch');
-  if (swBtn) swBtn.addEventListener('click', () => {
+  el.querySelectorAll('.act-switch').forEach(btn => btn.addEventListener('click', () => {
     Audio2.sfx.click();
-    switchToAct(currentAct() === 2 ? 1 : 2);
+    switchToAct(+btn.dataset.act);
     renderMap();
-  });
+  }));
   el.querySelectorAll('.map-node:not(.locked)').forEach(node => {
     node.addEventListener('click', () => {
       Audio2.sfx.click();
@@ -1209,7 +1319,7 @@ function renderShop() {
     const owned = STATE.shields[id] !== undefined;
     html += shopRow('shield', id, s.name, `blocks ${Math.round(s.block * 100)}%`, s.rarity, s.price, owned, shieldIcon('#b98a3a'));
   });
-  if (currentAct() === 2) {
+  if (currentAct() >= 2) {
     html += `<div class="shop-sep">⏳ Weapons of the Ages — by Asher &amp; Ren</div>`;
     Object.keys(WEAPONS).filter(id => WEAPONS[id].act2).sort(byPrice).forEach(weaponRow);
     html += `<div class="shop-sep">🛡️ Shields of the Ages</div>`;
@@ -1224,7 +1334,7 @@ function renderShop() {
     html += shopRow('item', id, it.name, it.blurb, it.rarity, it.price, false, itemSVG(it.art));
   });
   // ---- Act 2 relic: the Wings of Icarus (flight) ----
-  if (currentAct() === 2 && typeof ARTIFACTS !== 'undefined' && ARTIFACTS.wings) {
+  if (currentAct() >= 2 && typeof ARTIFACTS !== 'undefined' && ARTIFACTS.wings) {
     html += `<div class="shop-sep">🪽 Time-traveller's relic</div>`;
     html += shopRow('artifact', 'wings', ARTIFACTS.wings.name, ARTIFACTS.wings.desc, 'L', 9000, hasArtifact('wings'), `<div style="font-size:26px">🪽</div>`);
   }
