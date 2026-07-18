@@ -3728,16 +3728,38 @@ function winDungeon() {
   if (d.regionId === 'secret' && currentAct() === 2) { showVictoryEpilogue(); return; }
   showDungeonResult(true, bonus, mods, gotLife);
 }
-// Falling to 0 hearts is DEATH. An Extra Life (if you have one) cheats it; else
-// it's GAME OVER and back to the start.
+// Falling to 0 hearts is DEATH. An Extra Life (if you have one) cheats it and
+// hauls you back on the spot. With NO lives left the run is over — there's no
+// limping on from a checkpoint. You either restart the whole level from the
+// very beginning, or bail out to the map.
 function loseDungeon() {
   const d = DUNGEON; if (d.over) return;
   if ((STATE.extraLives || 0) > 0) return reviveDungeon();   // Extra Life revives you on the spot
+  d.over = true; d.outcome = 'lose';
   STATE.losses++; saveGame();
-  // Knocked out — respawn at the last checkpoint you crossed, back to full health.
-  respawnHero(0);
-  banner('💀 Knocked out! Back to your last checkpoint.', 2600);
   Audio2.sfx.lose();
+  showDeathChoice();
+}
+// Out of lives: no checkpoint to fall back on. Restart the level or leave.
+function showDeathChoice() {
+  const d = DUNGEON;
+  const region = d.regionId;
+  const overlay = document.createElement('div');
+  overlay.className = 'result-overlay';
+  overlay.innerHTML = `
+    <div class="result-card lose">
+      <h2>💀 KNOCKED OUT</h2>
+      <p>You're out of Extra Lives — no checkpoint to fall back on this time.</p>
+      <p class="tip">Restart the level from the very beginning, or head back to the map.</p>
+      <div class="result-btns">
+        <button class="wide-btn" id="death-restart">↻ Restart level</button>
+        <button class="wide-btn ghost" id="death-exit">⌂ Exit level</button>
+      </div>
+    </div>`;
+  app().appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('show'));
+  overlay.querySelector('#death-restart').addEventListener('click', () => { Audio2.sfx.click(); stopDungeon(); startDungeon(region); });
+  overlay.querySelector('#death-exit').addEventListener('click', () => { Audio2.sfx.click(); stopDungeon(); showScreen('map'); });
 }
 function reviveDungeon() {
   const d = DUNGEON, h = d.hero;
