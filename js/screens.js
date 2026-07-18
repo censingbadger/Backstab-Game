@@ -77,6 +77,14 @@ function showGameOverOverlay(onBack, onRetry) {
   if (rb) rb.addEventListener('click', () => { Audio2.sfx.click(); onRetry(); });
 }
 
+/* One-line trophy notice for the finale overlays when the fallen Backstabber
+   dropped his own legendary blade (an almost-impossible 3% chance). */
+function bladeNotice() {
+  if (!Game.gotBlade) return '';
+  Game.gotBlade = false;
+  return `<p class="extralife">🗡️ HE DROPPED HIS BLADE — the <b>BACKSTABBING BLADE</b> is yours! Better than Transcendent. It can be used for bad or good... use it for good.</p>`;
+}
+
 /* Beating the Act 1 Backstabber reveals his TIME MACHINE — press the button to
    be flung into Act 2 (the time-travel chase). */
 function showTimeMachine() {
@@ -86,6 +94,7 @@ function showTimeMachine() {
     <div class="result-card win timemachine">
       <h2>⏳ A STRANGE MACHINE</h2>
       <p>The Backstabber is beaten — but behind his throne hums a machine unlike anything in the realm. Its screen flickers with lands that don't exist yet... and one blinking button.</p>
+      ${bladeNotice()}
       <div class="tm-panel">
         <div class="tm-screen"><span>◄ ◙ ►</span> TEMPORAL&nbsp;DRIVE <span>◄ ◙ ►</span></div>
         <button class="tm-button" id="tm-go">PRESS THIS BUTTON</button>
@@ -112,6 +121,7 @@ function showSabotage() {
     <div class="result-card lose timemachine">
       <h2>🗡️ THE FINAL BETRAYAL</h2>
       <p>The Backstabber Prime falls... but he is smiling. With his dying breath he drives his blade deep into your time machine's heart. The temporal drive SCREAMS.</p>
+      ${bladeNotice()}
       <p>Light folds in on itself — a thousand years tear past in a heartbeat — and the sky that catches you is not Earth's. It is deep, and blue, and very, very far from home.</p>
       <div class="tm-panel">
         <div class="tm-screen"><span>◄ ◙ ►</span> DRIVE&nbsp;SABOTAGED&nbsp;·&nbsp;YEAR&nbsp;3026&nbsp;·&nbsp;DEST:&nbsp;NEPTUNE <span>◄ ◙ ►</span></div>
@@ -138,6 +148,7 @@ function showVictoryEpilogue() {
     <div class="result-card win timemachine">
       <h2>🏆 HOME AT LAST</h2>
       <p>The Backstabber Omega crumbles — fireballs, ice, lightning and all — a thousand years of stolen power scattering like sparks on the wind. Every warden of every age and every world lies beaten behind you.</p>
+      ${bladeNotice()}
       <p>From the first cold cliff to the rings of Saturn and back, you crossed a realm, all of history, and the whole solar system to get here. Karrowmere is free. Time is clean. And you — you walked the long way home.</p>
       <div class="tm-panel">
         <div class="tm-screen"><span>◄ ◙ ►</span> SAGA&nbsp;COMPLETE&nbsp;·&nbsp;WELCOME&nbsp;HOME <span>◄ ◙ ►</span></div>
@@ -1375,7 +1386,7 @@ function renderShop() {
     html += shopRow('weapon', id, (w.era ? w.era + ' ' : '') + w.name, sub, w.rarity, w.price, owned, weaponSVG(w));
   };
   const byPrice = (a, b) => WEAPONS[a].price - WEAPONS[b].price;
-  Object.keys(WEAPONS).filter(id => id !== 'old_knife' && !WEAPONS[id].act2).sort(byPrice).forEach(weaponRow);
+  Object.keys(WEAPONS).filter(id => id !== 'old_knife' && !WEAPONS[id].act2 && !WEAPONS[id].act3).sort(byPrice).forEach(weaponRow);
   ['aluminum_shield'].forEach(id => {
     const s = SHIELDS[id];
     const owned = STATE.shields[id] !== undefined;
@@ -1395,6 +1406,12 @@ function renderShop() {
     const it = ITEMS[id];
     html += shopRow('item', id, it.name, it.blurb, it.rarity, it.price, false, itemSVG(it.art));
   });
+  // ---- Act 3 arsenal: the World 3 Weapons (never the Backstabbing Blade —
+  // that one can only be won from a fallen Backstabber) ----
+  if (currentAct() >= 3) {
+    html += `<div class="shop-sep">🚀 World 3 Weapons — by Asher &amp; Ren</div>`;
+    Object.keys(WEAPONS).filter(id => WEAPONS[id].act3 && !WEAPONS[id].noShop).sort(byPrice).forEach(weaponRow);
+  }
   // ---- Legendary companions: Scully & Stripes, the brown tabby cats ----
   if (typeof COMPANIONS !== 'undefined') {
     html += `<div class="shop-sep">🐱 Legendary Companions</div>`;
@@ -1487,7 +1504,7 @@ function sellValue(w) { return Math.max(0, Math.round((w.price || 0) * 0.6)); }
 
 // Short label for a weapon's special power.
 function powerLabel(p) {
-  return ({ reach: '➹ reach', sweep: '↺ wide sweep', double: '⚔ 2× hits', lifesteal: '❤ lifesteal', poison: '☠ poison', stun: '✷ stun', gun: '🔫 shoots bullets', bazooka: '🚀 explosive shells' })[p] || '';
+  return ({ reach: '➹ reach', sweep: '↺ wide sweep', double: '⚔ 2× hits', lifesteal: '❤ lifesteal', poison: '☠ poison', stun: '✷ stun', gun: '🔫 shoots bullets', bazooka: '🚀 explosive shells', deathray: '💀 INSTANT KILL · 3 uses · not on bosses', nuke: '☢ kills everyone for 2 checkpoints · 1 use · not on bosses', backstab: '🗡 backstabs deal 4× damage' })[p] || '';
 }
 // One-line summary of the character's permanent perks.
 function perksSummary() {

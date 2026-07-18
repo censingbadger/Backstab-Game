@@ -24,6 +24,8 @@ const RARITY = {
   E: { key: 'E', name: 'Epic',          color: '#b061ff' },
   L: { key: 'L', name: 'Legendary',     color: '#ffb020' },
   T: { key: 'T', name: 'Transcendent',  color: '#ff4d6d' },
+  // Beyond Transcendent: reserved for ONE weapon — the Backstabbing Blade.
+  B: { key: 'B', name: 'Backstab',      color: '#ff2da0' },
 };
 
 /* ---------- Enemy roster ----------
@@ -229,6 +231,24 @@ const WEAPONS = {
   pharaoh_spear:  { id:'pharaoh_spear',  name:'Pharaoh Spear',       damage:31, durability:200, rarity:'R', price:11800, repairCost:200, art:'spear',     act2:true, era:'🏺', power:'reach' },
   mummy_sword:    { id:'mummy_sword',    name:'Mummy Sword',         damage:35, durability:230, rarity:'E', price:13800, repairCost:310, art:'sword',     act2:true, era:'🏺', power:'lifesteal' },
   sand_striker:   { id:'sand_striker',   name:'Sand Striker',        damage:50, durability:260, rarity:'L', price:21000, repairCost:520, art:'katana',    act2:true, era:'🏺', power:'sweep' },
+
+  /* ===== ACT THREE — World 3 Weapons (designed by Asher & Ren, year 3026) ===== */
+  cyborg_sword:   { id:'cyborg_sword',   name:'Cyborg Sword',      damage:34, durability:260, rarity:'U', price:12000, repairCost:220, art:'sword',   act3:true, era:'🚀' },
+  blue_plasma_spear:{ id:'blue_plasma_spear', name:'Blue Plasma Spear', damage:36, durability:230, rarity:'U', price:13000, repairCost:240, art:'spear', act3:true, era:'🚀', power:'reach' },
+  icicle_club:    { id:'icicle_club',    name:'Icicle Club',       damage:38, durability:210, rarity:'U', price:12500, repairCost:230, art:'club',    act3:true, era:'🚀', power:'stun' },
+  plasma_ray:     { id:'plasma_ray',     name:'Plasma Ray',        damage:32, durability:300, rarity:'R', price:14000, repairCost:260, art:'gun',     act3:true, era:'🚀', power:'gun' },
+  laser_mace:     { id:'laser_mace',     name:'Laser Mace',        damage:42, durability:240, rarity:'R', price:14500, repairCost:280, art:'mace',    act3:true, era:'🚀', power:'stun' },
+  titanium_dagger:{ id:'titanium_dagger',name:'Titanium Dagger',   damage:28, durability:320, rarity:'R', price:13500, repairCost:250, art:'knife',   act3:true, era:'🚀', power:'double' },
+  darkness_bow:   { id:'darkness_bow',   name:'Darkness Bow',      damage:44, durability:220, rarity:'E', price:16500, repairCost:340, art:'bow',     act3:true, era:'🚀', power:'gun' },
+  electric_cutter:{ id:'electric_cutter',name:'Electric Cutter',   damage:30, durability:260, rarity:'E', price:17000, repairCost:350, art:'sword',   act3:true, era:'🚀', power:'double' },
+  death_ray:      { id:'death_ray',      name:'Death Ray',         damage:0,  durability:3,   rarity:'L', price:20000, repairCost:6000, art:'gun',    act3:true, era:'🚀', power:'deathray' },
+  imploding_nuke: { id:'imploding_nuke', name:'Imploding Nuke',    damage:0,  durability:1,   rarity:'L', price:25000, repairCost:12000, art:'bazooka', act3:true, era:'🚀', power:'nuke' },
+  black_diamond_blade:{ id:'black_diamond_blade', name:'Black Diamond Blade', damage:60, durability:300, rarity:'T', price:30000, repairCost:800, art:'katana', act3:true, era:'🚀', power:'sweep' },
+  // Better than Transcendent, almost impossible to get: the blade the
+  // Backstabber used to kill the King of Karrowmere. It can be used for bad
+  // or good — and now it's in YOUR hands. Never sold; only very rarely does a
+  // fallen Backstabber drop it.
+  backstabbing_blade:{ id:'backstabbing_blade', name:'Backstabbing Blade', damage:75, durability:350, rarity:'B', price:0, repairCost:1000, art:'knife', act3:true, era:'🗡️', power:'backstab', noShop:true },
 };
 
 /* ---------- Items (used in battle) ----------
