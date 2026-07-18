@@ -950,6 +950,12 @@ function activateChamber(c, t) {
   d.activeIndex = c.index; c.active = true;
   if (c.boss) { summonBossChamber(); return; }
   if (c.rush) { spawnMiniBoss(c); c.spawned = true; return; }   // boss-rush chamber
+  if ((d.nukeSuppress || 0) > 0) {   // the nuke's silence — this chamber's horde never rises
+    d.nukeSuppress--;
+    c.spawned = true;
+    banner('☢️ CHAMBER ' + (c.index + 1) + ' — silent. Nothing left alive to fight.', 1600);
+    return;
+  }
   const count = 5 + c.index * 3;   // a denser horde guards every chamber gate
   for (let k = 0; k < count; k++) spawnInChamber(c, k);
   c.spawned = true;
@@ -1272,11 +1278,20 @@ function heroAttack() {
   const wid = STATE.equippedWeapon;
   let durab = STATE.weapons[wid] || 0;
   const bare = durab <= 0;
-  // Ranged weapons (gun / bazooka) FIRE a projectile instead of swinging — and
-  // you can pull the trigger mid-jump.
-  const rangedKind = (!bare && (weaponPower(wid) === 'gun' || weaponPower(wid) === 'bazooka')) ? weaponPower(wid) : null;
+  // The Imploding Nuke doesn't swing OR shoot — it just goes off. Once.
+  if (!bare && weaponPower(wid) === 'nuke') {
+    STATE.weapons[wid] = 0;   // single use — it's a nuke
+    h.attackReadyAt = now + 900; h.swingUntil = now + 200;
+    detonateNuke(now);
+    updateWeaponHUD();
+    return;
+  }
+  // Ranged weapons (gun / bazooka / death ray) FIRE a projectile instead of
+  // swinging — and you can pull the trigger mid-jump.
+  const rp = bare ? null : weaponPower(wid);
+  const rangedKind = (rp === 'gun' || rp === 'bazooka' || rp === 'deathray') ? rp : null;
   if (rangedKind) {
-    h.attackReadyAt = now + (rangedKind === 'bazooka' ? 950 : 300);   // fire rate
+    h.attackReadyAt = now + (rangedKind === 'bazooka' ? 950 : rangedKind === 'deathray' ? 700 : 300);   // fire rate
     h.swingUntil = now + 130;
     STATE.weapons[wid] = durab - 1;
     fireHeroShot(rangedKind, wid, now);
@@ -1308,10 +1323,13 @@ function heroAttack() {
     let da = Math.abs(a - h.faceAngle); if (da > Math.PI) da = Math.PI * 2 - da;
     return dist(h.fx, h.fy, e.fx, e.fy) <= reach + (e.r || 0.4) && da <= arc / 2;
   };
+  // The Backstabbing Blade turns the 2× back-strike into a devastating 4×.
+  const backMult = power === 'backstab' ? 4 : 2;
   d.enemies.forEach(e => {
     if (e.dead) return;
     if (inArc(e)) {
-      const back = behind(e), hitDmg = back ? dmg * 2 : dmg;
+      const back = behind(e), hitDmg = back ? dmg * backMult : dmg;
+      if (back && backMult === 4) spawnFloatText(e.fx, e.fy - 0.5, '🗡️ 4× BACKSTAB!', '#ff2da0');
       for (let k = 0; k < hits && !e.dead; k++) { damageEnemy(e, hitDmg, back); dealt += hitDmg; }
       applyPowerTo(e);
     }
@@ -1319,7 +1337,8 @@ function heroAttack() {
   if (d.boss && !d.boss.dead) {
     const b = d.boss;
     if (dist(h.fx, h.fy, b.fx, b.fy) <= reach + b.r) {
-      const back = behind(b), hitDmg = back ? dmg * 2 : dmg;
+      const back = behind(b), hitDmg = back ? dmg * backMult : dmg;
+      if (back && backMult === 4) spawnFloatText(b.fx, b.fy - 0.5, '🗡️ 4× BACKSTAB!', '#ff2da0');
       for (let k = 0; k < hits && !b.dead; k++) { damageEnemy(b, hitDmg, back); dealt += hitDmg; }
       applyPowerTo(b);
     }
@@ -1364,11 +1383,29 @@ function updateHeroShots(dt, t) {
     if (!hit && d.boss && !d.boss.dead && dist(s.x, s.y, d.boss.fx, d.boss.fy) < (d.boss.r || 0.9) + 0.5) hit = d.boss;
     if (hit) {
       if (s.kind === 'bazooka') { s.x = hit.fx; s.y = hit.fy; explodeBazooka(s); }
+      else if (s.kind === 'deathray') {
+        // instant kill — but bosses and mini-bosses shrug it off entirely
+        if (hit.boss || hit.miniboss) { spawnFloatText(hit.fx, hit.fy - 0.4, '💀 IMMUNE!', '#c9c9d9'); Audio2.sfx.dodge(); }
+        else { spawnFloatText(hit.fx, hit.fy - 0.4, '💀 DISINTEGRATED', '#c04aff'); Audio2.sfx.bighit(); damageEnemy(hit, 99999, false); }
+      }
       else { damageEnemy(hit, s.dmg, false); d.fx.push({ kind: 'text', fx: s.x, fy: s.y, text: '✦', color: '#ffd23f', born: t, life: 220 }); }
       return false;
     }
     return true;
   });
+}
+/* The Imploding Nuke: one use, and every regular foe on the whole map dies at
+   once. The silence holds for the next TWO checkpoints (or chamber gates) —
+   no swarms, no gauntlets. Bosses and mini-bosses don't even flinch. */
+function detonateNuke(now) {
+  const d = DUNGEON, h = d.hero;
+  let slain = 0;
+  d.enemies.forEach(e => { if (!e.dead && !e.miniboss) { damageEnemy(e, 99999, false); slain++; } });
+  d.nukeSuppress = 2;
+  shake(); shake(); Audio2.sfx.bighit();
+  for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; d.fx.push({ kind: 'text', fx: h.fx + Math.cos(a) * (1 + i % 3), fy: h.fy + Math.sin(a) * (1 + i % 3), text: '✦', color: i % 2 ? '#ffd23f' : '#ff6a3a', born: now, life: 700 }); }
+  banner('☢️ IMPLODING NUKE — ' + slain + ' foes erased! The silence holds for 2 checkpoints...', 3000);
+  spawnFloatText(h.fx, h.fy, '☢️ KRAKOOM', '#ffd23f');
 }
 function explodeBazooka(s) {
   const d = DUNGEON, R = 2.3;
@@ -1585,6 +1622,7 @@ function summonBoss() {
    ============================================================ */
 function spawnEnemy() {
   const d = DUNGEON;
+  if ((d.nukeSuppress || 0) > 0) return false;   // the nuke's silence — nothing dares respawn
   // spawn AHEAD of the hero along the trail, so you fight your way forward
   const pi = nearestSampleIndex(d.hero.fx, d.hero.fy);
   for (let tries = 0; tries < 24; tries++) {
@@ -1898,12 +1936,17 @@ function updateDungeon(dt, t) {
     if (!cp.reached && dist(cp.x, cp.y, h.fx, h.fy) < 2.6) {
       cp.reached = true;
       earn(10);
-      banner('⚔️ GATE ' + cp.idx + ' / ' + d.checkpoints.length + ' — fight through the horde!', 1900);
-      pauseMobs(2000);   // the horde holds until the banner clears
       Audio2.sfx.coin();
       spawnFloatText(h.fx, h.fy, '+10 💰', '#ffcf3f');
       h.hp = Math.min(h.maxhp, h.hp + 1);   // small reward heal before the fight
-      spawnGauntlet(cp);
+      if ((d.nukeSuppress || 0) > 0) {      // the nuke's silence holds — no gauntlet here
+        d.nukeSuppress--;
+        banner('☢️ GATE ' + cp.idx + ' / ' + d.checkpoints.length + ' — silent. Nothing left alive to fight.', 1900);
+      } else {
+        banner('⚔️ GATE ' + cp.idx + ' / ' + d.checkpoints.length + ' — fight through the horde!', 1900);
+        pauseMobs(2000);   // the horde holds until the banner clears
+        spawnGauntlet(cp);
+      }
       updateDungeonHUD();
     }
   });
@@ -2636,6 +2679,13 @@ function drawHeroShot(ctx, s, ox, oy) {
     ctx.fillStyle = '#3a3a44'; ctx.fillRect(-9, -3.5, 16, 7);
     ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(7, -3.5); ctx.lineTo(13, 0); ctx.lineTo(7, 3.5); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#5a5a64'; ctx.beginPath(); ctx.moveTo(-9, -3.5); ctx.lineTo(-13, -6); ctx.lineTo(-9, 0); ctx.closePath(); ctx.fill();
+  } else if (s.kind === 'deathray') {   // a crackling violet annihilation beam
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(190,70,255,0.75)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - ux * 22, y - uy * 22); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,255,0.9)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - ux * 22, y - uy * 22); ctx.stroke();
+    ctx.fillStyle = '#f0c9ff'; ctx.beginPath(); ctx.arc(x, y, 4.6, 0, 7); ctx.fill();
   } else {
     ctx.globalCompositeOperation = 'lighter';
     ctx.strokeStyle = 'rgba(255,190,70,0.6)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
@@ -4045,6 +4095,17 @@ function winDungeon() {
     }
   }
   const gotLife = maybeGrantExtraLife();   // transcendently-rare Legendary boss boon
+  // The Backstabbing Blade: almost impossible to get. Only a fallen Backstabber
+  // (any of his three forms) can drop the blade that killed the King of
+  // Karrowmere — and even then, almost never.
+  let gotBlade = false;
+  const beatenBoss = d.bossId || d.theme.boss;
+  if (['backstabber', 'backstabber_prime', 'backstabber_omega'].includes(beatenBoss)
+      && STATE.weapons.backstabbing_blade === undefined && Math.random() < 0.03) {
+    STATE.weapons.backstabbing_blade = WEAPONS.backstabbing_blade.durability;
+    gotBlade = true; Game.gotBlade = true;   // the finale overlays announce it
+    banner('🗡️ THE BACKSTABBING BLADE IS YOURS — use it for good...', 3600);
+  }
   saveGame();
   Audio2.sfx.win();
   // Beating the Act 1 finale (the Backstabber) reveals his time machine → Act 2.

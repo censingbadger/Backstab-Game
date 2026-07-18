@@ -6,6 +6,19 @@ const SAVE_KEY = 'backstab_save_v1';
 // The active save key is per-player (see js/auth.js); falls back to SAVE_KEY.
 function currentSaveKey() { return (typeof Auth !== 'undefined' && Auth.saveKey) ? Auth.saveKey() : SAVE_KEY; }
 
+// You can bank at most this many Extra Lives at once.
+const MAX_EXTRA_LIVES = 3;
+// Award one Extra Life, capped at MAX_EXTRA_LIVES. Returns true only if one was
+// actually added (false when already at the cap), so callers can skip the
+// "you won an Extra Life!" fanfare when nothing changed.
+function grantExtraLife() {
+  if ((STATE.extraLives || 0) >= MAX_EXTRA_LIVES) return false;
+  STATE.extraLives = (STATE.extraLives || 0) + 1;
+  saveGame();
+  return true;
+}
+function atMaxExtraLives() { return (STATE.extraLives || 0) >= MAX_EXTRA_LIVES; }
+
 /* A brand-new hero starts HUMBLE:
    5 hearts, a basic weapon, and a little money. Hearts no longer grow just by
    levelling up — extra max hearts are a rare, hard-won reward for clearing a
@@ -97,6 +110,8 @@ function loadGame() {
       merged.maxHearts = Math.min(merged.maxHearts || 5, 5);
       merged.heartsRebalanced = true;
     }
+    // Extra Lives are now capped — clamp any save that banked more before the cap.
+    merged.extraLives = Math.min(merged.extraLives || 0, MAX_EXTRA_LIVES);
     return merged;
   } catch (e) {
     return null;
