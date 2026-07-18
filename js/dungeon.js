@@ -1992,8 +1992,9 @@ function respawnPoint() {
   return { x: s.x, y: s.y };
 }
 
-/* Put the hero back at the respawn point after a defeat. A knockout heals you
-   to full from the checkpoint; a gust just costs `cost` hearts (never lethal).
+/* Put the hero back at the respawn point after a defeat. A knockout (cost 0)
+   heals you to full from the checkpoint; a survivable gust passes cost 2 (the
+   caller has already checked you have the hearts to take it).
    Brief invulnerability keeps the swarm from instantly re-killing you. */
 function respawnHero(cost) {
   const d = DUNGEON, h = d.hero;
@@ -2005,9 +2006,10 @@ function respawnHero(cost) {
   updateDungeonHUD();
 }
 
-// Blown off the edge (Desolate Dunes & Dawn of Time gusts): NOT lethal — you're
-// swept back to your last checkpoint and lose 2 hearts. An Extra Life instead
-// hauls you back on the spot at full health.
+// Blown off the edge (Desolate Dunes & Dawn of Time gusts): the fall costs 2
+// hearts. If you have MORE than 2, you're swept back to your last checkpoint,
+// still standing. With 2 or fewer, the fall is fatal — you're knocked out. An
+// Extra Life instead hauls you back on the spot at full health.
 function heroFellOff() {
   const d = DUNGEON, h = d.hero;
   if (d.over) return;
@@ -2019,7 +2021,13 @@ function heroFellOff() {
     Audio2.sfx.win(); updateDungeonHUD();
     return;
   }
-  respawnHero(2);   // swept back to the checkpoint, down 2 hearts, still standing
+  if (h.hp <= 2) {                 // not enough hearts to survive the fall
+    h.hp = 0; updateDungeonHUD();
+    banner('🌪️ BLOWN OFF THE EDGE!', 1500);
+    loseDungeon();                 // knocked out → back to your last checkpoint
+    return;
+  }
+  respawnHero(2);   // survived the fall — swept back to the checkpoint, down 2 hearts
   banner('🌪️ Blown off — lost 2 hearts! Back to your checkpoint.', 2600);
   Audio2.sfx.lose(); shake();
 }
