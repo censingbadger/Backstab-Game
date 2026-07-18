@@ -166,13 +166,11 @@ function showVictoryEpilogue() {
 }
 
 // Extra lives are the rarest prize in the game: a small chance at the END of a
-// boss fight to win a Legendary Extra Life. Deliberately transcendently rare.
+// boss fight to win a Legendary Extra Life. Deliberately transcendently rare —
+// and you can never bank more than MAX_EXTRA_LIVES at once.
 function maybeGrantExtraLife() {
-  if (Math.random() < 0.035) {
-    STATE.extraLives = (STATE.extraLives || 0) + 1;
-    saveGame();
-    return true;
-  }
+  if (atMaxExtraLives()) return false;
+  if (Math.random() < 0.035) return grantExtraLife();
   return false;
 }
 
@@ -1201,14 +1199,15 @@ function renderBrewery() {
     const rar = isLife ? 'L' : ITEMS[rec.out].rarity;
     const needStr = Object.entries(rec.need).map(([ik, n]) =>
       `<span class="need ${have(ik) >= n ? 'ok' : 'no'}">${INGREDIENTS[ik].icon}${n}</span>`).join(' ');
-    const enough = Object.entries(rec.need).every(([ik, n]) => have(ik) >= n) && canAfford(rec.cost);
+    const maxed = isLife && atMaxExtraLives();   // can't brew a 4th Extra Life
+    const enough = !maxed && Object.entries(rec.need).every(([ik, n]) => have(ik) >= n) && canAfford(rec.cost);
     html += `<div class="shop-item" style="--rc:${RARITY[rar].color}">
       <div class="si-art">${outArt}</div>
       <div class="si-info">
         <div class="si-name">${outName} <span class="rar" style="color:${RARITY[rar].color}">${RARITY[rar].key}</span></div>
-        <div class="si-sub">${needStr} ${rec.cost ? '· ' + rec.cost + ' 💰' : ''}</div>
+        <div class="si-sub">${maxed ? `Maxed — you already have ${MAX_EXTRA_LIVES} 🌟` : `${needStr} ${rec.cost ? '· ' + rec.cost + ' 💰' : ''}`}</div>
       </div>
-      <button class="buy-btn ${enough ? '' : 'disabled'}" data-brew="${rec.out}">🧪 Brew</button>
+      <button class="buy-btn ${enough ? '' : 'disabled'}" data-brew="${rec.out}">${maxed ? '🌟 Max' : '🧪 Brew'}</button>
     </div>`;
   });
   list.innerHTML = html;
@@ -1218,11 +1217,13 @@ function renderBrewery() {
 function doBrew(outId) {
   const rec = RECIPES[outId]; if (!rec) return;
   const have = id => STATE.ingredients[id] || 0;
+  // Can't brew an Extra Life past the cap — don't take ingredients or coins.
+  if (rec.out === 'extra_life' && atMaxExtraLives()) { Audio2.sfx.lose(); return; }
   if (!Object.entries(rec.need).every(([ik, n]) => have(ik) >= n) || !canAfford(rec.cost)) { Audio2.sfx.lose(); return; }
   if (!spend(rec.cost)) { Audio2.sfx.lose(); return; }
   Object.entries(rec.need).forEach(([ik, n]) => { STATE.ingredients[ik] -= n; if (STATE.ingredients[ik] <= 0) delete STATE.ingredients[ik]; });
   if (rec.out === 'extra_life') {
-    STATE.extraLives = (STATE.extraLives || 0) + 1;
+    grantExtraLife();
   } else {
     STATE.items[rec.out] = (STATE.items[rec.out] || 0) + rec.qty;
   }
